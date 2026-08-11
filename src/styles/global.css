@@ -348,3 +348,22 @@ p {
     border-color: color-mix(in srgb, var(--bone) 18%, transparent);
   }
 }
+
+/* Home — soft proximity snap to main sections only (not lineas panels) */
+html:has(#inicio) {
+  scroll-snap-type: y proximity;
+}
+
+html:has(#inicio) main > #inicio,
+html:has(#inicio) main > #grupo,
+html:has(#inicio) main > #lineas,
+html:has(#inicio) main > #oficio,
+html:has(#inicio) main > #contacto {
+  scroll-snap-align: start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(#inicio) {
+    scroll-snap-type: none;
+  }
+}
