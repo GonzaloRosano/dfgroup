@@ -27,12 +27,12 @@ export const siteAssets: SiteAsset[] = [
     usedOn: '/',
   },
   {
-    id: 'lattice',
+    id: 'dot-feather',
     kind: 'procedural',
-    label: 'Rejilla wire noir (WebGL)',
+    label: 'Pluma puntillista (WebGL)',
     path: null,
     description:
-      'Malla 3D wire noir con pulso viajero, partículas ember, trazos de pluma, parallax y bloom sutil. Generada en tiempo real con Three.js, sin texturas.',
+      'Pluma generada desde public/logo.svg: muestreo Canvas 2D del path SVG, ~3400 puntos en tres capas. Sin texturas.',
     usedOn: '/',
   },
 ];

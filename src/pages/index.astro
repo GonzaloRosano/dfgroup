@@ -1,15 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LoadingScreen from '../components/LoadingScreen.astro';
 import Atmosphere from '../components/Atmosphere';
 import ScrollProgress from '../components/ScrollProgress.astro';
 import { lines } from '../data/lines';
-
-const lineVisuals: Record<string, string> = {
-  hosting: 'grid-hosting',
-  series: 'grid-series',
-  atelier: 'grid-atelier',
-  voices: 'grid-voices',
-};
 
 const crafts = [
   {
@@ -29,80 +23,70 @@ const crafts = [
     copy: 'De concepto a entrega, con ritmo de estudio.',
   },
 ];
+
+const lineIcons: Record<string, string> = {
+  hosting: 'M4 18h16M6 14h12M8 10h8M10 6h4',
+  series: 'M4 6h4v12H4zm6 0h4v12h-4zm6 0h4v12h-4z',
+  atelier: 'M12 3L5 20h14L12 3zm0 6l2.5 7h-5L12 9z',
+  voices: 'M4 12c2-4 6-6 8-6s6 2 8 6M6 14c1.5 3 4 5 6 5s4.5-2 6-5',
+};
 ---
 
 <BaseLayout title="Dark Feather Group">
+  <LoadingScreen />
   <ScrollProgress />
 
   <div class="home-atmosphere" aria-hidden="true">
     <Atmosphere client:load />
   </div>
 
-  <section id="inicio" class="home-hero">
-    <div class="container home-hero__grid">
-      <div class="home-hero__content">
-        <p class="home-hero__eyebrow">Colectivo creativo noir</p>
-        <h1 class="home-hero__title">Diseñado para significar algo.</h1>
-        <p class="home-hero__lead">
-          Dark Feather Group une diseño, desarrollo, arte y producción bajo una
-          sola atmósfera. Cuatro líneas. Un mismo oficio a contraluz.
-        </p>
-        <div class="btn-row">
-          <a class="btn btn--solid" href="#contacto">Empezar conversación</a>
-          <a class="btn btn--ghost" href="#grupo">Conocer el grupo</a>
-        </div>
-      </div>
-      <div class="home-hero__mark" aria-hidden="true">
-        <img src="/logo.svg" alt="" width="120" height="133" />
-      </div>
+  <section id="inicio" class="neo-hero">
+    <div class="container neo-hero__inner">
+      <h1 class="neo-hero__title">Dark Feather Group</h1>
+      <p class="neo-hero__tagline">
+        La atmósfera creativa noir llegó al estudio. Cuatro líneas, un mismo oficio.
+      </p>
+      <a class="btn btn--solid neo-hero__cta" href="#grupo">Explorar DF Group</a>
     </div>
   </section>
 
-  <section id="grupo" class="section about">
-    <div class="container about__grid">
-      <div class="about__intro">
-        <h2 class="section__title section__title--left">
-          El colectivo detrás de la pluma.
-        </h2>
-        <p class="section__lead section__lead--left">
-          Diseñamos, desarrollamos, producimos arte y sonido. Trabajamos a
-          contraluz: menos ruido, más atmósfera y oficio.
-        </p>
-      </div>
-      <div class="about__stat">
-        <p class="about__stat-num">4</p>
-        <p class="about__stat-label">Líneas de producto bajo una misma dirección de arte.</p>
-      </div>
-    </div>
-  </section>
+  <div class="neo-metric" aria-hidden="true">
+    <span class="neo-metric__num">04</span>
+    <span class="neo-metric__label">Líneas de producto</span>
+  </div>
 
-  <section id="lineas" class="section products" aria-label="Líneas del grupo">
+  <section id="grupo" class="section neo-about">
     <div class="container">
-      <h2 class="section__title">Cuatro líneas. Una atmósfera.</h2>
-      <p class="section__lead">
-        Cada código DF resuelve un frente distinto del universo creativo, sin
-        perder la pluma ni el tono noir del grupo.
+      <p class="neo-label">Sobre el grupo</p>
+      <h2 class="neo-title">El colectivo detrás de la pluma.</h2>
+      <p class="neo-lead">
+        Diseñamos, desarrollamos, producimos arte y sonido. Trabajamos a
+        contraluz: menos ruido, más atmósfera y oficio bajo una sola dirección de arte.
+      </p>
+    </div>
+  </section>
+
+  <section id="lineas" class="section neo-features" aria-label="Líneas del grupo">
+    <div class="container">
+      <p class="neo-label">Líneas</p>
+      <h2 class="neo-title">Cuatro frentes bajo una pluma.</h2>
+      <p class="neo-lead neo-lead--center">
+        Cada código DF resuelve un frente distinto del universo creativo.
       </p>
 
-      <div class="products__grid">
+      <div class="neo-features__grid">
         {
-          lines.map((line) => (
-            <article class="product-card" id={line.slug} data-reveal>
-              <div class:list={['product-card__visual', lineVisuals[line.slug]]} aria-hidden="true" />
-              <div class="product-card__body">
-                <h3 class="product-card__code">{line.code}</h3>
-                <p class="product-card__tagline">{line.tagline}</p>
-                <p class="product-card__summary">{line.summary}</p>
-                <ul class="product-card__points">
-                  {line.points.map((point) => (
-                    <li>{point}</li>
-                  ))}
-                </ul>
-                <a class="product-card__link" href={`#${line.slug}`}>
-                  Explorar {line.code}
-                  <span aria-hidden="true">→</span>
-                </a>
+          lines.map((line, i) => (
+            <article class="neo-feature" id={line.slug} data-reveal>
+              <div class="neo-feature__head">
+                <span class="neo-feature__num">{String(i + 1).padStart(2, '0')}</span>
+                <svg class="neo-feature__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d={lineIcons[line.slug]} fill="none" stroke="currentColor" stroke-width="1.5" />
+                </svg>
               </div>
+              <h3 class="neo-feature__title">{line.code}</h3>
+              <p class="neo-feature__tag">{line.tagline}</p>
+              <p class="neo-feature__copy">{line.summary}</p>
             </article>
           ))
         }
@@ -110,55 +94,60 @@ const crafts = [
     </div>
   </section>
 
-  <section id="oficio" class="section craft">
+  <section class="section neo-specs">
     <div class="container">
-      <h2 class="section__title">Oficio con atmósfera.</h2>
-      <p class="section__lead">
-        No vendemos plantillas. Construimos mundos visuales, técnicos y
-        sonoros que se sostienen solos.
-      </p>
+      <p class="neo-label">Especificaciones</p>
+      <h2 class="neo-title">Lo que incluye cada línea.</h2>
 
-      <div class="craft__grid">
-        {
-          crafts.map((item) => (
-            <article class="craft__item" data-reveal>
-              <h3>{item.title}</h3>
-              <p>{item.copy}</p>
-            </article>
-          ))
-        }
-      </div>
-    </div>
-  </section>
-
-  <section id="contacto" class="section contact">
-    <div class="container contact__inner">
-      <h2 class="section__title">En la sombra, a un mensaje.</h2>
-      <p class="section__lead">
-        Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
-        foco, no con un formulario vacío de promesas.
-      </p>
-      <div class="btn-row contact__cta">
-        <a class="btn btn--solid" href="mailto:hola@darkfeathergroup.com">
-          hola@darkfeathergroup.com
-        </a>
-      </div>
-      <p class="contact__hint">
-        Correo de ejemplo. Reemplazá con el canal real del grupo.
-      </p>
-
-      <ul class="contact__lines">
+      <div class="neo-specs__list">
         {
           lines.map((line) => (
-            <li>
-              <a href={`#${line.slug}`}>
-                <span>{line.code}</span>
-                <span>{line.tagline}</span>
-              </a>
-            </li>
+            <article class="neo-spec" id={`spec-${line.slug}`}>
+              <h3>{line.code}</h3>
+              <ul>
+                {line.points.map((point) => (
+                  <li>{point}</li>
+                ))}
+              </ul>
+            </article>
           ))
         }
-      </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="oficio" class="section neo-features neo-features--craft">
+    <div class="container">
+      <p class="neo-label">Oficio</p>
+      <h2 class="neo-title">Oficio con atmósfera.</h2>
+
+      <div class="neo-features__grid">
+        {
+          crafts.map((item, i) => (
+            <article class="neo-feature" data-reveal>
+              <div class="neo-feature__head">
+                <span class="neo-feature__num">{String(i + 5).padStart(2, '0')}</span>
+              </div>
+              <h3 class="neo-feature__title">{item.title}</h3>
+              <p class="neo-feature__copy">{item.copy}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="contacto" class="section neo-waitlist">
+    <div class="container neo-waitlist__inner">
+      <p class="neo-label">Contacto</p>
+      <h2 class="neo-title">Hablar con el grupo</h2>
+      <p class="neo-lead neo-lead--center">
+        Contanos qué línea te interesa y cómo suena el proyecto.
+      </p>
+      <a class="btn btn--solid" href="mailto:hola@darkfeathergroup.com">
+        hola@darkfeathergroup.com
+      </a>
+      <p class="neo-waitlist__hint">Correo de ejemplo. Reemplazá con el canal real del grupo.</p>
     </div>
   </section>
 </BaseLayout>
@@ -208,18 +197,12 @@ const crafts = [
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 58% 42% at 16% 36%, rgba(0, 0, 0, 0.62) 0%, transparent 72%),
-      radial-gradient(ellipse 100% 90% at 50% 50%, transparent 38%, rgba(0, 0, 0, 0.58) 100%);
+      radial-gradient(ellipse 48% 42% at 78% 40%, transparent 0%, rgba(0, 0, 0, 0.5) 70%),
+      radial-gradient(ellipse 100% 85% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
     pointer-events: none;
   }
 
-  .section__title--left,
-  .section__lead--left {
-    text-align: left;
-    margin-inline: 0;
-  }
-
-  .home-hero {
+  .neo-hero {
     position: relative;
     z-index: 1;
     min-height: 100svh;
@@ -228,199 +211,168 @@ const crafts = [
     padding: 6rem 0 4rem;
   }
 
-  .home-hero__grid {
-    display: grid;
-    gap: 3rem;
-    align-items: center;
+  .neo-hero__inner {
+    max-width: 18ch;
   }
 
-  .home-hero__content {
-    animation: rise 900ms var(--ease-out) both;
-  }
-
-  .home-hero__eyebrow {
-    color: var(--mute);
-    font-size: 0.82rem;
-    letter-spacing: 0.14em;
+  .neo-hero__title {
+    font-size: clamp(3.2rem, 11vw, 7.5rem);
+    letter-spacing: -0.04em;
+    line-height: 0.92;
+    margin-bottom: 1.25rem;
     text-transform: uppercase;
-    margin-bottom: 1.25rem;
   }
 
-  .home-hero__title {
-    font-size: clamp(2.8rem, 8vw, 5.5rem);
-    max-width: 12ch;
-    margin-bottom: 1.25rem;
-  }
-
-  .home-hero__lead {
+  .neo-hero__tagline {
     color: var(--fog);
-    margin-bottom: 1.85rem;
-    font-size: 1.12rem;
-    max-width: 42ch;
+    font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+    max-width: 38ch;
+    margin-bottom: 2rem;
+    line-height: 1.65;
   }
 
-  .home-hero__mark {
-    justify-self: center;
-    opacity: 0.12;
+  .neo-hero__cta {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.82rem;
   }
 
-  .home-hero__mark img {
-    width: clamp(5rem, 18vw, 9rem);
-    height: auto;
-    filter: invert(1);
-  }
-
-  .about {
+  .neo-metric {
     position: relative;
     z-index: 1;
-    padding-block: var(--space-2xl) var(--space-xl);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    width: var(--page-wide);
+    max-width: calc(100% - 2.5rem);
+    margin: -2rem auto 0;
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
   }
 
-  .about__grid {
-    display: grid;
-    gap: 3rem;
-    align-items: end;
-  }
-
-  .about__stat {
-    padding: 1.75rem;
-    border-radius: var(--radius-soft);
-    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
-    background: color-mix(in srgb, var(--panel) 80%, transparent);
-  }
-
-  .about__stat-num {
+  .neo-metric__num {
     font-family: var(--font-display);
-    font-size: clamp(4rem, 12vw, 7rem);
+    font-size: clamp(4rem, 14vw, 8rem);
     line-height: 0.85;
-    margin-bottom: 0.5rem;
+    letter-spacing: -0.04em;
   }
 
-  .about__stat-label {
-    color: var(--fog);
-    max-width: 22ch;
+  .neo-metric__label {
+    color: var(--mute);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
   }
 
-  .products {
+  .neo-about,
+  .neo-features,
+  .neo-specs,
+  .neo-waitlist {
     position: relative;
     z-index: 1;
   }
 
-  .products__grid {
-    display: grid;
-    gap: 1.25rem;
-    margin-top: var(--space-lg);
+  .neo-lead--center {
+    margin-inline: auto;
+    text-align: center;
   }
 
-  .product-card {
+  .neo-features__grid {
     display: grid;
     gap: 0;
-    border-radius: var(--radius-soft);
-    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
-    background: color-mix(in srgb, var(--panel) 72%, transparent);
-    overflow: hidden;
-    opacity: 0;
-    transform: translateY(20px);
-    transition:
-      opacity 600ms var(--ease-out),
-      transform 600ms var(--ease-out),
-      border-color 200ms var(--ease-out);
+    margin-top: var(--space-lg);
+    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
   }
 
-  .product-card.is-visible {
+  .neo-feature {
+    padding: 2.25rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 550ms var(--ease-out),
+      transform 550ms var(--ease-out);
+  }
+
+  .neo-feature.is-visible {
     opacity: 1;
     transform: none;
   }
 
-  .product-card:hover {
-    border-color: color-mix(in srgb, var(--bone) 22%, transparent);
+  .neo-feature__head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
-  .product-card__visual {
-    min-height: 5.5rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  .neo-feature__num {
+    color: var(--mute);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    font-variant-numeric: tabular-nums;
   }
 
-  .grid-hosting {
-    background:
-      linear-gradient(var(--bone) 1px, transparent 1px),
-      linear-gradient(90deg, var(--bone) 1px, transparent 1px);
-    background-size: 1.25rem 1.25rem;
-    background-color: var(--asphalt);
-    opacity: 0.35;
+  .neo-feature__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--ember-hot);
   }
 
-  .grid-series {
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 0.65rem,
-      color-mix(in srgb, var(--ember-hot) 35%, transparent) 0.65rem,
-      color-mix(in srgb, var(--ember-hot) 35%, transparent) 0.7rem
-    );
-    background-color: var(--asphalt);
-    opacity: 0.5;
-  }
-
-  .grid-atelier {
-    background:
-      radial-gradient(circle at 30% 40%, color-mix(in srgb, var(--ember) 25%, transparent), transparent 55%),
-      radial-gradient(circle at 70% 60%, color-mix(in srgb, var(--bone) 8%, transparent), transparent 50%);
-    background-color: var(--asphalt);
-  }
-
-  .grid-voices {
-    background: repeating-linear-gradient(
-      -12deg,
-      transparent,
-      transparent 0.4rem,
-      color-mix(in srgb, var(--bone) 12%, transparent) 0.4rem,
-      color-mix(in srgb, var(--bone) 12%, transparent) 0.45rem
-    );
-    background-color: var(--asphalt);
-    opacity: 0.45;
-  }
-
-  .product-card__body {
-    padding: 1.75rem;
-  }
-
-  .product-card__code {
+  .neo-feature__title {
     font-family: var(--font-display);
-    font-size: clamp(1.85rem, 4vw, 2.6rem);
+    font-size: clamp(1.85rem, 4vw, 2.75rem);
     text-transform: uppercase;
     margin-bottom: 0.35rem;
   }
 
-  .product-card__tagline {
+  .neo-feature__tag {
     color: var(--ember-hot);
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 500;
+    margin-bottom: 0.75rem;
+  }
+
+  .neo-feature__copy {
+    color: var(--fog);
+    max-width: 48ch;
+  }
+
+  .neo-specs__list {
+    display: grid;
+    gap: 0;
+    margin-top: var(--space-lg);
+    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+
+  .neo-spec {
+    padding: 1.75rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+
+  .neo-spec h3 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    text-transform: uppercase;
     margin-bottom: 1rem;
   }
 
-  .product-card__summary {
-    color: var(--fog);
-    margin-bottom: 1.25rem;
-    max-width: 52ch;
-  }
-
-  .product-card__points {
+  .neo-spec ul {
     list-style: none;
-    margin: 0 0 1.5rem;
+    margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.55rem;
+    gap: 0.65rem;
   }
 
-  .product-card__points li {
-    color: var(--mute);
-    font-size: 0.92rem;
+  .neo-spec li {
+    color: var(--fog);
     padding-left: 1rem;
     position: relative;
+    font-size: 0.95rem;
   }
 
-  .product-card__points li::before {
+  .neo-spec li::before {
     content: '';
     position: absolute;
     left: 0;
@@ -431,153 +383,34 @@ const crafts = [
     background: var(--ember);
   }
 
-  .product-card__link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--bone);
-    font-weight: 600;
-    font-size: 0.92rem;
-  }
-
-  .craft {
-    position: relative;
-    z-index: 1;
-    padding-block: var(--space-2xl);
-  }
-
-  .craft__grid {
-    display: grid;
-    gap: 1.25rem;
-    margin-top: var(--space-lg);
-  }
-
-  .craft__item {
-    padding: 1.75rem 0;
-    border-top: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
-    opacity: 0;
-    transform: translateY(16px);
-    transition:
-      opacity 550ms var(--ease-out),
-      transform 550ms var(--ease-out);
-  }
-
-  .craft__item.is-visible {
-    opacity: 1;
-    transform: none;
-  }
-
-  .craft__item h3 {
-    font-size: 1.85rem;
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
-
-  .craft__item p {
-    color: var(--fog);
-  }
-
-  .contact {
-    position: relative;
-    z-index: 1;
-    padding-block: var(--space-2xl) var(--space-xl);
-  }
-
-  .contact__inner {
+  .neo-waitlist__inner {
     text-align: center;
   }
 
-  .contact__cta {
-    justify-content: center;
-  }
-
-  .contact__hint {
+  .neo-waitlist__hint {
     margin-top: 1rem;
     color: var(--mute);
     font-size: 0.9rem;
-    margin-inline: auto;
-  }
-
-  .contact__lines {
-    list-style: none;
-    margin: var(--space-lg) auto 0;
-    padding: 0;
-    max-width: 40rem;
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .contact__lines a {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 1.15rem 1.25rem;
-    border-radius: var(--radius-soft);
-    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
-    background: color-mix(in srgb, var(--panel) 80%, transparent);
-    text-align: left;
-  }
-
-  .contact__lines a:hover {
-    border-color: color-mix(in srgb, var(--bone) 28%, transparent);
-  }
-
-  .contact__lines a span:first-child {
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    text-transform: uppercase;
-  }
-
-  .contact__lines a span:last-child {
-    color: var(--fog);
-    font-size: 0.95rem;
-  }
-
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-      filter: blur(4px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-      filter: none;
-    }
-  }
-
-  @media (min-width: 720px) {
-    .home-hero__grid {
-      grid-template-columns: 1.15fr 0.35fr;
-    }
-
-    .home-hero__mark {
-      justify-self: end;
-    }
-
-    .about__grid {
-      grid-template-columns: 1.4fr 0.6fr;
-    }
-
-    .craft__grid {
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem 3rem;
-    }
   }
 
   @media (min-width: 960px) {
-    .products__grid {
+    .neo-features__grid {
       grid-template-columns: 1fr 1fr;
+      column-gap: 4rem;
+    }
+
+    .neo-feature:nth-child(odd) {
+      padding-right: 2rem;
+    }
+
+    .neo-specs__list {
+      grid-template-columns: 1fr 1fr;
+      column-gap: 4rem;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .home-hero__content {
-      animation: none;
-    }
-
-    .product-card,
-    .craft__item {
+    .neo-feature {
       opacity: 1;
       transform: none;
       transition: none;

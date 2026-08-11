@@ -18,11 +18,13 @@
   --space-sm: 1rem;
   --space-md: 1.75rem;
   --space-lg: 3.5rem;
-  --space-xl: 6rem;
-  --space-2xl: 8rem;
+  --space-xl: 7rem;
+  --space-2xl: 10rem;
+  --space-3xl: 12rem;
 
   --measure: 62ch;
   --page: min(1120px, calc(100% - 2rem));
+  --page-wide: min(1280px, calc(100% - 2.5rem));
   --radius-soft: 0.75rem;
   --radius-pill: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -123,6 +125,7 @@ p {
 
 .site-shell main {
   flex: 1;
+  padding-top: 4.25rem;
 }
 
 .container {
@@ -131,7 +134,32 @@ p {
 }
 
 .section {
+  padding-block: var(--space-2xl);
+}
+
+.section--tight {
   padding-block: var(--space-xl);
+}
+
+.neo-label {
+  color: var(--mute);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.neo-title {
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  max-width: 14ch;
+  margin-bottom: var(--space-md);
+}
+
+.neo-lead {
+  color: var(--fog);
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  max-width: 52ch;
+  line-height: 1.7;
 }
 
 .section__title {
