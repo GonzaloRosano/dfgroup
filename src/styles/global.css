@@ -37,7 +37,6 @@
   );
   --scroll-offset: calc(var(--nav-height) + 0.65rem);
   --home-viewport-h: calc(100svh - var(--nav-height));
-  --home-transition-h: 20svh;
 
   --header-bg: color-mix(in srgb, var(--void) 76%, transparent);
   --header-bg-scrolled: color-mix(in srgb, var(--void) 92%, transparent);
@@ -54,83 +53,12 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   scroll-padding-top: var(--scroll-offset);
 }
 
 main [id] {
   scroll-margin-top: var(--scroll-offset);
-}
-
-/* Homepage — one main section visible at a time */
-html:has(.home-scroll) {
-  scroll-snap-type: y mandatory;
-}
-
-.home-snap {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  height: var(--home-viewport-h);
-  min-height: var(--home-viewport-h);
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.home-snap--scroll {
-  scroll-snap-stop: normal;
-  height: auto;
-  min-height: var(--home-viewport-h);
-  max-height: none;
-  overflow: visible;
-}
-
-.home-transition {
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
-  height: var(--home-transition-h);
-  min-height: var(--home-transition-h);
-  background: var(--void);
-  position: relative;
-  pointer-events: none;
-}
-
-.home-transition::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--void) 100%, transparent) 0%,
-    color-mix(in srgb, var(--asphalt) 55%, var(--void)) 50%,
-    color-mix(in srgb, var(--void) 100%, transparent) 100%
-  );
-  opacity: 0.85;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html:has(.home-scroll) {
-    scroll-snap-type: none;
-  }
-
-  .home-snap {
-    height: auto;
-    min-height: auto;
-    overflow: visible;
-  }
-
-  .home-snap--scroll {
-    min-height: auto;
-  }
-
-  .home-transition {
-    height: 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .home-transition::after {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

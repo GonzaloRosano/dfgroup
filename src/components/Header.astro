@@ -245,9 +245,8 @@ const lineSlugs = lines.map((line) => line.slug);
     }
   });
 
-  const smoothScrollTo = (target) => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  const scrollToSection = (target) => {
+    target.scrollIntoView({ behavior: 'auto', block: 'start' });
   };
 
   document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
@@ -259,7 +258,7 @@ const lineSlugs = lines.map((line) => line.slug);
       if (!target) return;
 
       event.preventDefault();
-      smoothScrollTo(target);
+      scrollToSection(target);
 
       const sectionId = hash.slice(1);
       if (navSectionMap[sectionId] || lineSectionIds.has(sectionId)) {
