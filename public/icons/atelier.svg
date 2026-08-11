@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Paint brush  handle, ferrule, bristles -->
-  <path fill="currentColor" d="M44 14 L52 14 L48 62 L40 62 Z" />
-  <path fill="currentColor" d="M38 62 H58 V70 H38 Z" />
-  <path fill="currentColor" d="M32 70 H64 L58 92 H38 Z" />
+  <!-- Paint brush: handle, ferrule, bristles -->
+  <path fill="currentColor" d="M42 10 L54 10 L50 58 L46 58 Z" />
+  <path fill="currentColor" d="M36 58 L60 58 L60 72 L36 72 Z" />
+  <path fill="currentColor" d="M30 72 L66 72 L58 96 L38 96 Z" />
 </svg>

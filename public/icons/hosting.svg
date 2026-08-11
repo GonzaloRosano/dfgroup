@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Server rack  three units -->
-  <path fill="currentColor" d="M18 20 H78 V36 H18 Z" />
-  <path fill="currentColor" d="M18 44 H78 V60 H18 Z" />
-  <path fill="currentColor" d="M18 68 H78 V84 H18 Z" />
+  <!-- Server rack: three stacked units -->
+  <path fill="currentColor" d="M16 14 L80 14 L80 36 L16 36 Z" />
+  <path fill="currentColor" d="M16 40 L80 40 L80 62 L16 62 Z" />
+  <path fill="currentColor" d="M16 66 L80 66 L80 88 L16 88 Z" />
   <!-- Status LEDs -->
-  <path fill="currentColor" d="M26 26 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0" />
-  <path fill="currentColor" d="M26 50 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0" />
-  <path fill="currentColor" d="M26 74 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0" />
+  <path fill="currentColor" d="M24 22 L32 22 L32 30 L24 30 Z" />
+  <path fill="currentColor" d="M24 48 L32 48 L32 56 L24 56 Z" />
+  <path fill="currentColor" d="M24 74 L32 74 L32 82 L24 82 Z" />
   <!-- Vent slots -->
-  <path fill="currentColor" d="M58 26 H62 V30 H58 Z M64 26 H68 V30 H64 Z M70 26 H74 V30 H70 Z" />
-  <path fill="currentColor" d="M58 50 H62 V54 H58 Z M64 50 H68 V54 H64 Z M70 50 H74 V54 H70 Z" />
-  <path fill="currentColor" d="M58 74 H62 V78 H58 Z M64 74 H68 V78 H64 Z M70 74 H74 V78 H70 Z" />
+  <path fill="currentColor" d="M56 22 L60 22 L60 28 L56 28 Z M62 22 L66 22 L66 28 L62 28 Z M68 22 L72 22 L72 28 L68 28 Z" />
+  <path fill="currentColor" d="M56 48 L60 48 L60 54 L56 54 Z M62 48 L66 48 L66 54 L62 54 Z M68 48 L72 48 L72 54 L68 54 Z" />
+  <path fill="currentColor" d="M56 74 L60 74 L60 80 L56 80 Z M62 74 L66 74 L66 80 L62 80 Z M68 74 L72 74 L72 80 L68 80 Z" />
 </svg>

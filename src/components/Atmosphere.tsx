@@ -143,13 +143,14 @@ function updateIconAttributes(geometry: THREE.BufferGeometry, dots: GridDot[], i
 
 function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
-  // THREE.MathUtils.smoothstep(x, min, max) — x is distance, not edge constants
-  return 1 - THREE.MathUtils.smoothstep(d, 0.12, 0.72);
+  // Wider plateau (0.30) and softer edges (0.92) so icons rest fully visible per panel
+  return 1 - THREE.MathUtils.smoothstep(d, 0.3, 0.92);
 }
 
 function atelierCodeWeight(progress: number) {
   const sub = THREE.MathUtils.clamp(progress - 2, 0, 1);
-  return THREE.MathUtils.smoothstep(sub, 0.38, 0.82);
+  // Brush holds first half; code morph completes in second half of panel 2
+  return THREE.MathUtils.smoothstep(sub, 0.5, 0.92);
 }
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
@@ -631,9 +632,6 @@ export default function Atmosphere() {
       const inLineasIcons = lineasScrollActive || cur.lineas > 0.1;
       const iconTargetMix = inLineasIcons ? 1 : 0;
       lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 2.4, delta);
-      if (inLineasIcons && cur.lineas > 0.22) {
-        lineasIconMix = Math.max(lineasIconMix, Math.min(1, cur.lineas * 1.15));
-      }
 
       const p = lineasPanel.progress;
       const targetIconW = {
@@ -643,6 +641,17 @@ export default function Atmosphere() {
         w3: iconPanelWeight(3, p),
         atelierCode: atelierCodeWeight(p),
       };
+
+      const peakIconW = Math.max(
+        targetIconW.w0,
+        targetIconW.w1,
+        targetIconW.w2,
+        targetIconW.w3,
+      );
+      if (inLineasIcons && peakIconW > 0.2) {
+        const mixFloor = cur.lineas * (0.72 + peakIconW * 0.55);
+        lineasIconMix = Math.max(lineasIconMix, Math.min(1, mixFloor));
+      }
 
       iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.65, delta);
       iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.65, delta);
@@ -664,7 +673,7 @@ export default function Atmosphere() {
           uniforms.uIconW1.value = idx === 1 ? 1 : 0;
           uniforms.uIconW2.value = idx === 2 ? 1 : 0;
           uniforms.uIconW3.value = idx === 3 ? 1 : 0;
-          uniforms.uAtelierCode.value = idx === 2 && lineasPanel.frac > 0.42 ? 1 : 0;
+          uniforms.uAtelierCode.value = idx === 2 && lineasPanel.frac > 0.5 ? 1 : 0;
         } else {
           uniforms.uWInicio.value = 1;
           uniforms.uWGrupo.value = 0;

@@ -41,8 +41,8 @@
   --home-section-pad-y: clamp(6rem, 10vw, 8rem);
   --home-section-pad-bottom: clamp(7rem, 11vw, 9rem);
   --lineas-panel-count: 4;
-  --lineas-scroll-per-panel: 100vh;
-  --lineas-scroll-per-panel-mobile: 100vh;
+  --lineas-scroll-per-panel: 140svh;
+  --lineas-scroll-per-panel-mobile: 120svh;
   --lineas-scroll-track: calc(
     (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel)
   );

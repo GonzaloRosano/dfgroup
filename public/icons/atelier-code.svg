@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
   <!-- Code brackets -->
-  <path fill="currentColor" d="M38 24 L22 53 L38 82 L30 82 L16 53 L30 24 Z" />
-  <path fill="currentColor" d="M58 24 L74 53 L58 82 L66 82 L80 53 L66 24 Z" />
+  <path fill="currentColor" d="M36 20 L18 53 L36 86 L26 86 L12 53 L26 20 Z" />
+  <path fill="currentColor" d="M60 20 L78 53 L60 86 L70 86 L84 53 L70 20 Z" />
   <!-- Slash -->
-  <path fill="currentColor" d="M54 28 L42 78 L48 78 L60 28 Z" />
+  <path fill="currentColor" d="M54 24 L42 82 L50 82 L62 24 Z" />
 </svg>
