@@ -23,10 +23,6 @@ const crafts = [
   },
 ];
 
-const stats = [
-  { value: '04', label: 'líneas bajo una pluma' },
-  { value: '4', label: 'oficios en el taller' },
-];
 ---
 
 <BaseLayout title="Dark Feather Group">
@@ -81,18 +77,6 @@ const stats = [
           una serie que respira en capítulos, una web que no parece un catálogo
           genérico. Ese es el oficio.
         </p>
-      </div>
-    </div>
-    <div class="facts" aria-label="Cifras del estudio">
-      <div class="container">
-        <div class="facts__grid" data-reveal-group>
-          {stats.map((stat) => (
-            <article class="fact reveal" data-reveal>
-              <span class="fact__value">{stat.value}</span>
-              <span class="fact__label">{stat.label}</span>
-            </article>
-          ))}
-        </div>
       </div>
     </div>
   </section>
@@ -408,16 +392,19 @@ const stats = [
   }
 
   .about {
-    padding-block: var(--home-section-pad-y);
+    display: flex;
+    flex-direction: column;
+    min-height: var(--home-viewport-h);
+    padding-block: 0;
   }
 
   .about__inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     max-width: 52rem;
-    padding-bottom: clamp(2rem, 5vw, 3.5rem);
-  }
-
-  .facts {
-    padding-top: clamp(1.5rem, 4vw, 2.5rem);
+    padding-block: clamp(2.5rem, 6vh, 4.5rem);
   }
 
   .crafts {
@@ -547,28 +534,6 @@ const stats = [
     font-size: clamp(1.05rem, 2vw, 1.15rem);
     line-height: 1.75;
     max-width: 58ch;
-  }
-
-  .facts__grid {
-    display: grid;
-    gap: 2rem;
-    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
-    padding-top: var(--space-lg);
-  }
-
-  .fact__value {
-    display: block;
-    font-family: var(--font-display);
-    font-size: clamp(3rem, 10vw, 5.5rem);
-    letter-spacing: -0.04em;
-    line-height: 0.9;
-    margin-bottom: 0.5rem;
-  }
-
-  .fact__label {
-    color: var(--mute);
-    font-size: 0.88rem;
-    max-width: 22ch;
   }
 
   .lines-showcase {
@@ -805,11 +770,6 @@ const stats = [
 
     .hero__visual {
       min-height: clamp(20rem, 52vh, 30rem);
-    }
-
-    .facts__grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 2.5rem;
     }
 
     .crafts__grid {
