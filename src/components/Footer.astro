@@ -96,10 +96,13 @@ const year = new Date().getFullYear();
 
   .site-footer a {
     color: var(--fog);
+    transition: color 200ms var(--ease-out);
   }
 
-  .site-footer a:hover {
-    color: var(--bone);
+  @media (hover: hover) and (pointer: fine) {
+    .site-footer a:hover {
+      color: var(--bone);
+    }
   }
 
   @media (min-width: 720px) {

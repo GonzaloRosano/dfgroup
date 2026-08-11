@@ -55,9 +55,12 @@ const stats = [
             class="hero__dare"
             type="button"
             data-feather-dare
-            aria-label="Interactuar con la pluma de puntos"
+            aria-label="Mantené presionado para activar la pluma de puntos"
           >
-            Tocá la pluma · <span data-feather-dare-hint>osá acercarte</span>
+            <span class="hero__dare-ring" aria-hidden="true"></span>
+            <span class="hero__dare-label">
+              Tocá la pluma · <span data-feather-dare-hint>mantené presionado</span>
+            </span>
           </button>
         </div>
       </div>
@@ -118,7 +121,7 @@ const stats = [
       <div class="lines__list" data-reveal-group>
         {
           lines.map((line) => (
-            <article class="line-card reveal" id={line.slug} data-reveal>
+            <article class="line-card card-interactive reveal" id={line.slug} data-reveal>
               <div class="line-card__head">
                 <h3 class="line-card__code">{line.code}</h3>
                 <p class="line-card__tag">{line.tagline}</p>
@@ -147,7 +150,7 @@ const stats = [
       <div class="crafts__grid" data-reveal-group>
         {
           crafts.map((item) => (
-            <article class="craft-card reveal" data-reveal>
+            <article class="craft-card card-interactive reveal" data-reveal>
               <h3 class="craft-card__title">{item.title}</h3>
               <p class="craft-card__copy">{item.copy}</p>
             </article>
@@ -175,39 +178,103 @@ const stats = [
 
 <script>
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-  const dispatchFeather = (intensity: number) => {
-    window.dispatchEvent(
-      new CustomEvent('df:feather-interact', { detail: { intensity } }),
-    );
+  type FeatherDetail = { intensity?: number; burst?: boolean; hold?: number };
+
+  const dispatchFeather = (detail: FeatherDetail) => {
+    window.dispatchEvent(new CustomEvent('df:feather-interact', { detail }));
   };
 
   const featherZone = document.querySelector('[data-feather-zone]');
-  const featherDare = document.querySelector('[data-feather-dare]');
+  const featherDare = document.querySelector('[data-feather-dare]') as HTMLElement | null;
   const dareHint = document.querySelector('[data-feather-dare-hint]');
 
-  const bindFeather = (el: Element | null, hoverOnly = false) => {
-    if (!el || reduceMotion) return;
+  const HOLD_MS = 520;
 
-    el.addEventListener('pointerenter', () => {
-      dispatchFeather(1);
-      dareHint && (dareHint.textContent = 'la pluma responde');
+  const bindHold = (el: HTMLElement | null, opts: { showRing?: boolean } = {}) => {
+    if (!el) return;
+
+    let holdTimer: ReturnType<typeof setTimeout> | null = null;
+    let holdStart = 0;
+    let rafId = 0;
+    let bursting = false;
+
+    const setProgress = (value: number) => {
+      if (opts.showRing) el.style.setProperty('--hold-progress', String(value));
+    };
+
+    const clearHold = () => {
+      if (holdTimer) clearTimeout(holdTimer);
+      holdTimer = null;
+      cancelAnimationFrame(rafId);
+      el.classList.remove('is-holding', 'is-burst');
+      setProgress(0);
+      if (!bursting) dispatchFeather({ intensity: 0, hold: 0 });
+    };
+
+    const tickHold = () => {
+      const progress = Math.min((performance.now() - holdStart) / HOLD_MS, 1);
+      setProgress(progress);
+      dispatchFeather({ intensity: 0.28 + progress * 0.5, hold: progress });
+      if (progress < 1) rafId = requestAnimationFrame(tickHold);
+    };
+
+    const triggerBurst = () => {
+      bursting = true;
+      el.classList.add('is-burst');
+      if (dareHint) dareHint.textContent = '¡la pluma estalla!';
+      dispatchFeather({ intensity: 1.5, burst: true, hold: 1 });
+      window.setTimeout(() => {
+        bursting = false;
+        el.classList.remove('is-burst', 'is-holding');
+        setProgress(0);
+        if (dareHint) dareHint.textContent = 'mantené presionado';
+        dispatchFeather({ intensity: 0.2, hold: 0 });
+        window.setTimeout(() => dispatchFeather({ intensity: 0, hold: 0 }), 400);
+      }, 680);
+    };
+
+    el.addEventListener('pointerdown', (e) => {
+      if (reduceMotion) {
+        triggerBurst();
+        return;
+      }
+      holdStart = performance.now();
+      el.classList.add('is-holding');
+      el.setPointerCapture(e.pointerId);
+      tickHold();
+      holdTimer = setTimeout(triggerBurst, HOLD_MS);
     });
-    el.addEventListener('pointerleave', () => dispatchFeather(0));
-    el.addEventListener('pointermove', () => dispatchFeather(1));
 
-    if (!hoverOnly) {
-      el.addEventListener('pointerdown', () => dispatchFeather(1.4));
-      el.addEventListener('pointerup', () => dispatchFeather(0.8));
+    el.addEventListener('pointerup', () => {
+      if (!bursting) clearHold();
+    });
+    el.addEventListener('pointercancel', () => {
+      if (!bursting) clearHold();
+    });
+    el.addEventListener('pointerleave', () => {
+      if (!bursting && !el.classList.contains('is-holding')) {
+        dispatchFeather({ intensity: 0, hold: 0 });
+      }
+    });
+
+    if (finePointer && !reduceMotion) {
+      el.addEventListener('pointerenter', () => {
+        if (!el.classList.contains('is-holding')) dispatchFeather({ intensity: 0.22 });
+      });
+      el.addEventListener('pointerleave', () => {
+        if (!el.classList.contains('is-holding') && !bursting) dispatchFeather({ intensity: 0, hold: 0 });
+      });
     }
   };
 
-  bindFeather(featherZone);
-  bindFeather(featherDare, true);
+  bindHold(featherDare, { showRing: true });
+  bindHold(featherZone as HTMLElement | null);
 
   document.querySelectorAll('[data-reveal-group]').forEach((group) => {
     group.querySelectorAll('[data-reveal]').forEach((el, i) => {
-      el.style.setProperty('--reveal-delay', `${i * 100}ms`);
+      el.style.setProperty('--reveal-delay', `${i * 90}ms`);
     });
   });
 
@@ -224,7 +291,7 @@ const stats = [
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -5% 0px' },
+      { threshold: 0.1, rootMargin: '0px 0px -4% 0px' },
     );
     items.forEach((el) => observer.observe(el));
   } else {
@@ -238,10 +305,10 @@ const stats = [
 <style>
   .home-atmosphere {
     position: fixed;
-    top: 0;
+    top: var(--nav-height);
     right: 0;
-    width: min(52%, 760px);
-    height: 100svh;
+    width: min(48%, 680px);
+    height: calc(100svh - var(--nav-height));
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
@@ -272,11 +339,11 @@ const stats = [
   .hero {
     position: relative;
     z-index: 1;
-    min-height: 100svh;
+    min-height: calc(100svh - var(--nav-height));
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 7rem 0 5rem;
+    padding: 5.5rem 0 4rem;
     overflow: hidden;
   }
 
@@ -301,12 +368,12 @@ const stats = [
     position: relative;
     z-index: 2;
     display: grid;
-    gap: 3rem;
+    gap: 2.5rem;
     align-items: center;
   }
 
   .hero__copy {
-    max-width: 36rem;
+    max-width: 32rem;
   }
 
   .hero__eyebrow {
@@ -343,6 +410,7 @@ const stats = [
   }
 
   .hero__dare {
+    position: relative;
     appearance: none;
     border: 0;
     background: transparent;
@@ -350,46 +418,104 @@ const stats = [
     font: inherit;
     font-size: 0.92rem;
     cursor: pointer;
-    padding: 0;
-    transition: color 200ms var(--ease-out);
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0.35rem 0.5rem 0.35rem 2.35rem;
+    transition:
+      color 200ms var(--ease-out),
+      transform 200ms var(--ease-out);
   }
 
-  .hero__dare:hover,
-  .hero__dare:focus-visible {
+  .hero__dare-ring {
+    --hold-progress: 0;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 1.65rem;
+    height: 1.65rem;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--ember-hot) calc(var(--hold-progress) * 360deg),
+      color-mix(in srgb, var(--bone) 12%, transparent) 0
+    );
+    opacity: 0;
+    transition: opacity 200ms var(--ease-out);
+  }
+
+  .hero__dare-ring::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background: var(--void);
+  }
+
+  .hero__dare.is-holding .hero__dare-ring {
+    opacity: 1;
+  }
+
+  .hero__dare.is-burst {
     color: var(--bone);
+    transform: scale(1.03);
+  }
+
+  .hero__dare:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .hero__dare:hover {
+      color: var(--bone);
+    }
   }
 
   .hero__visual {
     position: relative;
-    min-height: clamp(14rem, 32vw, 22rem);
+    min-height: clamp(16rem, 38vh, 26rem);
+    align-self: center;
+    justify-self: end;
+    width: 100%;
+    max-width: 28rem;
     pointer-events: auto;
-    cursor: crosshair;
+    cursor: pointer;
+    touch-action: manipulation;
   }
 
   @media (max-width: 959px) {
     .home-atmosphere {
       width: 100%;
-      height: min(42svh, 360px);
+      height: min(38svh, 320px);
       top: auto;
       bottom: 0;
-      opacity: 0.85;
+      opacity: 0.88;
+    }
+
+    .hero {
+      padding-bottom: min(38svh, 320px);
     }
 
     .hero__shield {
       width: 100%;
-      height: 62%;
+      height: 58%;
       background: linear-gradient(
         180deg,
         var(--void) 0%,
-        var(--void) 72%,
-        color-mix(in srgb, var(--void) 90%, transparent) 88%,
+        var(--void) 70%,
+        color-mix(in srgb, var(--void) 92%, transparent) 86%,
         transparent 100%
       );
     }
 
     .hero__visual {
-      min-height: 0;
-      pointer-events: none;
+      min-height: 2.75rem;
+      max-width: none;
+      order: 2;
+      pointer-events: auto;
+    }
+
+    .hero__copy {
+      order: 1;
     }
   }
 
@@ -594,12 +720,12 @@ const stats = [
 
   @media (min-width: 960px) {
     .hero__grid {
-      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-      gap: 3rem;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 2rem 3rem;
     }
 
     .hero__visual {
-      min-height: clamp(18rem, 50vh, 32rem);
+      min-height: clamp(20rem, 52vh, 30rem);
     }
 
     .facts__grid {

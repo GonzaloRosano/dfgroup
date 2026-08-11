@@ -304,13 +304,18 @@ export default function Atmosphere() {
     let disposed = false;
     let interactTarget = 0;
     let interactCurrent = 0;
+    let burstTarget = 0;
+    let burstCurrent = 0;
+    let holdProgress = 0;
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
     const sm = { rotZ: 0, scale: 1, offsetX: 0.04, offsetY: 0 };
 
     const onFeatherInteract = (e: Event) => {
-      const detail = (e as CustomEvent<{ intensity?: number }>).detail;
-      interactTarget = THREE.MathUtils.clamp(detail?.intensity ?? 0, 0, 1);
+      const detail = (e as CustomEvent<{ intensity?: number; burst?: boolean; hold?: number }>).detail;
+      if (detail?.burst) burstTarget = 1;
+      if (detail?.hold !== undefined) holdProgress = detail.hold;
+      interactTarget = THREE.MathUtils.clamp(detail?.intensity ?? 0, 0, 1.5);
     };
 
     window.addEventListener('df:feather-interact', onFeatherInteract);
@@ -376,6 +381,8 @@ export default function Atmosphere() {
       const pose = blendPose(cur, poses);
 
       interactCurrent = THREE.MathUtils.damp(interactCurrent, interactTarget, k, delta);
+      burstCurrent = THREE.MathUtils.damp(burstCurrent, burstTarget, k * 1.4, delta);
+      if (burstTarget > 0.95) burstTarget = THREE.MathUtils.damp(burstTarget, 0, 3.5, delta);
 
       const inicioLife = cur.inicio;
       const breatheScale = reduceMotion ? 1 : 1 + Math.sin(elapsed * 0.85) * pose.breathe * inicioLife;
@@ -393,14 +400,14 @@ export default function Atmosphere() {
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
       uniforms.uOffsetY.value = 0;
       uniforms.uShear.value = pose.shear;
-      uniforms.uWave.value = pose.wave;
-      uniforms.uScatter.value = pose.scatter;
+      uniforms.uWave.value = pose.wave + burstCurrent * 0.035;
+      uniforms.uScatter.value = pose.scatter + interactCurrent * 0.035 + burstCurrent * 0.095 + holdProgress * 0.04;
       uniforms.uGather.value = pose.gather;
       uniforms.uStretchX.value = pose.stretchX;
       uniforms.uDissolve.value = pose.dissolve;
-      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.22;
-      uniforms.uAlpha.value = pose.alpha;
-      uniforms.uInteract.value = interactCurrent;
+      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.28 + burstCurrent * 0.65 + holdProgress * 0.3;
+      uniforms.uAlpha.value = pose.alpha + burstCurrent * 0.12;
+      uniforms.uInteract.value = interactCurrent + burstCurrent * 0.85 + holdProgress * 0.35;
       uniforms.uTipPulse.value = reduceMotion
         ? 0
         : beats.oficio * 0.65 + Math.sin(elapsed * 2.8) * 0.18 * beats.oficio;
