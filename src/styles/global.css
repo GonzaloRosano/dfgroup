@@ -50,12 +50,14 @@
     (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel-mobile)
   );
 
-  --header-bg: color-mix(in srgb, var(--void) 76%, transparent);
-  --header-bg-scrolled: color-mix(in srgb, var(--void) 92%, transparent);
-  --header-border: color-mix(in srgb, var(--bone) 10%, transparent);
-  --header-border-scrolled: color-mix(in srgb, var(--bone) 16%, transparent);
-  --header-shadow: 0 8px 32px color-mix(in srgb, var(--ink) 42%, transparent);
-  --header-shadow-scrolled: 0 12px 40px color-mix(in srgb, var(--ink) 58%, transparent);
+  --header-bg: color-mix(in srgb, var(--void) 72%, transparent);
+  --header-bg-scrolled: color-mix(in srgb, var(--void) 90%, transparent);
+  --header-border: color-mix(in srgb, var(--bone) 9%, transparent);
+  --header-border-scrolled: color-mix(in srgb, var(--bone) 18%, transparent);
+  --header-shadow: 0 6px 28px color-mix(in srgb, var(--ink) 38%, transparent);
+  --header-shadow-scrolled: 0 10px 36px color-mix(in srgb, var(--ink) 52%, transparent);
+  --header-blur: 16px;
+  --header-blur-scrolled: 22px;
 }
 
 *,
