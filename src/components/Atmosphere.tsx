@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 /**
  * 2D orthographic dot-grid feather from public/logo.svg.
- * Regular grid cells → white stipple dots; scroll drives reveal, parallax, shear, tip ember.
+ * Section-blended poses: rotation, scale, scatter, gather, shear — not vertical drift.
  */
 
 const LOGO_PATH =
@@ -16,7 +16,7 @@ export const GRID_ROWS = 106;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
-const DAMP = 5.5;
+const DAMP = 4.8;
 
 type GridDot = {
   x: number;
@@ -117,7 +117,10 @@ const DOT_VERT = /* glsl */ `
   uniform float uShear;
   uniform float uWave;
   uniform float uReveal;
-  uniform float uParallax;
+  uniform float uScatter;
+  uniform float uGather;
+  uniform float uStretchX;
+  uniform float uDissolve;
   uniform float uInteract;
   uniform float uPixelRatio;
   uniform float uTipPulse;
@@ -125,21 +128,40 @@ const DOT_VERT = /* glsl */ `
   varying float vTip;
   varying float vVisible;
   varying float vCol;
+  varying float vDissolve;
 
   void main() {
     vTip = aTip;
     vCol = aCol;
+    vDissolve = uDissolve;
 
-    float waveFront = uReveal + sin(uTime * 2.0 + aCol * 14.0) * uWave * 0.45;
+    float waveFront = uReveal + sin(uTime * 2.0 + aCol * 14.0) * uWave * 0.35;
     float minTip = 1.0 - waveFront;
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
 
     vec3 p = position;
-    p.y += uOffsetY + uParallax;
+
+    p.x *= mix(1.0, uStretchX, 0.85);
+
+    float seed = fract(aCol * 12.9898 + aRow * 78.233);
+    vec2 radial = normalize(p.xy + vec2(0.0001));
+    p.xy += radial * uScatter * (0.55 + seed * 0.65);
+
+    vec2 shaft = vec2(0.0, -0.14);
+    p.xy = mix(p.xy, shaft + (p.xy - shaft) * 0.72, uGather);
+
+    p.y += uOffsetY;
     p.x += uShear * p.y;
-    p.y += sin(uTime * 1.25 + aCol * 28.0 + aRow * 16.0) * uWave * uMotion;
-    p.x += sin(uTime * 0.95 + aRow * 22.0) * uWave * uMotion * 0.45;
-    p += vec3(uInteract * 0.028 * sin(uTime * 2.4 + aCol * 40.0), uInteract * 0.018 * cos(uTime * 2.0 + aRow * 30.0), 0.0);
+
+    p.x += sin(uTime * 1.6 + aRow * 20.0) * uWave * uMotion * 0.018;
+    p.y += cos(uTime * 1.3 + aCol * 26.0) * uWave * uMotion * 0.01;
+
+    p.xy += radial * uDissolve * sin(uTime * 0.75 + seed * 12.0) * 0.035;
+
+    p.xy += vec2(
+      uInteract * 0.028 * sin(uTime * 2.4 + aCol * 40.0),
+      uInteract * 0.018 * cos(uTime * 2.0 + aRow * 30.0)
+    );
 
     vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
     gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * (1.0 + uInteract * 0.45 + uTipPulse * 0.2);
@@ -154,10 +176,12 @@ const DOT_FRAG = /* glsl */ `
   uniform float uAlpha;
   uniform float uInteract;
   uniform float uTipPulse;
+  uniform float uDissolve;
 
   varying float vTip;
   varying float vVisible;
   varying float vCol;
+  varying float vDissolve;
 
   void main() {
     if (vVisible < 0.02) discard;
@@ -166,11 +190,14 @@ const DOT_FRAG = /* glsl */ `
     float d = length(uv);
     if (d > 0.46) discard;
 
-    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.5);
+    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.55);
     vec3 col = mix(uWhite, uEmber, tipAccent);
     col = mix(col, uWhite, uInteract * 0.15);
 
     float alpha = uAlpha * vVisible * (0.65 + uInteract * 0.25 + uTipPulse * 0.12);
+    alpha *= 1.0 - vDissolve * 0.55;
+    if (alpha < 0.03) discard;
+
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -208,11 +235,14 @@ export default function Atmosphere() {
       uOffsetY: { value: 0 },
       uShear: { value: 0 },
       uWave: { value: 0 },
-      uReveal: { value: reduceMotion ? 1 : 0.88 },
-      uParallax: { value: 0 },
+      uReveal: { value: reduceMotion ? 1 : 0.92 },
+      uScatter: { value: 0 },
+      uGather: { value: 0 },
+      uStretchX: { value: 1 },
+      uDissolve: { value: 0 },
       uInteract: { value: 0 },
       uEmberMix: { value: 0.15 },
-      uAlpha: { value: 0.78 },
+      uAlpha: { value: 0.82 },
       uWhite: { value: WHITE },
       uEmber: { value: EMBER },
       uPixelRatio: { value: 1 },
@@ -240,12 +270,33 @@ export default function Atmosphere() {
       contacto: document.getElementById('contacto'),
     };
 
+    /** Section poses — Y capped ~±0.06; motion via rot/scale/scatter/shear/gather */
     const poses = {
-      inicio: { reveal: 0.92, offsetY: 0, shear: 0, wave: 0.018, ember: 0.12, alpha: 0.82, parallax: 0 },
-      grupo: { reveal: 1, offsetY: -0.04, shear: 0, wave: 0.028, ember: 0.2, alpha: 0.85, parallax: -0.035 },
-      lineas: { reveal: 1, offsetY: -0.08, shear: 0.14, wave: 0.045, ember: 0.28, alpha: 0.82, parallax: -0.075 },
-      oficio: { reveal: 1, offsetY: -0.11, shear: 0.06, wave: 0.032, ember: 0.95, alpha: 0.8, parallax: -0.11 },
-      contacto: { reveal: 1, offsetY: -0.14, shear: 0, wave: 0.014, ember: 0.4, alpha: 0.5, parallax: -0.14 },
+      inicio: {
+        rotZ: 0, scale: 1, breathe: 0.04, offsetX: 0.04, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.012,
+        ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
+      },
+      grupo: {
+        rotZ: 0.38, scale: 1.09, breathe: 0, offsetX: 0, offsetY: 0.015,
+        scatter: 0.032, gather: 0, stretchX: 1, shear: 0, wave: 0.022,
+        ember: 0.2, alpha: 0.85, reveal: 1, dissolve: 0,
+      },
+      lineas: {
+        rotZ: 0.08, scale: 1.03, breathe: 0, offsetX: -0.02, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1.14, shear: 0.1, wave: 0.048,
+        ember: 0.28, alpha: 0.82, reveal: 1, dissolve: 0,
+      },
+      oficio: {
+        rotZ: -0.06, scale: 0.93, breathe: 0, offsetX: 0, offsetY: 0.01,
+        scatter: 0, gather: 0.038, stretchX: 0.96, shear: 0.02, wave: 0.018,
+        ember: 0.95, alpha: 0.8, reveal: 1, dissolve: 0,
+      },
+      contacto: {
+        rotZ: 0.05, scale: 0.84, breathe: 0, offsetX: 0.02, offsetY: 0.055,
+        scatter: 0.022, gather: 0, stretchX: 1, shear: 0, wave: 0.008,
+        ember: 0.32, alpha: 0.42, reveal: 1, dissolve: 0.65,
+      },
     };
 
     const clock = new THREE.Clock();
@@ -255,6 +306,7 @@ export default function Atmosphere() {
     let interactCurrent = 0;
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
+    const sm = { rotZ: 0, scale: 1, offsetX: 0.04, offsetY: 0 };
 
     const onFeatherInteract = (e: Event) => {
       const detail = (e as CustomEvent<{ intensity?: number }>).detail;
@@ -281,12 +333,6 @@ export default function Atmosphere() {
         oficio: raw.oficio / sum,
         contacto: raw.contacto / sum,
       };
-    };
-
-    const scrollProgress = () => {
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      return max > 0 ? window.scrollY / max : 0;
     };
 
     const fit = () => {
@@ -328,21 +374,36 @@ export default function Atmosphere() {
       cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, k, delta);
 
       const pose = blendPose(cur, poses);
-      const progress = scrollProgress();
 
       interactCurrent = THREE.MathUtils.damp(interactCurrent, interactTarget, k, delta);
 
+      const inicioLife = cur.inicio;
+      const breatheScale = reduceMotion ? 1 : 1 + Math.sin(elapsed * 0.85) * pose.breathe * inicioLife;
+      const breatheRot = reduceMotion ? 0 : Math.sin(elapsed * 0.65) * 0.14 * inicioLife;
+
+      sm.rotZ = THREE.MathUtils.damp(sm.rotZ, pose.rotZ + breatheRot, k, delta);
+      sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
+      sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
+      sm.offsetY = THREE.MathUtils.damp(sm.offsetY, pose.offsetY, k, delta);
+
+      points.rotation.z = sm.rotZ;
+      points.scale.setScalar(sm.scale);
+      points.position.set(sm.offsetX, sm.offsetY, 0);
+
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
-      uniforms.uOffsetY.value = pose.offsetY;
+      uniforms.uOffsetY.value = 0;
       uniforms.uShear.value = pose.shear;
       uniforms.uWave.value = pose.wave;
+      uniforms.uScatter.value = pose.scatter;
+      uniforms.uGather.value = pose.gather;
+      uniforms.uStretchX.value = pose.stretchX;
+      uniforms.uDissolve.value = pose.dissolve;
       uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.22;
       uniforms.uAlpha.value = pose.alpha;
-      uniforms.uParallax.value = pose.parallax + (reduceMotion ? 0 : progress * -0.14);
       uniforms.uInteract.value = interactCurrent;
       uniforms.uTipPulse.value = reduceMotion
         ? 0
-        : (beats.oficio * 0.6 + Math.sin(elapsed * 2.8) * 0.15 * beats.oficio);
+        : beats.oficio * 0.65 + Math.sin(elapsed * 2.8) * 0.18 * beats.oficio;
 
       if (!reduceMotion) uniforms.uTime.value = elapsed;
 
@@ -356,12 +417,6 @@ export default function Atmosphere() {
       frame = requestAnimationFrame(tick);
     };
 
-    const onScroll = () => {
-      if (reduceMotion) renderFrame(0, 0);
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-
     if (reduceMotion) {
       renderFrame(0, 0);
     } else {
@@ -372,7 +427,6 @@ export default function Atmosphere() {
       disposed = true;
       cancelAnimationFrame(frame);
       ro.disconnect();
-      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('df:feather-interact', onFeatherInteract);
       geometry.dispose();
       material.dispose();
