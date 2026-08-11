@@ -109,23 +109,55 @@ export function rasterizePaths(
   return dilate > 0 ? dilateFilled(raw, cols, rows, dilate) : raw;
 }
 
-/** Shift shape positions so filled-pixel centroid sits at orthographic origin. */
+/** Shift shape positions so axis-aligned bounding-box center sits at origin (optical center). */
 export function centerShapeBuffer(positions: Float32Array): void {
   const n = positions.length / 3;
   if (n === 0) return;
 
-  let cx = 0;
-  let cy = 0;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
   for (let i = 0; i < n; i++) {
-    cx += positions[i * 3];
-    cy += positions[i * 3 + 1];
+    const x = positions[i * 3];
+    const y = positions[i * 3 + 1];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
   }
-  cx /= n;
-  cy /= n;
+
+  const cx = (minX + maxX) * 0.5;
+  const cy = (minY + maxY) * 0.5;
 
   for (let i = 0; i < n; i++) {
     positions[i * 3] -= cx;
     positions[i * 3 + 1] -= cy;
+  }
+}
+
+function centerTargetPoints(targets: { x: number; y: number }[]): void {
+  if (targets.length === 0) return;
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const t of targets) {
+    if (t.x < minX) minX = t.x;
+    if (t.x > maxX) maxX = t.x;
+    if (t.y < minY) minY = t.y;
+    if (t.y > maxY) maxY = t.y;
+  }
+
+  const cx = (minX + maxX) * 0.5;
+  const cy = (minY + maxY) * 0.5;
+
+  for (const t of targets) {
+    t.x -= cx;
+    t.y -= cy;
   }
 }
 
@@ -148,21 +180,7 @@ function filledToTargets(
   }
 
   targets.sort((a, b) => a.v - b.v || a.u - b.u);
-
-  if (targets.length > 0) {
-    let cx = 0;
-    let cy = 0;
-    for (const t of targets) {
-      cx += t.x;
-      cy += t.y;
-    }
-    cx /= targets.length;
-    cy /= targets.length;
-    for (const t of targets) {
-      t.x -= cx;
-      t.y -= cy;
-    }
-  }
+  centerTargetPoints(targets);
 
   return targets;
 }
@@ -204,14 +222,21 @@ export function buildLogoGrid(): GridDot[] {
   }
 
   if (dots.length > 0) {
-    let cx = 0;
-    let cy = 0;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
     for (const dot of dots) {
-      cx += dot.x;
-      cy += dot.y;
+      if (dot.x < minX) minX = dot.x;
+      if (dot.x > maxX) maxX = dot.x;
+      if (dot.y < minY) minY = dot.y;
+      if (dot.y > maxY) maxY = dot.y;
     }
-    cx /= dots.length;
-    cy /= dots.length;
+
+    const cx = (minX + maxX) * 0.5;
+    const cy = (minY + maxY) * 0.5;
+
     for (const dot of dots) {
       dot.x -= cx;
       dot.y -= cy;
@@ -224,7 +249,9 @@ export function buildLogoGrid(): GridDot[] {
 export function buildIconShapeFromPaths(paths: string[], dots: GridDot[]): Float32Array {
   const filled = rasterizePaths(paths, ICON_VIEW_W, ICON_VIEW_H, GRID_COLS, GRID_ROWS, ICON_DILATE_PX);
   const targets = filledToTargets(filled, GRID_COLS, GRID_ROWS, ICON_ASPECT);
-  return assignDotsToTargets(dots, targets);
+  const out = assignDotsToTargets(dots, targets);
+  centerShapeBuffer(out);
+  return out;
 }
 
 export async function fetchSvgPaths(url: string): Promise<string[]> {

@@ -261,10 +261,10 @@ const DOT_VERT = /* glsl */ `
     float ang = atan(p.y, p.x);
     float iconFocus = uLineasIconMix * clamp(uIconW0 + uIconW1 + uIconW2 + uIconW3, 0.0, 1.0);
 
-    // --- #inicio: organic breathe sway ---
+    // --- #inicio: organic breathe sway (tighter Y so feather stays optically centered) ---
     vec2 inicioOff = vec2(
       sin(uTime * 0.62 + aCol * 11.0 + aRow * 5.0),
-      cos(uTime * 0.48 + aRow * 13.0 + aCol * 4.0)
+      cos(uTime * 0.48 + aRow * 13.0 + aCol * 4.0) * 0.35
     ) * 0.018 * uWInicio * uMotion;
 
     // --- #grupo: orbital drift + pulsing radius ---
@@ -277,9 +277,9 @@ const DOT_VERT = /* glsl */ `
     float snapWave = sin(uTime * 4.2 + aRow * 24.0);
     vec2 lineasOff = vec2(
       snapWave * 0.014 + uLineasSnap * 0.022 * sin(uTime * 9.0 + aCol * 30.0),
-      cos(uTime * 3.1 + aCol * 18.0) * 0.005
+      cos(uTime * 3.1 + aCol * 18.0) * 0.005 * mix(1.0, 0.0, iconFocus)
     ) * uWLineas * uMotion * mix(1.0, 0.12, iconFocus);
-    p.x += uShear * p.y * uWLineas * mix(1.35, 0.25, iconFocus);
+    p.x += uShear * p.y * uWLineas * mix(1.35, 0.0, iconFocus);
 
     // --- #oficio: warm ember tremble at quill tip ---
     float tipMask = smoothstep(0.7, 0.97, aTip);
@@ -725,7 +725,7 @@ export default function Atmosphere() {
 
       points.scale.setScalar(sm.scale);
       points.position.set(sm.offsetX, sm.offsetY, 0);
-      points.rotation.z = reduceMotion ? 0 : elapsed * 0.024 * cur.inicio;
+      points.rotation.z = reduceMotion || isDesktop ? 0 : elapsed * 0.024 * cur.inicio;
 
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
       uniforms.uShear.value = pose.shear;
