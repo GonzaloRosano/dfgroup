@@ -1,17 +1,16 @@
 ---
 import { lines } from '../data/lines';
 
-const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
-
-const topLinks = [
-  { href: '/grupo', label: 'Grupo' },
-  { href: '/contacto', label: 'Contacto' },
+const navLinks = [
+  { href: '#grupo', label: 'Grupo' },
+  { href: '#oficio', label: 'Oficio' },
+  { href: '#contacto', label: 'Contacto' },
 ];
 ---
 
 <header class="site-header">
   <div class="nav-pill">
-    <a class="brand" href="/" aria-label="Dark Feather Group — inicio">
+    <a class="brand" href="#inicio" aria-label="Dark Feather Group — inicio">
       <svg
         class="brand__logo"
         xmlns="http://www.w3.org/2000/svg"
@@ -31,6 +30,14 @@ const topLinks = [
     </a>
 
     <nav class="nav" aria-label="Principal">
+      {
+        navLinks.map((link) => (
+          <a class="nav__link" href={link.href} data-nav-link>
+            {link.label}
+          </a>
+        ))
+      }
+
       <div class="nav__dropdown">
         <button
           class="nav__trigger"
@@ -39,17 +46,13 @@ const topLinks = [
           aria-controls="productos-menu"
           data-dropdown-trigger
         >
-          Productos
+          Líneas
           <span class="nav__chev" aria-hidden="true"></span>
         </button>
         <div class="nav__menu" id="productos-menu" role="menu">
           {
             lines.map((line) => (
-              <a
-                role="menuitem"
-                href={`/${line.slug}`}
-                class:list={[{ 'is-active': pathname === `/${line.slug}` }]}
-              >
+              <a role="menuitem" href={`#${line.slug}`} data-nav-link>
                 <span>{line.code}</span>
                 <small>{line.tagline}</small>
               </a>
@@ -57,22 +60,11 @@ const topLinks = [
           }
         </div>
       </div>
-
-      {
-        topLinks.map((link) => (
-          <a
-            href={link.href}
-            class:list={['nav__link', { 'is-active': pathname === link.href }]}
-          >
-            {link.label}
-          </a>
-        ))
-      }
     </nav>
 
     <div class="nav__actions">
-      <a class="nav__text" href="/contacto">Hablar con el grupo</a>
-      <a class="btn btn--solid nav__cta" href="/contacto">Empezar</a>
+      <a class="nav__text" href="#contacto">Hablar con el grupo</a>
+      <a class="btn btn--solid nav__cta" href="#contacto">Empezar</a>
     </div>
 
     <button class="nav__burger" type="button" aria-label="Abrir menú" data-mobile-toggle>
@@ -82,10 +74,11 @@ const topLinks = [
   </div>
 
   <div class="mobile-panel" data-mobile-panel hidden>
-    <a href="/">Inicio</a>
-    {lines.map((line) => <a href={`/${line.slug}`}>{line.code}</a>)}
-    <a href="/grupo">Grupo</a>
-    <a href="/contacto">Contacto</a>
+    <a href="#inicio">Inicio</a>
+    {lines.map((line) => <a href={`#${line.slug}`}>{line.code}</a>)}
+    <a href="#grupo">Grupo</a>
+    <a href="#oficio">Oficio</a>
+    <a href="#contacto">Contacto</a>
   </div>
 </header>
 
@@ -112,6 +105,38 @@ const topLinks = [
     const hidden = mobilePanel?.hasAttribute('hidden');
     if (hidden) mobilePanel?.removeAttribute('hidden');
     else mobilePanel?.setAttribute('hidden', '');
+  });
+
+  mobilePanel?.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      mobilePanel.setAttribute('hidden', '');
+    });
+  });
+
+  const sections = ['inicio', 'grupo', 'lineas', 'oficio', 'contacto', ...['hosting', 'series', 'atelier', 'voices']];
+  const navLinks = document.querySelectorAll('[data-nav-link]');
+
+  const setActive = (id: string) => {
+    navLinks.forEach((link) => {
+      const href = link.getAttribute('href')?.slice(1);
+      link.classList.toggle('is-active', href === id);
+    });
+  };
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActive(entry.target.id);
+        }
+      });
+    },
+    { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
+  );
+
+  sections.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
   });
 </script>
 

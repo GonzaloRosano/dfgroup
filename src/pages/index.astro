@@ -1,67 +1,187 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Atmosphere from '../components/Atmosphere';
+import ScrollProgress from '../components/ScrollProgress.astro';
 import { lines } from '../data/lines';
+
+const crafts = [
+  {
+    title: 'Diseño',
+    copy: 'Identidad, interfaces y sistemas con jerarquía cinematográfica.',
+  },
+  {
+    title: 'Desarrollo',
+    copy: 'Webs y experiencias: Astro, React, WebGL cuando la idea lo pide.',
+  },
+  {
+    title: 'Arte',
+    copy: 'Dirección de arte y motion que sostienen el mundo de la marca.',
+  },
+  {
+    title: 'Producción',
+    copy: 'De concepto a entrega, con ritmo de estudio.',
+  },
+];
 ---
 
 <BaseLayout title="Dark Feather Group">
+  <ScrollProgress />
+
   <div class="home-atmosphere" aria-hidden="true">
     <Atmosphere client:load />
   </div>
 
-  <section class="home-hero" data-atmosphere="hero">
+  <section id="inicio" class="home-hero" data-atmosphere="hero">
     <div class="container home-hero__content">
-      <h1 class="home-hero__title">De la idea a la obra, a contraluz.</h1>
+      <p class="home-hero__eyebrow">Colectivo creativo · noir moderno</p>
+      <h1 class="home-hero__title">
+        Diseñado para<br aria-hidden="true" /> significar algo.
+      </h1>
       <p class="home-hero__lead">
-        Dark Feather Group es un colectivo creativo: diseño, desarrollo, arte y
-        producción. Cuatro líneas. Una misma atmósfera.
+        Dark Feather Group une diseño, desarrollo, arte y producción bajo una
+        sola atmósfera. Cuatro líneas. Un mismo oficio a contraluz.
       </p>
       <div class="btn-row">
-        <a class="btn btn--solid" href="/contacto">Empezar conversación</a>
-        <a class="btn btn--ghost" href="/atelier">Ver DF Atelier</a>
+        <a class="btn btn--solid" href="#contacto">Empezar conversación</a>
+        <a class="btn btn--ghost" href="#grupo">Conocer el grupo</a>
+      </div>
+      <div class="home-hero__scroll" aria-hidden="true">
+        <span class="home-hero__scroll-line"></span>
+        <span>Scroll</span>
       </div>
     </div>
   </section>
 
-  <section class="section lines-strip" data-atmosphere="lines" aria-label="Líneas del grupo">
+  <section id="grupo" class="section about" data-atmosphere="about">
+    <div class="container about__grid">
+      <div class="about__intro">
+        <p class="section__kicker">El colectivo</p>
+        <h2 class="section__title section__title--left">
+          El colectivo detrás de la pluma.
+        </h2>
+        <p class="section__lead section__lead--left">
+          Diseñamos, desarrollamos, producimos arte y sonido. Trabajamos a
+          contraluz: menos ruido, más atmósfera y oficio.
+        </p>
+      </div>
+      <div class="about__stat">
+        <p class="about__stat-num">4</p>
+        <p class="about__stat-label">Líneas de producto bajo una misma dirección de arte.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="lineas" class="section products" data-atmosphere="products" aria-label="Líneas del grupo">
     <div class="container">
-      <ul class="lines-strip__list">
+      <p class="section__kicker">Productos</p>
+      <h2 class="section__title">Cuatro líneas. Una atmósfera.</h2>
+      <p class="section__lead">
+        Cada código DF resuelve un frente distinto del universo creativo — sin
+        perder la pluma ni el tono noir del grupo.
+      </p>
+
+      <div class="products__grid">
+        {
+          lines.map((line, i) => (
+            <article class="product-card" id={line.slug} data-reveal>
+              <span class="product-card__index">{String(i + 1).padStart(2, '0')}</span>
+              <h3 class="product-card__code">{line.code}</h3>
+              <p class="product-card__tagline">{line.tagline}</p>
+              <p class="product-card__summary">{line.summary}</p>
+              <ul class="product-card__points">
+                {line.points.map((point) => (
+                  <li>{point}</li>
+                ))}
+              </ul>
+              <a class="product-card__link" href={`#${line.slug}`}>
+                Explorar {line.code}
+                <span aria-hidden="true">→</span>
+              </a>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="oficio" class="section craft" data-atmosphere="craft">
+    <div class="container">
+      <p class="section__kicker">Oficio</p>
+      <h2 class="section__title">Oficio con atmósfera.</h2>
+      <p class="section__lead">
+        No vendemos plantillas. Construimos mundos — visuales, técnicos y
+        sonoros — que se sostienen solos.
+      </p>
+
+      <div class="craft__grid">
+        {
+          crafts.map((item) => (
+            <article class="craft__item" data-reveal>
+              <h3>{item.title}</h3>
+              <p>{item.copy}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="contacto" class="section contact" data-atmosphere="contact">
+    <div class="container contact__inner">
+      <p class="section__kicker">Contacto</p>
+      <h2 class="section__title">En la sombra, a un mensaje.</h2>
+      <p class="section__lead">
+        Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
+        foco, no con un formulario vacío de promesas.
+      </p>
+      <div class="btn-row">
+        <a class="btn btn--solid" href="mailto:hola@darkfeathergroup.com">
+          hola@darkfeathergroup.com
+        </a>
+      </div>
+      <p class="contact__hint">
+        Correo de ejemplo — reemplazá con el canal real del grupo.
+      </p>
+
+      <ul class="contact__lines">
         {
           lines.map((line) => (
             <li>
-              <a href={`/${line.slug}`}>{line.code}</a>
+              <a href={`#${line.slug}`}>
+                <span>{line.code}</span>
+                <span>{line.tagline}</span>
+              </a>
             </li>
           ))
         }
       </ul>
     </div>
   </section>
-
-  <section class="section preview" data-atmosphere="preview">
-    <div class="container">
-      <h2 class="section__title">Oficio con atmósfera.</h2>
-      <p class="section__lead">
-        No vendemos plantillas. Construimos mundos — visuales, técnicos y
-        sonoros — que se sostienen solos.
-      </p>
-      <div class="preview__frame">
-        <div class="preview__chrome">
-          <span>DF Group</span>
-          <span>Atelier</span>
-          <span>Series</span>
-          <span>Hosting</span>
-        </div>
-        <div class="preview__body">
-          <p class="preview__brand">Dark Feather</p>
-          <p class="preview__copy">
-            Identidad, producto y narrativa bajo una sola dirección de arte.
-            Pieza de demostración — reemplazar con captura real.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
 </BaseLayout>
+
+<script>
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduceMotion) {
+    const items = document.querySelectorAll('[data-reveal]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
+    );
+    items.forEach((el) => observer.observe(el));
+  } else {
+    document.querySelectorAll('[data-reveal]').forEach((el) => {
+      el.classList.add('is-visible');
+    });
+  }
+</script>
 
 <style>
   .home-atmosphere {
@@ -79,7 +199,6 @@ import { lines } from '../data/lines';
     height: 100%;
   }
 
-  /* Center well so the headline punches; grain stays visible at the edges. */
   .home-atmosphere::after {
     content: '';
     position: absolute;
@@ -90,10 +209,25 @@ import { lines } from '../data/lines';
     pointer-events: none;
   }
 
+  .section__kicker {
+    color: var(--mute);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 0.85rem;
+  }
+
+  .section__title--left,
+  .section__lead--left {
+    text-align: left;
+    margin-inline: 0;
+  }
+
   .home-hero {
     position: relative;
     z-index: 1;
-    min-height: calc(100svh - 1rem);
+    min-height: 100svh;
     display: grid;
     place-items: center;
     padding: 7rem 0 4rem;
@@ -106,87 +240,264 @@ import { lines } from '../data/lines';
     animation: rise 900ms var(--ease-out) both;
   }
 
-  .section {
-    position: relative;
-    z-index: 1;
+  .home-hero__eyebrow {
+    color: var(--mute);
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
   }
 
   .home-hero__title {
-    font-size: clamp(3rem, 9vw, 5.75rem);
-    max-width: 12ch;
+    font-size: clamp(3rem, 10vw, 6.25rem);
+    max-width: 11ch;
     margin-inline: auto;
-    margin-bottom: 1.15rem;
+    margin-bottom: 1.25rem;
+    line-height: 0.92;
   }
 
   .home-hero__lead {
     color: var(--fog);
     margin-inline: auto;
     margin-bottom: 1.85rem;
-    font-size: 1.1rem;
+    font-size: 1.12rem;
+    max-width: 42ch;
   }
 
-  .lines-strip {
-    padding-block: 4rem 2.5rem;
-  }
-
-  .lines-strip__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .home-hero__scroll {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1.25rem 2rem;
-    opacity: 0.75;
-  }
-
-  .lines-strip__list a {
-    font-family: var(--font-display);
-    font-size: 1.15rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 3.5rem;
     color: var(--mute);
-  }
-
-  .lines-strip__list a:hover {
-    color: var(--bone);
-  }
-
-  .preview__frame {
-    margin-inline: auto;
-    max-width: 860px;
-    border-radius: 1.35rem;
-    border: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
-    overflow: hidden;
-    background: linear-gradient(180deg, #14161c, #0a0a0c);
-  }
-
-  .preview__chrome {
-    display: flex;
-    gap: 1rem;
-    padding: 0.9rem 1.2rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
-    color: var(--mute);
-    font-size: 0.85rem;
-  }
-
-  .preview__body {
-    min-height: 220px;
-    padding: 2.5rem 1.5rem;
-    background:
-      radial-gradient(ellipse 50% 60% at 70% 40%, rgba(154, 59, 59, 0.18), transparent 60%),
-      #0a0a0c;
-  }
-
-  .preview__brand {
-    font-family: var(--font-display);
-    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    margin-bottom: 0.75rem;
   }
 
-  .preview__copy {
+  .home-hero__scroll-line {
+    display: block;
+    width: 1px;
+    height: 2.5rem;
+    background: linear-gradient(to bottom, var(--mute), transparent);
+    animation: scroll-pulse 2.4s var(--ease-out) infinite;
+  }
+
+  .about {
+    position: relative;
+    z-index: 1;
+    padding-block: var(--space-2xl) var(--space-xl);
+  }
+
+  .about__grid {
+    display: grid;
+    gap: 3rem;
+    align-items: end;
+  }
+
+  .about__stat {
+    padding: 1.75rem;
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    background: color-mix(in srgb, var(--panel) 80%, transparent);
+  }
+
+  .about__stat-num {
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 12vw, 7rem);
+    line-height: 0.85;
+    margin-bottom: 0.5rem;
+  }
+
+  .about__stat-label {
     color: var(--fog);
+    max-width: 22ch;
+  }
+
+  .products {
+    position: relative;
+    z-index: 1;
+  }
+
+  .products__grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: var(--space-lg);
+  }
+
+  .product-card {
+    padding: 2rem 1.75rem;
+    border-radius: 1.35rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    background: color-mix(in srgb, var(--panel) 72%, transparent);
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 600ms var(--ease-out),
+      transform 600ms var(--ease-out),
+      border-color 200ms var(--ease-out);
+  }
+
+  .product-card.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .product-card:hover {
+    border-color: color-mix(in srgb, var(--bone) 22%, transparent);
+  }
+
+  .product-card__index {
+    display: block;
+    color: var(--mute);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+
+  .product-card__code {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3rem);
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .product-card__tagline {
+    color: var(--ember-hot);
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+
+  .product-card__summary {
+    color: var(--fog);
+    margin-bottom: 1.25rem;
+    max-width: 52ch;
+  }
+
+  .product-card__points {
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .product-card__points li {
+    color: var(--mute);
+    font-size: 0.92rem;
+    padding-left: 1rem;
+    position: relative;
+  }
+
+  .product-card__points li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: 50%;
+    background: var(--ember);
+  }
+
+  .product-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--bone);
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+
+  .craft {
+    position: relative;
+    z-index: 1;
+    padding-block: var(--space-2xl);
+  }
+
+  .craft__grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: var(--space-lg);
+  }
+
+  .craft__item {
+    padding: 1.75rem;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 550ms var(--ease-out),
+      transform 550ms var(--ease-out);
+  }
+
+  .craft__item.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .craft__item h3 {
+    font-size: 1.85rem;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .craft__item p {
+    color: var(--fog);
+  }
+
+  .contact {
+    position: relative;
+    z-index: 1;
+    padding-block: var(--space-2xl) var(--space-xl);
+  }
+
+  .contact__inner {
+    text-align: center;
+  }
+
+  .contact__hint {
+    margin-top: 1rem;
+    color: var(--mute);
+    font-size: 0.9rem;
+    margin-inline: auto;
+  }
+
+  .contact__lines {
+    list-style: none;
+    margin: var(--space-lg) auto 0;
+    padding: 0;
+    max-width: 40rem;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .contact__lines a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1.15rem 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    background: color-mix(in srgb, var(--panel) 80%, transparent);
+    text-align: left;
+  }
+
+  .contact__lines a:hover {
+    border-color: color-mix(in srgb, var(--bone) 28%, transparent);
+  }
+
+  .contact__lines a span:first-child {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    text-transform: uppercase;
+  }
+
+  .contact__lines a span:last-child {
+    color: var(--fog);
+    font-size: 0.95rem;
   }
 
   @keyframes rise {
@@ -202,9 +513,46 @@ import { lines } from '../data/lines';
     }
   }
 
+  @keyframes scroll-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scaleY(0.85);
+    }
+    50% {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  @media (min-width: 720px) {
+    .about__grid {
+      grid-template-columns: 1.4fr 0.6fr;
+    }
+
+    .craft__grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem 3rem;
+    }
+  }
+
+  @media (min-width: 960px) {
+    .products__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .home-hero__content {
+    .home-hero__content,
+    .home-hero__scroll-line {
       animation: none;
+    }
+
+    .product-card,
+    .craft__item {
+      opacity: 1;
+      transform: none;
+      transition: none;
     }
   }
 </style>

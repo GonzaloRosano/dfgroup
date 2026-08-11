@@ -29,7 +29,7 @@ export const generatedStills: GeneratedStill[] = [
     src: '/images/atelier-workbench.jpg',
     alt: 'Banco de trabajo en penumbra, con pluma negra, tinta y papel bajo una sola luz.',
     caption: 'Imagen generada',
-    usedOn: '/atelier',
+    usedOn: '/#atelier',
   },
   {
     kind: 'generated',
@@ -37,7 +37,7 @@ export const generatedStills: GeneratedStill[] = [
     src: '/images/hosting-servers.jpg',
     alt: 'Pasillo oscuro de racks, con luces mínimas sobre el suelo negro.',
     caption: 'Imagen generada',
-    usedOn: '/hosting',
+    usedOn: '/#hosting',
   },
   {
     kind: 'generated',
@@ -45,7 +45,7 @@ export const generatedStills: GeneratedStill[] = [
     src: '/images/series-screening.jpg',
     alt: 'Sala de proyección vacía, haz de luz sobre una pantalla en humo.',
     caption: 'Imagen generada',
-    usedOn: '/series',
+    usedOn: '/#series',
   },
   {
     kind: 'generated',
@@ -53,7 +53,7 @@ export const generatedStills: GeneratedStill[] = [
     src: '/images/voices-microphone.jpg',
     alt: 'Micrófono de condensador en un estudio a oscuras, bajo un foco duro.',
     caption: 'Imagen generada',
-    usedOn: '/voices',
+    usedOn: '/#voices',
   },
   {
     kind: 'generated',
@@ -73,7 +73,7 @@ export const thirdPartyStills: ThirdPartyStill[] = [
     src: '/images/credits/dark-town-cherednychenko.jpg',
     alt: 'Calle mojada de noche en Toronto, con siluetas cruzando bajo la lluvia.',
     caption: 'Imagen CC0 - Illia Cherednychenko',
-    usedOn: '/grupo',
+    usedOn: '/#grupo',
     author: 'Illia Cherednychenko',
     license: 'CC0 1.0',
     licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/deed.es',

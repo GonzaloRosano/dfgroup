@@ -1,0 +1,53 @@
+<div class="scroll-progress" aria-hidden="true">
+  <div class="scroll-progress__bar" data-scroll-bar></div>
+</div>
+
+<script>
+  const bar = document.querySelector('[data-scroll-bar]');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (bar && !reduceMotion) {
+    const update = () => {
+      const doc = document.documentElement;
+      const scrollable = doc.scrollHeight - window.innerHeight;
+      const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
+      bar.style.transform = `scaleX(${Math.min(1, Math.max(0, progress))})`;
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+  }
+</script>
+
+<style>
+  .scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    height: 2px;
+    background: color-mix(in srgb, var(--bone) 6%, transparent);
+    pointer-events: none;
+  }
+
+  .scroll-progress__bar {
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ember) 70%, transparent),
+      var(--bone)
+    );
+    transition: transform 80ms linear;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-progress {
+      display: none;
+    }
+  }
+</style>

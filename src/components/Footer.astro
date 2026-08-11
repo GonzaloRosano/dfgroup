@@ -19,7 +19,7 @@ const year = new Date().getFullYear();
       <ul>
         {lines.map((line) => (
           <li>
-            <a href={`/${line.slug}`}>{line.code}</a>
+            <a href={`#${line.slug}`}>{line.code}</a>
           </li>
         ))}
       </ul>
@@ -28,8 +28,8 @@ const year = new Date().getFullYear();
     <nav aria-label="Grupo">
       <p class="site-footer__label">Grupo</p>
       <ul>
-        <li><a href="/grupo">Sobre DF</a></li>
-        <li><a href="/contacto">Contacto</a></li>
+        <li><a href="#grupo">Sobre DF</a></li>
+        <li><a href="#contacto">Contacto</a></li>
         <li><a href="/derechos">Derechos</a></li>
       </ul>
     </nav>
@@ -42,6 +42,8 @@ const year = new Date().getFullYear();
 
 <style>
   .site-footer {
+    position: relative;
+    z-index: 1;
     border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
     padding-block: var(--space-lg) var(--space-md);
     margin-top: auto;
