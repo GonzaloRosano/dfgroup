@@ -19,7 +19,7 @@ const VOID = 0x0d0d0d;
 const EMBER = new THREE.Color(0xc45a4a);
 const BONE = new THREE.Color(0xd4d4d8);
 const FOG = new THREE.Color(0x71717a);
-const DAMP = 6.2;
+const DAMP = 4.8;
 
 const DOT_VERT = /* glsl */ `
   attribute float aSeed;
@@ -30,6 +30,7 @@ const DOT_VERT = /* glsl */ `
   uniform float uMotion;
   uniform float uBreathe;
   uniform float uTwinkle;
+  uniform float uInteract;
 
   varying float vSeed;
   varying float vTip;
@@ -41,16 +42,17 @@ const DOT_VERT = /* glsl */ `
     vTip = aTip;
 
     vec3 p = position;
-    float wave = sin(uTime * 1.1 + aSeed * 18.0) * 0.012 * uBreathe * uMotion;
+    float wave = sin(uTime * 0.85 + aSeed * 18.0) * 0.008 * uBreathe * uMotion;
     p.z += wave;
-    p.x += cos(uTime * 0.7 + aSeed * 9.0) * 0.008 * uBreathe * uMotion;
-    p.y += sin(uTime * 0.85 + aSeed * 11.0) * 0.01 * uBreathe * uMotion;
+    p.x += cos(uTime * 0.55 + aSeed * 9.0) * 0.006 * uBreathe * uMotion;
+    p.y += sin(uTime * 0.65 + aSeed * 11.0) * 0.007 * uBreathe * uMotion;
+    p += normalize(vec3(p.x, p.y, 0.001)) * uInteract * 0.035 * sin(uTime * 2.0 + aSeed * 30.0);
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     vDepth = -mv.z;
     vTwinkle = sin(uTime * 2.4 + aSeed * 40.0) * 0.5 + 0.5;
 
-    gl_PointSize = aSize * (280.0 / -mv.z) * mix(0.85, 1.15, vTwinkle * uTwinkle);
+    gl_PointSize = aSize * (280.0 / -mv.z) * mix(0.9, 1.2, vTwinkle * uTwinkle * (1.0 + uInteract * 0.35));
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -220,7 +222,8 @@ export default function Atmosphere() {
       uTime: { value: 0 },
       uMotion: { value: reduceMotion ? 0 : 1 },
       uBreathe: { value: 1 },
-      uTwinkle: { value: 0.55 },
+      uTwinkle: { value: 0.4 },
+      uInteract: { value: 0 },
       uFade: { value: 0.92 },
       uEmberMix: { value: 0.45 },
       uEmber: { value: EMBER },
@@ -243,7 +246,7 @@ export default function Atmosphere() {
 
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.32, 0.82);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.35, 0.88);
     composer.addPass(bloomPass);
 
     const sections = {
@@ -256,8 +259,8 @@ export default function Atmosphere() {
 
     const poses = {
       inicio: {
-        fx: 0.62, fy: 0.08, fz: 0, scale: 1.18, rotx: 0, roty: 0.25, rotz: -0.06,
-        camY: 0.1, camZ: 5.4, fov: 42, breathe: 1, twinkle: 0.45, ember: 0.5, fade: 0.95,
+        fx: 0.55, fy: 0.05, fz: 0, scale: 1.12, rotx: 0, roty: 0.18, rotz: -0.05,
+        camY: 0.08, camZ: 5.5, fov: 42, breathe: 0.75, twinkle: 0.35, ember: 0.42, fade: 0.9,
       },
       grupo: {
         fx: 0.42, fy: 0, fz: 0.04, scale: 1.05, rotx: 0.08, roty: -0.2, rotz: 0.04,
@@ -284,6 +287,15 @@ export default function Atmosphere() {
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
     const cam = { y: 0.1, z: 5.4, fov: 42 };
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+    let interactTarget = 0;
+    let interactCurrent = 0;
+
+    const onFeatherInteract = (e: Event) => {
+      const detail = (e as CustomEvent<{ intensity?: number }>).detail;
+      interactTarget = THREE.MathUtils.clamp(detail?.intensity ?? 0, 0, 1.2);
+    };
+
+    window.addEventListener('df:feather-interact', onFeatherInteract);
 
     const sample = () => {
       const vh = window.innerHeight;
@@ -367,15 +379,17 @@ export default function Atmosphere() {
       feather.scale.setScalar(pose.scale * densityPulse);
 
       feather.rotation.x = THREE.MathUtils.damp(feather.rotation.x, pose.rotx, k, delta);
-      feather.rotation.y = pose.roty + (reduceMotion ? 0 : elapsed * 0.08);
       feather.rotation.z = THREE.MathUtils.damp(feather.rotation.z, pose.rotz, k, delta);
+      feather.rotation.y = pose.roty + (reduceMotion ? 0 : elapsed * 0.04);
 
-      uniforms.uBreathe.value = pose.breathe;
-      uniforms.uTwinkle.value = pose.twinkle;
-      uniforms.uEmberMix.value = pose.ember;
+      interactCurrent = THREE.MathUtils.damp(interactCurrent, interactTarget, k, delta);
+      uniforms.uInteract.value = interactCurrent;
+      uniforms.uTwinkle.value = pose.twinkle + interactCurrent * 0.45;
+      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.25;
       uniforms.uFade.value = pose.fade;
+      uniforms.uBreathe.value = pose.breathe + interactCurrent * 0.15;
 
-      bloomPass.strength = THREE.MathUtils.lerp(0.22, 0.52, pose.ember);
+      bloomPass.strength = THREE.MathUtils.lerp(0.18, 0.42, pose.ember + interactCurrent * 0.2);
     };
 
     const tick = () => {
@@ -400,6 +414,7 @@ export default function Atmosphere() {
       cancelAnimationFrame(frame);
       ro.disconnect();
       if (finePointer) window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('df:feather-interact', onFeatherInteract);
       dotGeo.dispose();
       dotMat.dispose();
       composer.dispose();

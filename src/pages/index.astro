@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import LoadingScreen from '../components/LoadingScreen.astro';
 import Atmosphere from '../components/Atmosphere';
 import ScrollProgress from '../components/ScrollProgress.astro';
 import { lines } from '../data/lines';
@@ -24,87 +23,120 @@ const crafts = [
   },
 ];
 
-const lineIcons: Record<string, string> = {
-  hosting: 'M4 18h16M6 14h12M8 10h8M10 6h4',
-  series: 'M4 6h4v12H4zm6 0h4v12h-4zm6 0h4v12h-4z',
-  atelier: 'M12 3L5 20h14L12 3zm0 6l2.5 7h-5L12 9z',
-  voices: 'M4 12c2-4 6-6 8-6s6 2 8 6M6 14c1.5 3 4 5 6 5s4.5-2 6-5',
-};
+const stats = [
+  { value: 'Est. 2012', label: 'referencia estética · no histórica' },
+  { value: '14+', label: 'años de oficio · métrica sintética' },
+  { value: '04', label: 'líneas bajo una pluma' },
+  { value: '4', label: 'oficios en el taller' },
+];
 ---
 
 <BaseLayout title="Dark Feather Group">
-  <LoadingScreen />
   <ScrollProgress />
 
   <div class="home-atmosphere" aria-hidden="true">
     <Atmosphere client:load />
   </div>
 
-  <section id="inicio" class="neo-hero">
-    <div class="container neo-hero__inner">
-      <h1 class="neo-hero__title">Dark Feather Group</h1>
-      <p class="neo-hero__tagline">
-        La atmósfera creativa noir llegó al estudio. Cuatro líneas, un mismo oficio.
-      </p>
-      <a class="btn btn--solid neo-hero__cta" href="#grupo">Explorar DF Group</a>
+  <section id="inicio" class="hero">
+    <div class="container hero__grid">
+      <div class="hero__copy">
+        <p class="hero__eyebrow">Dark Feather Group</p>
+        <h1 class="hero__title">
+          <span>Diseñado para</span>
+          <span>significar algo.</span>
+        </h1>
+        <p class="hero__lead">
+          Cuatro líneas, un mismo oficio. Estudio creativo noir — hosting, series,
+          taller y voces bajo una sola pluma.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--solid" href="#contacto">Empezar proyecto</a>
+          <button
+            class="hero__dare"
+            type="button"
+            data-feather-dare
+            aria-label="Interactuar con la pluma de puntos"
+          >
+            Tocá la pluma · <span data-feather-dare-hint>osá acercarte</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="hero__visual" data-feather-zone aria-hidden="true">
+        <span class="hero__visual-hint">Pluma · logo.svg</span>
+      </div>
     </div>
+
+    <aside class="hero__stats" aria-label="Datos del estudio">
+      {stats.slice(0, 2).map((stat) => (
+        <div class="hero__stat">
+          <span class="hero__stat-value">{stat.value}</span>
+          <span class="hero__stat-label">{stat.label}</span>
+        </div>
+      ))}
+    </aside>
   </section>
 
-  <div class="neo-metric" aria-hidden="true">
-    <span class="neo-metric__num">04</span>
-    <span class="neo-metric__label">Líneas de producto</span>
+  <div class="tagline-strip" aria-hidden="true">
+    <p>Sombra·Oficio·Presencia</p>
   </div>
 
-  <section id="grupo" class="section neo-about">
-    <div class="container">
-      <p class="neo-label">Sobre el grupo</p>
-      <h2 class="neo-title">El colectivo detrás de la pluma.</h2>
-      <p class="neo-lead">
-        Diseñamos, desarrollamos, producimos arte y sonido. Trabajamos a
-        contraluz: menos ruido, más atmósfera y oficio bajo una sola dirección de arte.
-      </p>
-    </div>
-  </section>
-
-  <section id="lineas" class="section neo-features" aria-label="Líneas del grupo">
-    <div class="container">
-      <p class="neo-label">Líneas</p>
-      <h2 class="neo-title">Cuatro frentes bajo una pluma.</h2>
-      <p class="neo-lead neo-lead--center">
-        Cada código DF resuelve un frente distinto del universo creativo.
-      </p>
-
-      <div class="neo-features__grid">
-        {
-          lines.map((line, i) => (
-            <article class="neo-feature" id={line.slug} data-reveal>
-              <div class="neo-feature__head">
-                <span class="neo-feature__num">{String(i + 1).padStart(2, '0')}</span>
-                <svg class="neo-feature__icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d={lineIcons[line.slug]} fill="none" stroke="currentColor" stroke-width="1.5" />
-                </svg>
-              </div>
-              <h3 class="neo-feature__title">{line.code}</h3>
-              <p class="neo-feature__tag">{line.tagline}</p>
-              <p class="neo-feature__copy">{line.summary}</p>
-            </article>
-          ))
-        }
+  <section id="grupo" class="section about">
+    <div class="container about__inner">
+      <p class="section-eyebrow">Grupo</p>
+      <h2 class="about__title">El colectivo detrás de la pluma.</h2>
+      <div class="about__body">
+        <p>
+          Dark Feather Group es un estudio creativo que trabaja a contraluz: menos
+          ruido, más atmósfera. Diseñamos identidades, desarrollamos experiencias
+          web, producimos arte y sonido — siempre con la misma dirección de arte.
+        </p>
+        <p>
+          No somos una fábrica de plantillas ni un launch deck con números
+          inflados. Somos cuatro líneas de producto — hosting, series, taller y
+          voces — que comparten un lenguaje visual noir y un criterio editorial.
+        </p>
+        <p>
+          Cada proyecto busca significar algo: una marca que se siente habitada,
+          una serie que respira en capítulos, una web que no parece un catálogo
+          genérico. Ese es el oficio.
+        </p>
       </div>
     </div>
   </section>
 
-  <section class="section neo-specs">
+  <section class="section facts" aria-label="Cifras del estudio">
     <div class="container">
-      <p class="neo-label">Especificaciones</p>
-      <h2 class="neo-title">Lo que incluye cada línea.</h2>
+      <div class="facts__grid">
+        {stats.map((stat) => (
+          <article class="fact" data-reveal>
+            <span class="fact__value">{stat.value}</span>
+            <span class="fact__label">{stat.label}</span>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
 
-      <div class="neo-specs__list">
+  <section id="lineas" class="section lines" aria-label="Líneas del grupo">
+    <div class="container">
+      <p class="section-eyebrow">Líneas</p>
+      <h2 class="lines__title">Cuatro frentes bajo una pluma.</h2>
+      <p class="lines__lead">
+        Cada código DF resuelve un frente distinto del universo creativo.
+      </p>
+
+      <div class="lines__list">
         {
           lines.map((line) => (
-            <article class="neo-spec" id={`spec-${line.slug}`}>
-              <h3>{line.code}</h3>
-              <ul>
+            <article class="line-card" id={line.slug} data-reveal>
+              <div class="line-card__head">
+                <h3 class="line-card__code">{line.code}</h3>
+                <p class="line-card__tag">{line.tagline}</p>
+              </div>
+              <p class="line-card__summary">{line.summary}</p>
+              <ul class="line-card__points">
                 {line.points.map((point) => (
                   <li>{point}</li>
                 ))}
@@ -116,20 +148,20 @@ const lineIcons: Record<string, string> = {
     </div>
   </section>
 
-  <section id="oficio" class="section neo-features neo-features--craft">
+  <section id="oficio" class="section crafts">
     <div class="container">
-      <p class="neo-label">Oficio</p>
-      <h2 class="neo-title">Oficio con atmósfera.</h2>
+      <p class="section-eyebrow">Oficio</p>
+      <h2 class="crafts__title">Oficio con atmósfera.</h2>
+      <p class="crafts__lead">
+        Lo que hacemos cuando la pluma baja al papel — o al código.
+      </p>
 
-      <div class="neo-features__grid">
+      <div class="crafts__grid">
         {
-          crafts.map((item, i) => (
-            <article class="neo-feature" data-reveal>
-              <div class="neo-feature__head">
-                <span class="neo-feature__num">{String(i + 5).padStart(2, '0')}</span>
-              </div>
-              <h3 class="neo-feature__title">{item.title}</h3>
-              <p class="neo-feature__copy">{item.copy}</p>
+          crafts.map((item) => (
+            <article class="craft-card" data-reveal>
+              <h3 class="craft-card__title">{item.title}</h3>
+              <p class="craft-card__copy">{item.copy}</p>
             </article>
           ))
         }
@@ -137,23 +169,53 @@ const lineIcons: Record<string, string> = {
     </div>
   </section>
 
-  <section id="contacto" class="section neo-waitlist">
-    <div class="container neo-waitlist__inner">
-      <p class="neo-label">Contacto</p>
-      <h2 class="neo-title">Hablar con el grupo</h2>
-      <p class="neo-lead neo-lead--center">
-        Contanos qué línea te interesa y cómo suena el proyecto.
+  <section id="contacto" class="section contact">
+    <div class="container contact__inner">
+      <p class="section-eyebrow">Contacto</p>
+      <h2 class="contact__title">Hablemos.</h2>
+      <p class="contact__lead">
+        Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
+        criterio, no con un bot.
       </p>
-      <a class="btn btn--solid" href="mailto:hola@darkfeathergroup.com">
+      <a class="btn btn--solid contact__cta" href="mailto:hola@darkfeathergroup.com">
         hola@darkfeathergroup.com
       </a>
-      <p class="neo-waitlist__hint">Correo de ejemplo. Reemplazá con el canal real del grupo.</p>
+      <p class="contact__hint">Correo de ejemplo · reemplazar con el canal real.</p>
     </div>
   </section>
 </BaseLayout>
 
 <script>
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const dispatchFeather = (intensity: number) => {
+    window.dispatchEvent(
+      new CustomEvent('df:feather-interact', { detail: { intensity } }),
+    );
+  };
+
+  const featherZone = document.querySelector('[data-feather-zone]');
+  const featherDare = document.querySelector('[data-feather-dare]');
+  const dareHint = document.querySelector('[data-feather-dare-hint]');
+
+  const bindFeather = (el: Element | null, hoverOnly = false) => {
+    if (!el || reduceMotion) return;
+
+    el.addEventListener('pointerenter', () => {
+      dispatchFeather(1);
+      dareHint && (dareHint.textContent = 'la pluma responde');
+    });
+    el.addEventListener('pointerleave', () => dispatchFeather(0));
+    el.addEventListener('pointermove', () => dispatchFeather(1));
+
+    if (!hoverOnly) {
+      el.addEventListener('pointerdown', () => dispatchFeather(1.2));
+      el.addEventListener('pointerup', () => dispatchFeather(0.6));
+    }
+  };
+
+  bindFeather(featherZone);
+  bindFeather(featherDare, true);
 
   if (!reduceMotion) {
     const items = document.querySelectorAll('[data-reveal]');
@@ -166,7 +228,7 @@ const lineIcons: Record<string, string> = {
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
+      { threshold: 0.15, rootMargin: '0px 0px -6% 0px' },
     );
     items.forEach((el) => observer.observe(el));
   } else {
@@ -197,95 +259,221 @@ const lineIcons: Record<string, string> = {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 48% 42% at 78% 40%, transparent 0%, rgba(0, 0, 0, 0.5) 70%),
-      radial-gradient(ellipse 100% 85% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
+      linear-gradient(90deg, rgba(13, 13, 13, 0.92) 0%, rgba(13, 13, 13, 0.35) 42%, transparent 68%),
+      radial-gradient(ellipse 90% 80% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.45) 100%);
     pointer-events: none;
   }
 
-  .neo-hero {
+  .hero {
     position: relative;
     z-index: 1;
     min-height: 100svh;
     display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 7rem 0 5rem;
+  }
+
+  .hero__grid {
+    display: grid;
+    gap: 3rem;
     align-items: center;
-    padding: 6rem 0 4rem;
   }
 
-  .neo-hero__inner {
-    max-width: 18ch;
+  .hero__eyebrow {
+    color: var(--mute);
+    font-size: 0.92rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
   }
 
-  .neo-hero__title {
-    font-size: clamp(3.2rem, 11vw, 7.5rem);
+  .hero__title {
+    font-size: clamp(3rem, 9vw, 6.5rem);
     letter-spacing: -0.04em;
-    line-height: 0.92;
-    margin-bottom: 1.25rem;
-    text-transform: uppercase;
+    line-height: 0.95;
+    margin-bottom: 1.5rem;
   }
 
-  .neo-hero__tagline {
+  .hero__title span {
+    display: block;
+  }
+
+  .hero__lead {
     color: var(--fog);
-    font-size: clamp(1.05rem, 2.2vw, 1.25rem);
-    max-width: 38ch;
-    margin-bottom: 2rem;
-    line-height: 1.65;
+    font-size: clamp(1.05rem, 2vw, 1.2rem);
+    max-width: 42ch;
+    margin-bottom: 2.25rem;
+    line-height: 1.7;
   }
 
-  .neo-hero__cta {
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 0.82rem;
-  }
-
-  .neo-metric {
-    position: relative;
-    z-index: 1;
+  .hero__actions {
     display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    width: var(--page-wide);
-    max-width: calc(100% - 2.5rem);
-    margin: -2rem auto 0;
-    padding-bottom: var(--space-xl);
-    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem 1.75rem;
   }
 
-  .neo-metric__num {
+  .hero__dare {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--mute);
+    font: inherit;
+    font-size: 0.92rem;
+    cursor: pointer;
+    padding: 0;
+    transition: color 200ms var(--ease-out);
+  }
+
+  .hero__dare:hover,
+  .hero__dare:focus-visible {
+    color: var(--bone);
+  }
+
+  .hero__visual {
+    position: relative;
+    min-height: clamp(16rem, 40vw, 28rem);
+    pointer-events: auto;
+    cursor: crosshair;
+  }
+
+  .hero__visual-hint {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    color: var(--mute);
+    font-size: 0.78rem;
+    opacity: 0.6;
+  }
+
+  .hero__stats {
+    position: absolute;
+    right: max(1.5rem, calc((100% - var(--page-wide)) / 2 + 1.5rem));
+    bottom: 2.5rem;
+    display: none;
+    flex-direction: column;
+    gap: 1.75rem;
+    text-align: right;
+  }
+
+  .hero__stat-value {
+    display: block;
     font-family: var(--font-display);
-    font-size: clamp(4rem, 14vw, 8rem);
-    line-height: 0.85;
-    letter-spacing: -0.04em;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
-  .neo-metric__label {
+  .hero__stat-label {
+    display: block;
     color: var(--mute);
     font-size: 0.72rem;
-    letter-spacing: 0.2em;
+    max-width: 14ch;
+    margin-left: auto;
+    margin-top: 0.25rem;
+  }
+
+  .tagline-strip {
+    position: relative;
+    z-index: 1;
+    border-block: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    padding: 1.1rem 0;
+    overflow: hidden;
+  }
+
+  .tagline-strip p {
+    max-width: none;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 2.5vw, 1.35rem);
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    color: var(--fog);
     text-transform: uppercase;
   }
 
-  .neo-about,
-  .neo-features,
-  .neo-specs,
-  .neo-waitlist {
-    position: relative;
-    z-index: 1;
+  .about__inner {
+    max-width: 52rem;
   }
 
-  .neo-lead--center {
-    margin-inline: auto;
-    text-align: center;
+  .about__title {
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    margin-bottom: var(--space-md);
+    max-width: 16ch;
   }
 
-  .neo-features__grid {
+  .about__body {
+    display: grid;
+    gap: 1.35rem;
+  }
+
+  .about__body p {
+    color: var(--fog);
+    font-size: clamp(1.05rem, 2vw, 1.15rem);
+    line-height: 1.75;
+    max-width: 58ch;
+  }
+
+  .facts__grid {
+    display: grid;
+    gap: 2rem;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    padding-top: var(--space-lg);
+  }
+
+  .fact {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 600ms var(--ease-out),
+      transform 600ms var(--ease-out);
+  }
+
+  .fact.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .fact__value {
+    display: block;
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    margin-bottom: 0.5rem;
+  }
+
+  .fact__label {
+    color: var(--mute);
+    font-size: 0.88rem;
+    max-width: 22ch;
+  }
+
+  .lines__title,
+  .crafts__title,
+  .contact__title {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    max-width: 16ch;
+    margin-bottom: 1rem;
+  }
+
+  .lines__lead,
+  .crafts__lead,
+  .contact__lead {
+    color: var(--fog);
+    font-size: 1.08rem;
+    max-width: 48ch;
+    margin-bottom: var(--space-lg);
+  }
+
+  .lines__list {
     display: grid;
     gap: 0;
-    margin-top: var(--space-lg);
     border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
   }
 
-  .neo-feature {
-    padding: 2.25rem 0;
+  .line-card {
+    padding: 2.5rem 0;
     border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
     opacity: 0;
     transform: translateY(18px);
@@ -294,123 +482,132 @@ const lineIcons: Record<string, string> = {
       transform 550ms var(--ease-out);
   }
 
-  .neo-feature.is-visible {
+  .line-card.is-visible {
     opacity: 1;
     transform: none;
   }
 
-  .neo-feature__head {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .neo-feature__num {
-    color: var(--mute);
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .neo-feature__icon {
-    width: 1.5rem;
-    height: 1.5rem;
-    color: var(--ember-hot);
-  }
-
-  .neo-feature__title {
+  .line-card__code {
     font-family: var(--font-display);
-    font-size: clamp(1.85rem, 4vw, 2.75rem);
-    text-transform: uppercase;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
     margin-bottom: 0.35rem;
   }
 
-  .neo-feature__tag {
+  .line-card__tag {
     color: var(--ember-hot);
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     font-weight: 500;
-    margin-bottom: 0.75rem;
-  }
-
-  .neo-feature__copy {
-    color: var(--fog);
-    max-width: 48ch;
-  }
-
-  .neo-specs__list {
-    display: grid;
-    gap: 0;
-    margin-top: var(--space-lg);
-    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
-  }
-
-  .neo-spec {
-    padding: 1.75rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
-  }
-
-  .neo-spec h3 {
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    text-transform: uppercase;
     margin-bottom: 1rem;
   }
 
-  .neo-spec ul {
+  .line-card__summary {
+    color: var(--fog);
+    max-width: 52ch;
+    margin-bottom: 1.25rem;
+  }
+
+  .line-card__points {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.65rem;
+    gap: 0.5rem;
   }
 
-  .neo-spec li {
-    color: var(--fog);
+  .line-card__points li {
+    color: var(--mute);
+    font-size: 0.95rem;
     padding-left: 1rem;
     position: relative;
-    font-size: 0.95rem;
   }
 
-  .neo-spec li::before {
+  .line-card__points li::before {
     content: '';
     position: absolute;
     left: 0;
     top: 0.55em;
-    width: 0.3rem;
-    height: 0.3rem;
+    width: 0.25rem;
+    height: 0.25rem;
     border-radius: 50%;
     background: var(--ember);
   }
 
-  .neo-waitlist__inner {
-    text-align: center;
+  .crafts__grid {
+    display: grid;
+    gap: 2rem;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    padding-top: var(--space-md);
   }
 
-  .neo-waitlist__hint {
+  .craft-card {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 550ms var(--ease-out),
+      transform 550ms var(--ease-out);
+  }
+
+  .craft-card.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .craft-card__title {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .craft-card__copy {
+    color: var(--fog);
+    max-width: 40ch;
+  }
+
+  .contact__inner {
+    text-align: center;
+    max-width: 36rem;
+    margin-inline: auto;
+  }
+
+  .contact__lead {
+    margin-inline: auto;
+    margin-bottom: 2rem;
+  }
+
+  .contact__hint {
     margin-top: 1rem;
     color: var(--mute);
     font-size: 0.9rem;
+    max-width: none;
   }
 
   @media (min-width: 960px) {
-    .neo-features__grid {
+    .hero__grid {
       grid-template-columns: 1fr 1fr;
-      column-gap: 4rem;
+      gap: 4rem;
     }
 
-    .neo-feature:nth-child(odd) {
-      padding-right: 2rem;
+    .hero__stats {
+      display: flex;
     }
 
-    .neo-specs__list {
-      grid-template-columns: 1fr 1fr;
+    .facts__grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2.5rem;
+    }
+
+    .crafts__grid {
+      grid-template-columns: repeat(2, 1fr);
       column-gap: 4rem;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .neo-feature {
+    .fact,
+    .line-card,
+    .craft-card {
       opacity: 1;
       transform: none;
       transition: none;

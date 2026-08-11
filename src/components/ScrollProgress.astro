@@ -1,77 +1,35 @@
-<div class="scroll-ui" aria-hidden="true">
-  <div class="scroll-progress">
-    <div class="scroll-progress__bar" data-scroll-bar></div>
-  </div>
-  <div class="scroll-index" data-scroll-index>01 / 05</div>
+<div class="scroll-progress" aria-hidden="true">
+  <div class="scroll-progress__bar" data-scroll-bar></div>
 </div>
 
 <script>
   const bar = document.querySelector('[data-scroll-bar]');
-  const indexEl = document.querySelector('[data-scroll-index]');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const sections = [
-    { id: 'inicio', label: '01' },
-    { id: 'grupo', label: '02' },
-    { id: 'lineas', label: '03' },
-    { id: 'oficio', label: '04' },
-    { id: 'contacto', label: '05' },
-  ];
-
-  let active = '01';
-
-  const setIndex = (label: string) => {
-    if (label !== active && indexEl) {
-      active = label;
-      indexEl.textContent = `${label} / 05`;
-    }
-  };
-
-  if (!reduceMotion) {
-    const updateBar = () => {
-      if (!bar) return;
+  if (bar && !reduceMotion) {
+    const update = () => {
       const doc = document.documentElement;
       const scrollable = doc.scrollHeight - window.innerHeight;
       const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
       bar.style.transform = `scaleX(${Math.min(1, Math.max(0, progress))})`;
     };
 
-    updateBar();
-    window.addEventListener('scroll', updateBar, { passive: true });
-    window.addEventListener('resize', updateBar, { passive: true });
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const match = sections.find((s) => s.id === entry.target.id);
-            if (match) setIndex(match.label);
-          }
-        });
-      },
-      { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
-    );
-
-    sections.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
   }
 </script>
 
 <style>
-  .scroll-ui {
-    pointer-events: none;
-  }
-
   .scroll-progress {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 50;
-    height: 2px;
-    background: color-mix(in srgb, var(--bone) 6%, transparent);
+    height: 1px;
+    background: color-mix(in srgb, var(--bone) 5%, transparent);
+    pointer-events: none;
   }
 
   .scroll-progress__bar {
@@ -79,34 +37,11 @@
     width: 100%;
     transform-origin: left center;
     transform: scaleX(0);
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ember) 70%, transparent),
-      var(--bone)
-    );
-  }
-
-  .scroll-index {
-    position: fixed;
-    right: 1.25rem;
-    bottom: 1.25rem;
-    z-index: 50;
-    color: var(--mute);
-    font-size: 0.72rem;
-    letter-spacing: 0.16em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  @media (min-width: 960px) {
-    .scroll-index {
-      right: 2rem;
-      bottom: 2rem;
-    }
+    background: color-mix(in srgb, var(--bone) 45%, transparent);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .scroll-progress,
-    .scroll-index {
+    .scroll-progress {
       display: none;
     }
   }

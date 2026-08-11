@@ -2,7 +2,6 @@
 import { lines } from '../data/lines';
 
 const navLinks = [
-  { href: '#inicio', label: 'Inicio' },
   { href: '#grupo', label: 'Grupo' },
   { href: '#lineas', label: 'Líneas' },
   { href: '#oficio', label: 'Oficio' },
@@ -14,46 +13,84 @@ const navLinks = [
   <div class="nav-bar">
     <a class="brand" href="#inicio" aria-label="Dark Feather Group — inicio">
       <img class="brand__logo" src="/logo.svg" alt="" width="22" height="24" />
-      <span class="brand__name">DF Group</span>
+      <span class="brand__name">Dark Feather</span>
     </a>
 
     <nav class="nav" aria-label="Principal">
-      {
-        navLinks.map((link) => (
-          <a class="nav__link" href={link.href} data-nav-link>
-            {link.label}
-          </a>
-        ))
-      }
+      {navLinks.map((link) => (
+        <a class="nav__link" href={link.href} data-nav-link>{link.label}</a>
+      ))}
     </nav>
 
-    <a class="btn btn--solid nav__cta" href="#contacto">Hablar</a>
+    <a class="nav__cta" href="#contacto">Empezar proyecto</a>
 
-    <button class="nav__burger" type="button" aria-label="Abrir menú" data-mobile-toggle>
-      <span></span>
-      <span></span>
+    <button
+      class="nav__menu-btn"
+      type="button"
+      aria-label="Abrir menú"
+      aria-expanded="false"
+      aria-controls="menu-overlay"
+      data-menu-toggle
+    >
+      Menú
     </button>
   </div>
 
-  <div class="mobile-panel" data-mobile-panel hidden>
-    {navLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+  <div class="menu-overlay" id="menu-overlay" data-menu-overlay hidden>
+    <div class="menu-overlay__inner">
+      <nav class="menu-overlay__nav" aria-label="Menú completo">
+        <a href="#inicio" data-menu-link>Inicio</a>
+        {navLinks.map((link) => (
+          <a href={link.href} data-menu-link>{link.label}</a>
+        ))}
+        {lines.map((line) => (
+          <a href={`#${line.slug}`} data-menu-link>{line.code}</a>
+        ))}
+      </nav>
+
+      <div class="menu-overlay__contact">
+        <p class="menu-overlay__label">Consultas</p>
+        <a class="menu-overlay__email" href="mailto:hola@darkfeathergroup.com">
+          hola@darkfeathergroup.com
+        </a>
+        <p class="menu-overlay__phone">Tel. ejemplo · reemplazar</p>
+        <a class="menu-overlay__talk" href="#contacto">Hablemos</a>
+        <div class="menu-overlay__social">
+          <span>Instagram · placeholder</span>
+          <span>LinkedIn · placeholder</span>
+        </div>
+      </div>
+    </div>
   </div>
 </header>
 
 <script>
-  const mobileToggle = document.querySelector('[data-mobile-toggle]');
-  const mobilePanel = document.querySelector('[data-mobile-panel]');
+  const menuToggle = document.querySelector('[data-menu-toggle]');
+  const menuOverlay = document.querySelector('[data-menu-overlay]');
 
-  mobileToggle?.addEventListener('click', () => {
-    const hidden = mobilePanel?.hasAttribute('hidden');
-    if (hidden) mobilePanel?.removeAttribute('hidden');
-    else mobilePanel?.setAttribute('hidden', '');
+  const closeMenu = () => {
+    menuOverlay?.setAttribute('hidden', '');
+    menuToggle?.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('menu-open');
+  };
+
+  menuToggle?.addEventListener('click', () => {
+    const open = menuOverlay?.hasAttribute('hidden');
+    if (open) {
+      menuOverlay?.removeAttribute('hidden');
+      menuToggle.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('menu-open');
+    } else {
+      closeMenu();
+    }
   });
 
-  mobilePanel?.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', () => {
-      mobilePanel?.setAttribute('hidden', '');
-    });
+  menuOverlay?.querySelectorAll('[data-menu-link]').forEach((link) => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu();
   });
 
   const sections = ['inicio', 'grupo', 'lineas', 'oficio', 'contacto', 'hosting', 'series', 'atelier', 'voices'];
@@ -87,8 +124,8 @@ const navLinks = [
     top: 0;
     left: 0;
     right: 0;
-    z-index: 40;
-    padding: 0.85rem 1.25rem;
+    z-index: 60;
+    padding: 1.1rem 1.5rem;
     pointer-events: none;
   }
 
@@ -100,49 +137,39 @@ const navLinks = [
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 1.5rem;
     max-width: var(--page-wide);
     margin-inline: auto;
-    min-height: 3.25rem;
-    padding: 0.45rem 0.85rem 0.45rem 1rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
-    background: color-mix(in srgb, var(--void) 82%, transparent);
-    backdrop-filter: blur(16px);
   }
 
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
-    flex-shrink: 0;
+    gap: 0.6rem;
   }
 
   .brand__logo {
-    width: 1.35rem;
+    width: 1.25rem;
     height: auto;
     filter: invert(1);
   }
 
   .brand__name {
-    font-size: 0.78rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    letter-spacing: -0.01em;
   }
 
   .nav {
     display: none;
     align-items: center;
-    gap: 0.15rem;
+    gap: 1.75rem;
   }
 
   .nav__link {
     color: var(--mute);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 0.45rem 0.65rem;
+    font-size: 0.92rem;
+    font-weight: 500;
   }
 
   .nav__link:hover,
@@ -152,53 +179,105 @@ const navLinks = [
 
   .nav__cta {
     display: none;
-    padding: 0.5rem 0.95rem;
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 35%, transparent);
   }
 
-  .nav__burger {
-    display: inline-flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 5px;
-    width: 2.4rem;
-    height: 2.4rem;
+  .nav__cta:hover {
+    border-color: var(--bone);
+  }
+
+  .nav__menu-btn {
+    appearance: none;
     border: 0;
     background: transparent;
+    color: var(--bone);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
     cursor: pointer;
+    padding: 0.35rem 0;
   }
 
-  .nav__burger span {
-    display: block;
-    height: 1.5px;
-    width: 1.1rem;
-    margin-inline: auto;
-    background: var(--bone);
-  }
-
-  .mobile-panel {
-    max-width: var(--page-wide);
-    margin: 0.35rem auto 0;
+  .menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: color-mix(in srgb, var(--void) 96%, transparent);
+    backdrop-filter: blur(18px);
     display: grid;
-    gap: 0.15rem;
-    padding: 0.65rem;
-    background: color-mix(in srgb, var(--void) 94%, transparent);
-    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    place-items: center;
+    padding: 2rem;
   }
 
-  .mobile-panel[hidden] {
+  .menu-overlay[hidden] {
     display: none;
   }
 
-  .mobile-panel a {
-    padding: 0.7rem 0.75rem;
+  .menu-overlay__inner {
+    width: min(36rem, 100%);
+    display: grid;
+    gap: 3.5rem;
+  }
+
+  .menu-overlay__nav {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .menu-overlay__nav a {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--fog);
+    transition: color 200ms var(--ease-out);
+  }
+
+  .menu-overlay__nav a:hover {
     color: var(--bone);
-    font-size: 0.78rem;
+  }
+
+  .menu-overlay__label {
+    color: var(--mute);
+    font-size: 0.82rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .menu-overlay__email {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+
+  .menu-overlay__phone {
+    color: var(--mute);
+    font-size: 0.92rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .menu-overlay__talk {
+    display: inline-block;
+    font-size: 1rem;
     font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 30%, transparent);
+  }
+
+  .menu-overlay__social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    color: var(--mute);
+    font-size: 0.88rem;
+  }
+
+  :global(body.menu-open) {
+    overflow: hidden;
   }
 
   @media (min-width: 960px) {
@@ -207,9 +286,8 @@ const navLinks = [
       display: flex;
     }
 
-    .nav__burger,
-    .mobile-panel {
-      display: none !important;
+    .nav__menu-btn {
+      display: none;
     }
   }
 </style>
