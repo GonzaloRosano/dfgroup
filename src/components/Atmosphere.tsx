@@ -18,8 +18,8 @@ const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
 const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
-/** Logo path is left-heavy in VIEW_W — shift all shapes into the right panel */
-const SHAPE_OFFSET_X = 0.24;
+/** Shapes are centered in orthographic space; layout uses the right 50% viewport panel */
+const SHAPE_OFFSET_X = 0;
 const ICON_SCALE = 0.92;
 
 type GridDot = {
@@ -631,27 +631,27 @@ export default function Atmosphere() {
 
     const poses = {
       inicio: {
-        scale: 1, breathe: 0.058, offsetX: 0.26, offsetY: 0,
+        scale: 1, breathe: 0.058, offsetX: 0, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.006,
         ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
       },
       grupo: {
-        scale: 1.04, breathe: 0, offsetX: 0.24, offsetY: 0,
+        scale: 1.04, breathe: 0, offsetX: 0, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0,
         ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
       },
       lineas: {
-        scale: 1.05, breathe: 0, offsetX: 0.22, offsetY: 0,
+        scale: 1.05, breathe: 0, offsetX: 0, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1.06, shear: 0.14, wave: 0.008,
         ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
       },
       oficio: {
-        scale: 0.97, breathe: 0, offsetX: 0.24, offsetY: 0,
+        scale: 0.97, breathe: 0, offsetX: 0, offsetY: 0,
         scatter: 0, gather: 0.035, stretchX: 1, shear: 0, wave: 0.004,
         ember: 0.92, alpha: 0.81, reveal: 1, dissolve: 0,
       },
       contacto: {
-        scale: 0.86, breathe: 0, offsetX: 0.22, offsetY: 0.04,
+        scale: 0.86, breathe: 0, offsetX: 0, offsetY: 0.04,
         scatter: 0.035, gather: 0, stretchX: 1, shear: 0, wave: 0,
         ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
       },
@@ -667,7 +667,7 @@ export default function Atmosphere() {
     let holdProgress = 0;
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
-    const sm = { scale: 1, offsetX: 0.26, offsetY: 0 };
+    const sm = { scale: 1, offsetX: 0, offsetY: 0 };
     let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0 };
     let lineasIconMix = 0;
     let iconW = { w0: 1, w1: 0, w2: 0, w3: 0, atelierCode: 0 };
@@ -738,10 +738,9 @@ export default function Atmosphere() {
       const aspect = w / h;
       const viewH = 1.18;
       const viewW = viewH * aspect;
-      const panX = viewW * 0.08;
 
-      camera.left = -viewW * 0.5 - panX;
-      camera.right = viewW * 0.5 - panX;
+      camera.left = -viewW * 0.5;
+      camera.right = viewW * 0.5;
       camera.top = viewH * 0.5;
       camera.bottom = -viewH * 0.5;
       camera.updateProjectionMatrix();

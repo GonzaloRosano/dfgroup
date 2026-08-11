@@ -442,7 +442,7 @@ const stats = [
     position: fixed;
     top: var(--nav-height);
     right: 0;
-    width: min(48%, 680px);
+    width: 50%;
     height: calc(100svh - var(--nav-height));
     z-index: 0;
     pointer-events: none;
@@ -485,7 +485,7 @@ const stats = [
     position: absolute;
     top: 0;
     left: 0;
-    width: min(58%, 680px);
+    width: 50%;
     height: 100%;
     background: linear-gradient(
       90deg,
@@ -992,7 +992,7 @@ const stats = [
 
   .lines-showcase__hint {
     position: absolute;
-    right: max(1.25rem, calc((100% - min(48%, 680px)) / 2 + 1rem));
+    right: max(1.25rem, calc(25% + 1rem));
     bottom: 2rem;
     z-index: 2;
     color: var(--mute);
@@ -1001,10 +1001,6 @@ const stats = [
     text-transform: uppercase;
     max-width: 12ch;
     text-align: right;
-  }
-
-  :global(:root.is-lineas-active) .home-atmosphere {
-    width: min(52%, 760px);
   }
 
   .crafts__title,
