@@ -460,7 +460,6 @@ export default function Atmosphere() {
 
     const clock = new THREE.Clock();
     let frame = 0;
-    let disposed = false;
     let viewW = 1;
     let viewH = 1.18;
     let hovering = false;
