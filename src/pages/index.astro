@@ -290,7 +290,7 @@ const stats = [
 
   document.querySelectorAll('[data-reveal-group]').forEach((group) => {
     group.querySelectorAll('[data-reveal]').forEach((el, i) => {
-      el.style.setProperty('--reveal-delay', `${i * 90}ms`);
+      el.style.setProperty('--reveal-delay', `${i * 120}ms`);
     });
   });
 
@@ -321,9 +321,15 @@ const stats = [
   const linesTrack = document.querySelector('[data-lines-track]') as HTMLElement | null;
   const linesCounter = document.querySelector('[data-lines-counter]');
   const linesDots = document.querySelectorAll('[data-lines-dot]');
+  const linesPanels = document.querySelectorAll('.lines-showcase__panel');
   const lineLabels = ['DF Hosting', 'DF Series', 'DF Atelier', 'DF Voices'];
 
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+  const smoothstep = (edge0: number, edge1: number, x: number) => {
+    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
 
   const updateLineasScroll = () => {
     if (!linesShowcase || !linesTrack) return;
@@ -347,6 +353,13 @@ const stats = [
     linesDots.forEach((dot, i) => {
       dot.classList.toggle('is-active', i === index);
       dot.classList.toggle('is-near', Math.abs(i - progress) < 0.55);
+    });
+
+    linesPanels.forEach((panel, i) => {
+      const dist = Math.abs(progress - i);
+      const panelOpacity = 1 - smoothstep(0.18, 1.05, dist);
+      (panel as HTMLElement).style.setProperty('--panel-opacity', String(panelOpacity));
+      panel.classList.toggle('is-active', i === index);
     });
 
     document.documentElement.classList.toggle('is-lineas-active', rect.top < vh * 0.35 && rect.bottom > vh * 0.35);
@@ -404,7 +417,7 @@ const stats = [
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 5.5rem 0 4rem;
+    padding: calc(var(--nav-height) + 1.75rem) 0 4rem;
     overflow: hidden;
   }
 
@@ -696,8 +709,8 @@ const stats = [
 
   .lines-showcase__sticky {
     position: sticky;
-    top: 0;
-    height: 100svh;
+    top: var(--nav-height);
+    height: calc(100svh - var(--nav-height));
     display: grid;
     grid-template-rows: auto 1fr auto;
     overflow: hidden;
@@ -710,7 +723,7 @@ const stats = [
     align-items: baseline;
     justify-content: space-between;
     gap: 1rem;
-    padding-block: 1.75rem 0.75rem;
+    padding-block: 1.25rem 0.65rem;
   }
 
   .lines-showcase__counter {
@@ -732,7 +745,6 @@ const stats = [
     height: 100%;
     width: 400%;
     will-change: transform;
-    transition: transform 80ms linear;
   }
 
   .lines-showcase__panel {
@@ -742,6 +754,11 @@ const stats = [
     display: flex;
     align-items: center;
     padding-block: 1rem 3rem;
+    opacity: var(--panel-opacity, 1);
+  }
+
+  .lines-showcase__panel.is-active {
+    z-index: 1;
   }
 
   .lines-showcase__copy {
@@ -930,6 +947,10 @@ const stats = [
   @media (prefers-reduced-motion: reduce) {
     .lines-showcase__track {
       transform: none !important;
+    }
+
+    .lines-showcase__panel {
+      opacity: 1;
       transition: none;
     }
 

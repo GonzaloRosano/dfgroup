@@ -28,7 +28,14 @@
   --radius-soft: 0.75rem;
   --radius-pill: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --nav-height: 4.25rem;
+  --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
+  --header-inset-y: 0.85rem;
+  --header-bar-min: 2.75rem;
+  --header-bar-pad-y: 0.45rem;
+  --nav-height: calc(
+    var(--header-inset-y) * 2 + var(--header-bar-pad-y) * 2 + var(--header-bar-min)
+  );
+  --scroll-offset: calc(var(--nav-height) + 0.65rem);
 }
 
 *,
@@ -39,7 +46,11 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: var(--nav-height);
+  scroll-padding-top: var(--scroll-offset);
+}
+
+main [id] {
+  scroll-margin-top: var(--scroll-offset);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -250,7 +261,7 @@ p {
 
 .page-hero {
   position: relative;
-  padding: 8.5rem 0 4rem;
+  padding: calc(var(--nav-height) + 2.5rem) 0 4rem;
   text-align: center;
   overflow: hidden;
 }
@@ -272,12 +283,12 @@ p {
 /* Scroll reveal — transform + opacity only (GPU-friendly) */
 .reveal {
   opacity: 0;
-  transform: translateY(36px);
-  filter: blur(6px);
+  transform: translateY(28px);
+  filter: blur(5px);
   transition:
-    opacity 750ms var(--ease-out),
-    transform 750ms var(--ease-out),
-    filter 750ms var(--ease-out);
+    opacity 980ms var(--ease-reveal),
+    transform 980ms var(--ease-reveal),
+    filter 980ms var(--ease-reveal);
   transition-delay: var(--reveal-delay, 0ms);
 }
 

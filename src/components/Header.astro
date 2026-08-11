@@ -128,7 +128,7 @@ const navLinks = [
     left: 0;
     right: 0;
     z-index: 60;
-    padding: 1.1rem 1.5rem;
+    padding: var(--header-inset-y) 1.25rem;
     pointer-events: none;
   }
 
@@ -141,9 +141,16 @@ const navLinks = [
     align-items: center;
     justify-content: space-between;
     gap: 1.5rem;
-    min-height: 2.75rem;
+    min-height: var(--header-bar-min);
+    padding: var(--header-bar-pad-y) 0.45rem var(--header-bar-pad-y) 1.1rem;
     max-width: var(--page-wide);
     margin-inline: auto;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--void) 78%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bone) 11%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 10px 40px color-mix(in srgb, var(--ink) 50%, transparent);
   }
 
   .brand {

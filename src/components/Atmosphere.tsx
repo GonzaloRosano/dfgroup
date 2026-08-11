@@ -16,7 +16,8 @@ const ASPECT = VIEW_H / VIEW_W;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
-const DAMP = 4.8;
+const DAMP = 3.1;
+const SECTION_DAMP = 2.4;
 
 type GridDot = {
   x: number;
@@ -326,14 +327,17 @@ function buildGeometry(dots: GridDot[]) {
 
 function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
-  return 1 - THREE.MathUtils.smoothstep(0.08, 1.15, d);
+  return 1 - THREE.MathUtils.smoothstep(0.04, 1.4, d);
 }
 
 function sectionPresence(el: Element | null, vh: number) {
   if (!el) return 0;
   const r = el.getBoundingClientRect();
-  const overlap = Math.min(r.bottom, vh * 0.88) - Math.max(r.top, vh * 0.12);
-  return THREE.MathUtils.clamp(overlap / Math.max(r.height * 0.6, vh * 0.42), 0, 1);
+  const bandTop = vh * 0.06;
+  const bandBottom = vh * 0.94;
+  const overlap = Math.min(r.bottom, bandBottom) - Math.max(r.top, bandTop);
+  const raw = THREE.MathUtils.clamp(overlap / Math.max(r.height * 0.5, vh * 0.36), 0, 1);
+  return raw * raw * (3 - 2 * raw);
 }
 
 function blendPose(weights: Record<string, number>, poses: Record<string, Record<string, number>>) {
@@ -705,11 +709,11 @@ export default function Atmosphere() {
       const k = reduceMotion ? 0 : DAMP;
       const beats = sampleSections();
 
-      cur.inicio = THREE.MathUtils.damp(cur.inicio, beats.inicio, k, delta);
-      cur.grupo = THREE.MathUtils.damp(cur.grupo, beats.grupo, k, delta);
-      cur.lineas = THREE.MathUtils.damp(cur.lineas, beats.lineas, k, delta);
-      cur.oficio = THREE.MathUtils.damp(cur.oficio, beats.oficio, k, delta);
-      cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, k, delta);
+      cur.inicio = THREE.MathUtils.damp(cur.inicio, beats.inicio, SECTION_DAMP, delta);
+      cur.grupo = THREE.MathUtils.damp(cur.grupo, beats.grupo, SECTION_DAMP, delta);
+      cur.lineas = THREE.MathUtils.damp(cur.lineas, beats.lineas, SECTION_DAMP, delta);
+      cur.oficio = THREE.MathUtils.damp(cur.oficio, beats.oficio, SECTION_DAMP, delta);
+      cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, SECTION_DAMP, delta);
 
       const pose = blendPose(cur, poses);
 
@@ -717,8 +721,8 @@ export default function Atmosphere() {
       burstCurrent = THREE.MathUtils.damp(burstCurrent, burstTarget, k * 1.4, delta);
       if (burstTarget > 0.95) burstTarget = THREE.MathUtils.damp(burstTarget, 0, 3.5, delta);
 
-      const iconTargetMix = cur.lineas > 0.1 ? 1 : 0;
-      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 2.0, delta);
+      const iconTargetMix = cur.lineas > 0.08 ? 1 : 0;
+      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 1.35, delta);
 
       const p = lineasPanel.progress;
       const targetIconW = {
@@ -729,11 +733,11 @@ export default function Atmosphere() {
         atelierCode: THREE.MathUtils.smoothstep(2.45, 2.95, p),
       };
 
-      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 2.4, delta);
-      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 2.4, delta);
-      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 2.4, delta);
-      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 2.4, delta);
-      iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 2.6, delta);
+      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.65, delta);
+      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.65, delta);
+      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 1.65, delta);
+      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 1.65, delta);
+      iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 1.8, delta);
 
       if (reduceMotion) {
         uniforms.uWInicio.value = 1;
@@ -784,7 +788,9 @@ export default function Atmosphere() {
         : cur.oficio * (0.72 + Math.sin(elapsed * 3.1) * 0.28);
       uniforms.uGrupoPulse.value = reduceMotion ? 0 : Math.sin(elapsed * 1.35) * cur.grupo;
       uniforms.uLineasFrac.value = lineasPanel.frac * cur.lineas;
-      uniforms.uLineasSnap.value = reduceMotion ? 0 : cur.lineas * (0.35 + Math.abs(Math.sin(elapsed * 5.5 + lineasPanel.index)) * 0.65);
+      uniforms.uLineasSnap.value = reduceMotion
+        ? 0
+        : cur.lineas * (0.12 + Math.abs(Math.sin(elapsed * 4.2 + lineasPanel.index)) * 0.28);
 
       if (!reduceMotion) uniforms.uTime.value = elapsed;
 
