@@ -119,6 +119,8 @@ const DOT_VERT = /* glsl */ `
   uniform float uReveal;
   uniform float uParallax;
   uniform float uInteract;
+  uniform float uPixelRatio;
+  uniform float uTipPulse;
 
   varying float vTip;
   varying float vVisible;
@@ -128,18 +130,19 @@ const DOT_VERT = /* glsl */ `
     vTip = aTip;
     vCol = aCol;
 
-    float minTip = 1.0 - uReveal;
-    vVisible = smoothstep(minTip - 0.04, minTip + 0.02, aTip);
+    float waveFront = uReveal + sin(uTime * 2.0 + aCol * 14.0) * uWave * 0.45;
+    float minTip = 1.0 - waveFront;
+    vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
 
     vec3 p = position;
     p.y += uOffsetY + uParallax;
     p.x += uShear * p.y;
-    p.y += sin(uTime * 1.15 + aCol * 28.0 + aRow * 16.0) * uWave * uMotion;
-    p.x += sin(uTime * 0.9 + aRow * 22.0) * uWave * uMotion * 0.35;
-    p += vec3(uInteract * 0.012 * sin(uTime * 2.2 + aCol * 40.0), 0.0, 0.0);
+    p.y += sin(uTime * 1.25 + aCol * 28.0 + aRow * 16.0) * uWave * uMotion;
+    p.x += sin(uTime * 0.95 + aRow * 22.0) * uWave * uMotion * 0.45;
+    p += vec3(uInteract * 0.028 * sin(uTime * 2.4 + aCol * 40.0), uInteract * 0.018 * cos(uTime * 2.0 + aRow * 30.0), 0.0);
 
     vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio;
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * (1.0 + uInteract * 0.45 + uTipPulse * 0.2);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -150,6 +153,7 @@ const DOT_FRAG = /* glsl */ `
   uniform float uEmberMix;
   uniform float uAlpha;
   uniform float uInteract;
+  uniform float uTipPulse;
 
   varying float vTip;
   varying float vVisible;
@@ -162,11 +166,11 @@ const DOT_FRAG = /* glsl */ `
     float d = length(uv);
     if (d > 0.46) discard;
 
-    float tipAccent = smoothstep(0.78, 0.97, vTip) * uEmberMix;
+    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.5);
     vec3 col = mix(uWhite, uEmber, tipAccent);
-    col = mix(col, uWhite, uInteract * 0.08);
+    col = mix(col, uWhite, uInteract * 0.15);
 
-    float alpha = uAlpha * vVisible * (0.62 + uInteract * 0.12);
+    float alpha = uAlpha * vVisible * (0.65 + uInteract * 0.25 + uTipPulse * 0.12);
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -212,6 +216,7 @@ export default function Atmosphere() {
       uWhite: { value: WHITE },
       uEmber: { value: EMBER },
       uPixelRatio: { value: 1 },
+      uTipPulse: { value: 0 },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -236,11 +241,11 @@ export default function Atmosphere() {
     };
 
     const poses = {
-      inicio: { reveal: 0.88, offsetY: 0, shear: 0, wave: 0.008, ember: 0.12, alpha: 0.8, parallax: 0 },
-      grupo: { reveal: 1, offsetY: -0.025, shear: 0, wave: 0.012, ember: 0.18, alpha: 0.82, parallax: -0.018 },
-      lineas: { reveal: 1, offsetY: -0.05, shear: 0.09, wave: 0.022, ember: 0.22, alpha: 0.8, parallax: -0.04 },
-      oficio: { reveal: 1, offsetY: -0.07, shear: 0.04, wave: 0.014, ember: 0.85, alpha: 0.78, parallax: -0.065 },
-      contacto: { reveal: 1, offsetY: -0.1, shear: 0, wave: 0.006, ember: 0.35, alpha: 0.48, parallax: -0.09 },
+      inicio: { reveal: 0.92, offsetY: 0, shear: 0, wave: 0.018, ember: 0.12, alpha: 0.82, parallax: 0 },
+      grupo: { reveal: 1, offsetY: -0.04, shear: 0, wave: 0.028, ember: 0.2, alpha: 0.85, parallax: -0.035 },
+      lineas: { reveal: 1, offsetY: -0.08, shear: 0.14, wave: 0.045, ember: 0.28, alpha: 0.82, parallax: -0.075 },
+      oficio: { reveal: 1, offsetY: -0.11, shear: 0.06, wave: 0.032, ember: 0.95, alpha: 0.8, parallax: -0.11 },
+      contacto: { reveal: 1, offsetY: -0.14, shear: 0, wave: 0.014, ember: 0.4, alpha: 0.5, parallax: -0.14 },
     };
 
     const clock = new THREE.Clock();
@@ -331,10 +336,13 @@ export default function Atmosphere() {
       uniforms.uOffsetY.value = pose.offsetY;
       uniforms.uShear.value = pose.shear;
       uniforms.uWave.value = pose.wave;
-      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.12;
+      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.22;
       uniforms.uAlpha.value = pose.alpha;
-      uniforms.uParallax.value = pose.parallax + (reduceMotion ? 0 : progress * -0.06);
+      uniforms.uParallax.value = pose.parallax + (reduceMotion ? 0 : progress * -0.14);
       uniforms.uInteract.value = interactCurrent;
+      uniforms.uTipPulse.value = reduceMotion
+        ? 0
+        : (beats.oficio * 0.6 + Math.sin(elapsed * 2.8) * 0.15 * beats.oficio);
 
       if (!reduceMotion) uniforms.uTime.value = elapsed;
 

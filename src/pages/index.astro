@@ -24,8 +24,6 @@ const crafts = [
 ];
 
 const stats = [
-  { value: 'Est. 2012', label: 'referencia estética · no histórica' },
-  { value: '14+', label: 'años de oficio · métrica sintética' },
   { value: '04', label: 'líneas bajo una pluma' },
   { value: '4', label: 'oficios en el taller' },
 ];
@@ -41,17 +39,17 @@ const stats = [
   <section id="inicio" class="hero">
     <div class="hero__shield" aria-hidden="true"></div>
     <div class="container hero__grid">
-      <div class="hero__copy">
-        <p class="hero__eyebrow">Dark Feather Group</p>
+      <div class="hero__copy hero-enter">
+        <p class="hero__eyebrow hero-enter__item" style="--enter-i: 0">Dark Feather Group</p>
         <h1 class="hero__title">
-          <span>Diseñado para</span>
-          <span>significar algo.</span>
+          <span class="hero-enter__item" style="--enter-i: 1">Diseñado para</span>
+          <span class="hero-enter__item" style="--enter-i: 2">significar algo.</span>
         </h1>
-        <p class="hero__lead">
+        <p class="hero__lead hero-enter__item" style="--enter-i: 3">
           Cuatro líneas, un mismo oficio. Estudio creativo noir — hosting, series,
           taller y voces bajo una sola pluma.
         </p>
-        <div class="hero__actions">
+        <div class="hero__actions hero-enter__item" style="--enter-i: 4">
           <a class="btn btn--solid" href="#contacto">Empezar proyecto</a>
           <button
             class="hero__dare"
@@ -64,41 +62,30 @@ const stats = [
         </div>
       </div>
 
-      <div class="hero__visual" data-feather-zone aria-hidden="true">
-        <span class="hero__visual-hint">Pluma · logo.svg</span>
-      </div>
+      <div class="hero__visual" data-feather-zone aria-hidden="true"></div>
     </div>
-
-    <aside class="hero__stats" aria-label="Datos del estudio">
-      {stats.slice(0, 2).map((stat) => (
-        <div class="hero__stat">
-          <span class="hero__stat-value">{stat.value}</span>
-          <span class="hero__stat-label">{stat.label}</span>
-        </div>
-      ))}
-    </aside>
   </section>
 
-  <div class="tagline-strip" aria-hidden="true">
+  <div class="tagline-strip reveal" data-reveal aria-hidden="true">
     <p>Sombra·Oficio·Presencia</p>
   </div>
 
   <section id="grupo" class="section about">
     <div class="container about__inner">
-      <p class="section-eyebrow">Grupo</p>
-      <h2 class="about__title">El colectivo detrás de la pluma.</h2>
-      <div class="about__body">
-        <p>
+      <p class="section-eyebrow reveal reveal--left" data-reveal>Grupo</p>
+      <h2 class="about__title reveal" data-reveal>El colectivo detrás de la pluma.</h2>
+      <div class="about__body" data-reveal-group>
+        <p class="reveal" data-reveal>
           Dark Feather Group es un estudio creativo que trabaja a contraluz: menos
           ruido, más atmósfera. Diseñamos identidades, desarrollamos experiencias
           web, producimos arte y sonido — siempre con la misma dirección de arte.
         </p>
-        <p>
+        <p class="reveal" data-reveal>
           No somos una fábrica de plantillas ni un launch deck con números
           inflados. Somos cuatro líneas de producto — hosting, series, taller y
           voces — que comparten un lenguaje visual noir y un criterio editorial.
         </p>
-        <p>
+        <p class="reveal" data-reveal>
           Cada proyecto busca significar algo: una marca que se siente habitada,
           una serie que respira en capítulos, una web que no parece un catálogo
           genérico. Ese es el oficio.
@@ -109,9 +96,9 @@ const stats = [
 
   <section class="section facts" aria-label="Cifras del estudio">
     <div class="container">
-      <div class="facts__grid">
+      <div class="facts__grid" data-reveal-group>
         {stats.map((stat) => (
-          <article class="fact" data-reveal>
+          <article class="fact reveal" data-reveal>
             <span class="fact__value">{stat.value}</span>
             <span class="fact__label">{stat.label}</span>
           </article>
@@ -122,16 +109,16 @@ const stats = [
 
   <section id="lineas" class="section lines" aria-label="Líneas del grupo">
     <div class="container">
-      <p class="section-eyebrow">Líneas</p>
-      <h2 class="lines__title">Cuatro frentes bajo una pluma.</h2>
-      <p class="lines__lead">
+      <p class="section-eyebrow reveal reveal--left" data-reveal>Líneas</p>
+      <h2 class="lines__title reveal" data-reveal>Cuatro frentes bajo una pluma.</h2>
+      <p class="lines__lead reveal" data-reveal>
         Cada código DF resuelve un frente distinto del universo creativo.
       </p>
 
-      <div class="lines__list">
+      <div class="lines__list" data-reveal-group>
         {
           lines.map((line) => (
-            <article class="line-card" id={line.slug} data-reveal>
+            <article class="line-card reveal" id={line.slug} data-reveal>
               <div class="line-card__head">
                 <h3 class="line-card__code">{line.code}</h3>
                 <p class="line-card__tag">{line.tagline}</p>
@@ -151,16 +138,16 @@ const stats = [
 
   <section id="oficio" class="section crafts">
     <div class="container">
-      <p class="section-eyebrow">Oficio</p>
-      <h2 class="crafts__title">Oficio con atmósfera.</h2>
-      <p class="crafts__lead">
+      <p class="section-eyebrow reveal reveal--left" data-reveal>Oficio</p>
+      <h2 class="crafts__title reveal" data-reveal>Oficio con atmósfera.</h2>
+      <p class="crafts__lead reveal" data-reveal>
         Lo que hacemos cuando la pluma baja al papel — o al código.
       </p>
 
-      <div class="crafts__grid">
+      <div class="crafts__grid" data-reveal-group>
         {
           crafts.map((item) => (
-            <article class="craft-card" data-reveal>
+            <article class="craft-card reveal" data-reveal>
               <h3 class="craft-card__title">{item.title}</h3>
               <p class="craft-card__copy">{item.copy}</p>
             </article>
@@ -171,17 +158,17 @@ const stats = [
   </section>
 
   <section id="contacto" class="section contact">
-    <div class="container contact__inner">
-      <p class="section-eyebrow">Contacto</p>
-      <h2 class="contact__title">Hablemos.</h2>
-      <p class="contact__lead">
+    <div class="container contact__inner" data-reveal-group>
+      <p class="section-eyebrow reveal reveal--left" data-reveal>Contacto</p>
+      <h2 class="contact__title reveal" data-reveal>Hablemos.</h2>
+      <p class="contact__lead reveal" data-reveal>
         Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
         criterio, no con un bot.
       </p>
-      <a class="btn btn--solid contact__cta" href="mailto:hola@darkfeathergroup.com">
+      <a class="btn btn--solid contact__cta reveal" data-reveal href="mailto:hola@darkfeathergroup.com">
         hola@darkfeathergroup.com
       </a>
-      <p class="contact__hint">Correo de ejemplo · reemplazar con el canal real.</p>
+      <p class="contact__hint reveal" data-reveal>Correo de ejemplo · reemplazar con el canal real.</p>
     </div>
   </section>
 </BaseLayout>
@@ -210,15 +197,23 @@ const stats = [
     el.addEventListener('pointermove', () => dispatchFeather(1));
 
     if (!hoverOnly) {
-      el.addEventListener('pointerdown', () => dispatchFeather(1.2));
-      el.addEventListener('pointerup', () => dispatchFeather(0.6));
+      el.addEventListener('pointerdown', () => dispatchFeather(1.4));
+      el.addEventListener('pointerup', () => dispatchFeather(0.8));
     }
   };
 
   bindFeather(featherZone);
   bindFeather(featherDare, true);
 
+  document.querySelectorAll('[data-reveal-group]').forEach((group) => {
+    group.querySelectorAll('[data-reveal]').forEach((el, i) => {
+      el.style.setProperty('--reveal-delay', `${i * 100}ms`);
+    });
+  });
+
   if (!reduceMotion) {
+    document.querySelector('.hero-enter')?.classList.add('is-loaded');
+
     const items = document.querySelectorAll('[data-reveal]');
     const observer = new IntersectionObserver(
       (entries) => {
@@ -229,10 +224,11 @@ const stats = [
           }
         });
       },
-      { threshold: 0.15, rootMargin: '0px 0px -6% 0px' },
+      { threshold: 0.12, rootMargin: '0px 0px -5% 0px' },
     );
     items.forEach((el) => observer.observe(el));
   } else {
+    document.querySelector('.hero-enter')?.classList.add('is-loaded');
     document.querySelectorAll('[data-reveal]').forEach((el) => {
       el.classList.add('is-visible');
     });
@@ -397,41 +393,29 @@ const stats = [
     }
   }
 
-  .hero__visual-hint {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    color: var(--mute);
-    font-size: 0.78rem;
-    opacity: 0.6;
+  .hero-enter__item {
+    opacity: 0;
+    transform: translateY(32px);
+    filter: blur(8px);
   }
 
-  .hero__stats {
-    position: absolute;
-    right: max(1.5rem, calc((100% - var(--page-wide)) / 2 + 1.5rem));
-    bottom: 2.5rem;
-    display: none;
-    flex-direction: column;
-    gap: 1.75rem;
-    text-align: right;
-    z-index: 2;
+  .hero-enter.is-loaded .hero-enter__item {
+    animation: hero-enter 820ms var(--ease-out) both;
+    animation-delay: calc(var(--enter-i, 0) * 110ms);
   }
 
-  .hero__stat-value {
-    display: block;
-    font-family: var(--font-display);
-    font-size: clamp(1.5rem, 3vw, 2rem);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
+  @keyframes hero-enter {
+    from {
+      opacity: 0;
+      transform: translateY(32px);
+      filter: blur(8px);
+    }
 
-  .hero__stat-label {
-    display: block;
-    color: var(--mute);
-    font-size: 0.72rem;
-    max-width: 14ch;
-    margin-left: auto;
-    margin-top: 0.25rem;
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
   }
 
   .tagline-strip {
@@ -482,19 +466,6 @@ const stats = [
     padding-top: var(--space-lg);
   }
 
-  .fact {
-    opacity: 0;
-    transform: translateY(16px);
-    transition:
-      opacity 600ms var(--ease-out),
-      transform 600ms var(--ease-out);
-  }
-
-  .fact.is-visible {
-    opacity: 1;
-    transform: none;
-  }
-
   .fact__value {
     display: block;
     font-family: var(--font-display);
@@ -536,16 +507,6 @@ const stats = [
   .line-card {
     padding: 2.5rem 0;
     border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
-    opacity: 0;
-    transform: translateY(18px);
-    transition:
-      opacity 550ms var(--ease-out),
-      transform 550ms var(--ease-out);
-  }
-
-  .line-card.is-visible {
-    opacity: 1;
-    transform: none;
   }
 
   .line-card__code {
@@ -601,19 +562,6 @@ const stats = [
     padding-top: var(--space-md);
   }
 
-  .craft-card {
-    opacity: 0;
-    transform: translateY(16px);
-    transition:
-      opacity 550ms var(--ease-out),
-      transform 550ms var(--ease-out);
-  }
-
-  .craft-card.is-visible {
-    opacity: 1;
-    transform: none;
-  }
-
   .craft-card__title {
     font-family: var(--font-display);
     font-size: 1.65rem;
@@ -654,12 +602,8 @@ const stats = [
       min-height: clamp(18rem, 50vh, 32rem);
     }
 
-    .hero__stats {
-      display: flex;
-    }
-
     .facts__grid {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 2.5rem;
     }
 
@@ -670,12 +614,11 @@ const stats = [
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .fact,
-    .line-card,
-    .craft-card {
+    .hero-enter__item {
       opacity: 1;
       transform: none;
-      transition: none;
+      filter: none;
+      animation: none;
     }
   }
 </style>

@@ -250,3 +250,37 @@ p {
   margin-bottom: 1.75rem;
   font-size: 1.08rem;
 }
+
+/* Scroll reveal — transform + opacity only (GPU-friendly) */
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  filter: blur(6px);
+  transition:
+    opacity 750ms var(--ease-out),
+    transform 750ms var(--ease-out),
+    filter 750ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal--left {
+  transform: translateX(-28px) translateY(12px);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transform: none;
+    filter: none;
+    transition: opacity 400ms var(--ease-out);
+  }
+
+  .reveal--left {
+    transform: none;
+  }
+}
