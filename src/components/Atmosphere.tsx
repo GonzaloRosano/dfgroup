@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   buildIconShapeFromPaths,
   buildLogoGrid,
+  centerShapeBuffer,
   EMPTY_ICON_PATHS,
   loadIconPaths,
   type GridDot,
@@ -41,6 +42,7 @@ function buildShapeCircle(dots: GridDot[]): Float32Array {
     out[i * 3 + 2] = 0;
   }
 
+  centerShapeBuffer(out);
   return out;
 }
 
@@ -56,6 +58,7 @@ function buildShapeWave(dots: GridDot[]): Float32Array {
     out[i * 3 + 2] = 0;
   }
 
+  centerShapeBuffer(out);
   return out;
 }
 
@@ -79,6 +82,7 @@ function buildShapeClusters(dots: GridDot[]): Float32Array {
     out[i * 3 + 2] = 0;
   }
 
+  centerShapeBuffer(out);
   return out;
 }
 
@@ -88,10 +92,11 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
 
   for (let i = 0; i < dots.length; i++) {
     out[i * 3] = (dots[i].col - 0.5) * 1.12 + SHAPE_OFFSET_X;
-    out[i * 3 + 1] = (dots[i].row - 0.5) * 0.06 * ASPECT + 0.04;
+    out[i * 3 + 1] = (dots[i].row - 0.5) * 0.06 * ASPECT;
     out[i * 3 + 2] = 0;
   }
 
+  centerShapeBuffer(out);
   return out;
 }
 
@@ -116,6 +121,7 @@ function buildGeometry(dots: GridDot[], icons: IconPaths) {
   for (let i = 0; i < dots.length * 3; i++) {
     lineasBlend[i] = wave[i] * 0.55 + clusters[i] * 0.45;
   }
+  centerShapeBuffer(lineasBlend);
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -481,6 +487,8 @@ export default function Atmosphere() {
     let viewH = 1.18;
     let hovering = false;
     let hoverStrength = 0;
+    const desktopMq = window.matchMedia('(min-width: 960px)');
+    let isDesktop = desktopMq.matches;
 
     const setMouseFromEvent = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -539,6 +547,10 @@ export default function Atmosphere() {
 
     window.addEventListener('df:lineas-panel', onLineasPanel);
     window.addEventListener('df:section-transition', onSectionTransition);
+    const onDesktopChange = (e: MediaQueryListEvent) => {
+      isDesktop = e.matches;
+    };
+    desktopMq.addEventListener('change', onDesktopChange);
 
     const onReducedMotionScroll = () => {
       if (reduceMotion) renderFrame(0, clock.elapsedTime);
@@ -708,7 +720,8 @@ export default function Atmosphere() {
 
       sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
       sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
-      sm.offsetY = THREE.MathUtils.damp(sm.offsetY, pose.offsetY, k, delta);
+      const targetOffsetY = isDesktop ? 0 : pose.offsetY;
+      sm.offsetY = THREE.MathUtils.damp(sm.offsetY, targetOffsetY, k, delta);
 
       points.scale.setScalar(sm.scale);
       points.position.set(sm.offsetX, sm.offsetY, 0);
@@ -766,6 +779,7 @@ export default function Atmosphere() {
       ro.disconnect();
       window.removeEventListener('df:lineas-panel', onLineasPanel);
       window.removeEventListener('df:section-transition', onSectionTransition);
+      desktopMq.removeEventListener('change', onDesktopChange);
       if (reduceMotion) {
         window.removeEventListener('scroll', onReducedMotionScroll);
         window.removeEventListener('resize', onReducedMotionScroll);

@@ -109,6 +109,26 @@ export function rasterizePaths(
   return dilate > 0 ? dilateFilled(raw, cols, rows, dilate) : raw;
 }
 
+/** Shift shape positions so filled-pixel centroid sits at orthographic origin. */
+export function centerShapeBuffer(positions: Float32Array): void {
+  const n = positions.length / 3;
+  if (n === 0) return;
+
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < n; i++) {
+    cx += positions[i * 3];
+    cy += positions[i * 3 + 1];
+  }
+  cx /= n;
+  cy /= n;
+
+  for (let i = 0; i < n; i++) {
+    positions[i * 3] -= cx;
+    positions[i * 3 + 1] -= cy;
+  }
+}
+
 function filledToTargets(
   filled: Uint8Array,
   cols: number,
@@ -128,6 +148,22 @@ function filledToTargets(
   }
 
   targets.sort((a, b) => a.v - b.v || a.u - b.u);
+
+  if (targets.length > 0) {
+    let cx = 0;
+    let cy = 0;
+    for (const t of targets) {
+      cx += t.x;
+      cy += t.y;
+    }
+    cx /= targets.length;
+    cy /= targets.length;
+    for (const t of targets) {
+      t.x -= cx;
+      t.y -= cy;
+    }
+  }
+
   return targets;
 }
 
@@ -164,6 +200,21 @@ export function buildLogoGrid(): GridDot[] {
       const tip = 1 - ny;
 
       dots.push({ x, y, tip, col: nx, row: ny });
+    }
+  }
+
+  if (dots.length > 0) {
+    let cx = 0;
+    let cy = 0;
+    for (const dot of dots) {
+      cx += dot.x;
+      cy += dot.y;
+    }
+    cx /= dots.length;
+    cy /= dots.length;
+    for (const dot of dots) {
+      dot.x -= cx;
+      dot.y -= cy;
     }
   }
 
