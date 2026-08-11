@@ -155,7 +155,7 @@ function iconPanelWeight(panelIdx: number, progress: number) {
 
 function atelierCodeWeight(progress: number) {
   const sub = THREE.MathUtils.clamp(progress - 2, 0, 1);
-  // Brush holds first half; code morph completes in second half of panel 2
+  // Palette holds first half; code morph completes in second half of panel 2
   return THREE.MathUtils.smoothstep(sub, 0.5, 0.92);
 }
 

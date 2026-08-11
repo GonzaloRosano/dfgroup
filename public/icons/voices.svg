@@ -1,17 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Capsule with grille slits -->
+  <!-- Soft capsule head with dot grille (evenodd cutouts) -->
   <path
     fill="currentColor"
     fill-rule="evenodd"
-    d="M 48 12 C 60 12 68 22 68 36 V 48 C 68 62 60 70 48 70 C 36 70 28 62 28 48 V 36 C 28 22 36 12 48 12 Z M 34 26 H 62 V 30 H 34 Z M 34 38 H 62 V 42 H 34 Z M 34 50 H 62 V 54 H 34 Z"
+    d="M 48 10
+       C 64 10 74 22 74 38
+       C 74 54 64 66 48 66
+       C 32 66 22 54 22 38
+       C 22 22 32 10 48 10 Z
+       M 36 28 A 3 3 0 1 1 35.99 28 Z
+       M 48 28 A 3 3 0 1 1 47.99 28 Z
+       M 60 28 A 3 3 0 1 1 59.99 28 Z
+       M 36 38 A 3 3 0 1 1 35.99 38 Z
+       M 48 38 A 3 3 0 1 1 47.99 38 Z
+       M 60 38 A 3 3 0 1 1 59.99 38 Z
+       M 36 48 A 3 3 0 1 1 35.99 48 Z
+       M 48 48 A 3 3 0 1 1 47.99 48 Z
+       M 60 48 A 3 3 0 1 1 59.99 48 Z"
   />
-  <!-- Stem -->
-  <path fill="currentColor" d="M 42 70 H 54 V 82 H 42 Z" />
+  <!-- Rounded stem -->
+  <path
+    fill="currentColor"
+    d="M 42 66 H 54 V 80 Q 54 84 48 84 Q 42 84 42 80 Z"
+  />
   <!-- Stand arc -->
   <path
     fill="currentColor"
-    d="M 24 82 C 24 94 36 100 48 100 C 60 100 72 94 72 82 L 66 82 C 66 90 58 94 48 94 C 38 94 30 90 30 82 Z"
+    d="M 26 80
+       C 26 92 36 98 48 98
+       C 60 98 70 92 70 80
+       L 64 80
+       C 64 88 57 92 48 92
+       C 39 92 32 88 32 80 Z"
   />
-  <!-- Base -->
-  <path fill="currentColor" d="M 30 98 H 66 V 104 H 30 Z" />
+  <!-- Rounded base -->
+  <path
+    fill="currentColor"
+    d="M 32 96 H 64 Q 70 96 70 102 Q 70 104 64 104 H 32 Q 26 104 26 102 Q 26 96 32 96 Z"
+  />
 </svg>
