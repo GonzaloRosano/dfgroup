@@ -20,7 +20,8 @@ const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
 /** Shapes are centered in orthographic space; layout uses the right 50% viewport panel */
 const SHAPE_OFFSET_X = 0;
-const ICON_SCALE = 0.92;
+const ICON_SCALE = 0.94;
+const ICON_DILATE_PX = 1;
 
 type GridDot = {
   x: number;
@@ -168,6 +169,28 @@ function nearestFilledCell(
   return { u: 0.5, v: 0.5 };
 }
 
+/** Thicken rasterized icon strokes so thin lines survive the dot grid */
+function dilateFilled(filled: Uint8Array, cw: number, ch: number, radius: number): Uint8Array {
+  if (radius <= 0) return filled;
+
+  const out = new Uint8Array(cw * ch);
+  for (let row = 0; row < ch; row++) {
+    for (let col = 0; col < cw; col++) {
+      if (!filled[row * cw + col]) continue;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const c = col + dx;
+          const g = row + dy;
+          if (c < 0 || c >= cw || g < 0 || g >= ch) continue;
+          out[g * cw + c] = 1;
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 /** Map each feather dot to the icon silhouette via matching grid coordinates */
 function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   const cw = GRID_COLS;
@@ -186,21 +209,23 @@ function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   ctx.translate(cw * 0.5, ch * 0.5);
   const scale = Math.min(cw, ch) * ICON_SCALE;
   ctx.scale(scale, scale);
-  ctx.lineWidth = 0.085;
+  ctx.lineWidth = 0.11;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   draw(ctx);
   ctx.restore();
 
   const data = ctx.getImageData(0, 0, cw, ch).data;
-  const filled = new Uint8Array(cw * ch);
+  const raw = new Uint8Array(cw * ch);
 
   for (let row = 0; row < ch; row++) {
     for (let col = 0; col < cw; col++) {
       const idx = (row * cw + col) * 4;
-      filled[row * cw + col] = data[idx + 3] > 128 ? 1 : 0;
+      raw[row * cw + col] = data[idx + 3] > 96 ? 1 : 0;
     }
   }
+
+  const filled = dilateFilled(raw, cw, ch, ICON_DILATE_PX);
 
   const out = new Float32Array(dots.length * 3);
   const padX = 0.06;
@@ -217,102 +242,109 @@ function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
 }
 
 function drawIconServer(ctx: CanvasRenderingContext2D) {
-  const w = 0.58;
-  const h = 0.11;
-  const gap = 0.045;
+  const w = 0.64;
+  const h = 0.13;
+  const gap = 0.048;
+  const left = -w / 2;
 
   for (let i = 0; i < 3; i++) {
-    const y = -0.24 + i * (h + gap);
-    ctx.fillRect(-w / 2, y, w, h);
+    const y = -0.27 + i * (h + gap);
+    ctx.fillRect(left, y, w, h);
     ctx.beginPath();
-    ctx.arc(-w / 2 + 0.07, y + h / 2, 0.028, 0, Math.PI * 2);
+    ctx.arc(left + 0.09, y + h / 2, 0.034, 0, Math.PI * 2);
     ctx.fill();
-    for (let v = 0; v < 5; v++) {
-      ctx.fillRect(w / 2 - 0.16 + v * 0.032, y + 0.028, 0.018, h - 0.056);
+    for (let v = 0; v < 4; v++) {
+      ctx.fillRect(left + w - 0.24 + v * 0.04, y + 0.028, 0.024, h - 0.056);
     }
   }
 }
 
 function drawIconSeries(ctx: CanvasRenderingContext2D) {
-  const fw = 0.15;
-  const fh = 0.44;
-  const gap = 0.038;
+  const fw = 0.17;
+  const fh = 0.5;
+  const gap = 0.034;
+  const startX = -0.28;
 
   for (let i = 0; i < 3; i++) {
-    const x = -0.25 + i * (fw + gap);
+    const x = startX + i * (fw + gap);
     ctx.fillRect(x, -fh / 2, fw, fh);
-    ctx.clearRect(x + 0.018, -fh / 2 + 0.028, fw - 0.036, fh - 0.056);
-    for (let hole = 0; hole < 3; hole++) {
-      ctx.fillRect(x - 0.028, -0.13 + hole * 0.13, 0.016, 0.042);
-      ctx.fillRect(x + fw + 0.012, -0.13 + hole * 0.13, 0.016, 0.042);
+    ctx.clearRect(x + 0.022, -fh / 2 + 0.034, fw - 0.044, fh - 0.068);
+    for (let hole = 0; hole < 4; hole++) {
+      const hy = -0.16 + hole * 0.11;
+      ctx.fillRect(x - 0.034, hy, 0.02, 0.048);
+      ctx.fillRect(x + fw + 0.014, hy, 0.02, 0.048);
     }
   }
 
   ctx.beginPath();
-  ctx.moveTo(-0.018, -0.07);
-  ctx.lineTo(-0.018, 0.07);
-  ctx.lineTo(0.09, 0);
+  ctx.moveTo(-0.04, -0.11);
+  ctx.lineTo(-0.04, 0.11);
+  ctx.lineTo(0.14, 0);
   ctx.closePath();
   ctx.fill();
 }
 
 function drawIconBrush(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  ctx.rotate(-0.52);
-  ctx.fillRect(-0.042, -0.38, 0.084, 0.58);
+  ctx.rotate(-0.48);
+  ctx.fillRect(-0.055, -0.42, 0.11, 0.54);
+  ctx.fillRect(-0.07, 0.1, 0.14, 0.07);
   ctx.beginPath();
-  ctx.moveTo(-0.14, 0.2);
-  ctx.lineTo(0.14, 0.2);
-  ctx.lineTo(0.1, 0.34);
-  ctx.lineTo(-0.1, 0.34);
+  ctx.moveTo(-0.17, 0.19);
+  ctx.lineTo(0.17, 0.19);
+  ctx.lineTo(0.12, 0.36);
+  ctx.lineTo(-0.12, 0.36);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 }
 
 function drawIconCode(ctx: CanvasRenderingContext2D) {
-  const thick = 0.09;
+  const s = 0.36;
 
   ctx.beginPath();
-  ctx.moveTo(0.08, -0.32);
-  ctx.lineTo(-0.16, 0);
-  ctx.lineTo(0.08, 0.32);
-  ctx.lineTo(-0.02, 0.32);
-  ctx.lineTo(-0.24, 0);
-  ctx.lineTo(-0.02, -0.32);
+  ctx.moveTo(0.1, -s);
+  ctx.lineTo(-0.2, 0);
+  ctx.lineTo(0.1, s);
+  ctx.lineTo(0.0, s);
+  ctx.lineTo(-0.3, 0);
+  ctx.lineTo(0.0, -s);
   ctx.closePath();
   ctx.fill();
 
   ctx.beginPath();
-  ctx.moveTo(-0.08, -0.32);
-  ctx.lineTo(0.16, 0);
-  ctx.lineTo(-0.08, 0.32);
-  ctx.lineTo(0.02, 0.32);
-  ctx.lineTo(0.24, 0);
-  ctx.lineTo(0.02, -0.32);
+  ctx.moveTo(-0.1, -s);
+  ctx.lineTo(0.2, 0);
+  ctx.lineTo(-0.1, s);
+  ctx.lineTo(0.0, s);
+  ctx.lineTo(0.3, 0);
+  ctx.lineTo(0.0, -s);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillRect(-0.04, -0.18, thick * 0.55, 0.36);
+  ctx.save();
+  ctx.rotate(0.22);
+  ctx.fillRect(-0.04, -0.24, 0.08, 0.48);
+  ctx.restore();
 }
 
 function drawIconMic(ctx: CanvasRenderingContext2D) {
   ctx.beginPath();
-  ctx.ellipse(0, -0.1, 0.13, 0.19, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -0.12, 0.15, 0.22, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  for (let i = 0; i < 4; i++) {
-    ctx.fillRect(-0.075, -0.2 + i * 0.07, 0.15, 0.024);
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(-0.1, -0.24 + i * 0.08, 0.2, 0.028);
   }
 
-  ctx.fillRect(-0.028, 0.1, 0.056, 0.14);
+  ctx.fillRect(-0.04, 0.1, 0.08, 0.14);
 
-  ctx.lineWidth = 0.042;
+  ctx.lineWidth = 0.058;
   ctx.beginPath();
-  ctx.arc(0, 0.24, 0.15, 0, Math.PI);
+  ctx.arc(0, 0.2, 0.17, 0.12, Math.PI - 0.12);
   ctx.stroke();
 
-  ctx.fillRect(-0.09, 0.24, 0.18, 0.038);
+  ctx.fillRect(-0.13, 0.32, 0.26, 0.05);
 }
 
 function buildGeometry(dots: GridDot[]) {
@@ -355,7 +387,7 @@ function buildGeometry(dots: GridDot[]) {
 
 function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
-  return 1 - THREE.MathUtils.smoothstep(0.04, 1.4, d);
+  return 1 - THREE.MathUtils.smoothstep(0.08, 1.05, d);
 }
 
 function sectionPresence(el: Element | null, vh: number) {
@@ -712,6 +744,7 @@ export default function Atmosphere() {
     const onLineasPanel = (e: Event) => {
       const detail = (e as CustomEvent<{ index: number; frac: number; progress: number; raw: number }>).detail;
       if (detail) lineasPanel = detail;
+      if (reduceMotion) renderFrame(0, clock.elapsedTime);
     };
 
     const onSectionTransition = (e: Event) => {
@@ -724,10 +757,19 @@ export default function Atmosphere() {
       const to = detail.to as keyof typeof cur;
       if (!(from in cur) || !(to in cur)) return;
       sectionTransition = { from, to, progress: detail.progress };
+      if (reduceMotion) renderFrame(0, clock.elapsedTime);
     };
 
     window.addEventListener('df:lineas-panel', onLineasPanel);
     window.addEventListener('df:section-transition', onSectionTransition);
+
+    const onReducedMotionScroll = () => {
+      if (reduceMotion) renderFrame(0, clock.elapsedTime);
+    };
+    if (reduceMotion) {
+      window.addEventListener('scroll', onReducedMotionScroll, { passive: true });
+      window.addEventListener('resize', onReducedMotionScroll, { passive: true });
+    }
 
     const sampleSections = () => {
       if (sectionTransition) {
@@ -817,12 +859,33 @@ export default function Atmosphere() {
       iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 1.8, delta);
 
       if (reduceMotion) {
-        uniforms.uWInicio.value = 1;
-        uniforms.uWGrupo.value = 0;
-        uniforms.uWLineas.value = 0;
-        uniforms.uWOficio.value = 0;
-        uniforms.uWContacto.value = 0;
-        uniforms.uLineasIconMix.value = 0;
+        const inLineas = beats.lineas > 0.45;
+        if (inLineas) {
+          uniforms.uWInicio.value = 0;
+          uniforms.uWGrupo.value = 0;
+          uniforms.uWLineas.value = 1;
+          uniforms.uWOficio.value = 0;
+          uniforms.uWContacto.value = 0;
+          uniforms.uLineasIconMix.value = 1;
+          const idx = lineasPanel.index;
+          uniforms.uIconW0.value = idx === 0 ? 1 : 0;
+          uniforms.uIconW1.value = idx === 1 ? 1 : 0;
+          uniforms.uIconW2.value = idx === 2 ? 1 : 0;
+          uniforms.uIconW3.value = idx === 3 ? 1 : 0;
+          uniforms.uAtelierCode.value = idx === 2 && lineasPanel.progress > 2.7 ? 1 : 0;
+        } else {
+          uniforms.uWInicio.value = 1;
+          uniforms.uWGrupo.value = 0;
+          uniforms.uWLineas.value = 0;
+          uniforms.uWOficio.value = 0;
+          uniforms.uWContacto.value = 0;
+          uniforms.uLineasIconMix.value = 0;
+          uniforms.uIconW0.value = 0;
+          uniforms.uIconW1.value = 0;
+          uniforms.uIconW2.value = 0;
+          uniforms.uIconW3.value = 0;
+          uniforms.uAtelierCode.value = 0;
+        }
       } else {
         uniforms.uWInicio.value = cur.inicio;
         uniforms.uWGrupo.value = cur.grupo;
@@ -898,6 +961,10 @@ export default function Atmosphere() {
       ro.disconnect();
       window.removeEventListener('df:lineas-panel', onLineasPanel);
       window.removeEventListener('df:section-transition', onSectionTransition);
+      if (reduceMotion) {
+        window.removeEventListener('scroll', onReducedMotionScroll);
+        window.removeEventListener('resize', onReducedMotionScroll);
+      }
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerenter', onPointerEnter);
       canvas.removeEventListener('pointerleave', onPointerLeave);
