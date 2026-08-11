@@ -51,21 +51,10 @@ const stats = [
         </p>
         <div class="hero__actions hero-enter__item" style="--enter-i: 4">
           <a class="btn btn--solid" href="#contacto">Empezar proyecto</a>
-          <button
-            class="hero__dare"
-            type="button"
-            data-feather-dare
-            aria-label="Mantené presionado para activar la pluma de puntos"
-          >
-            <span class="hero__dare-ring" aria-hidden="true"></span>
-            <span class="hero__dare-label">
-              Tocá la pluma · <span data-feather-dare-hint>mantené presionado</span>
-            </span>
-          </button>
         </div>
       </div>
 
-      <div class="hero__visual" data-feather-zone aria-hidden="true"></div>
+      <div class="hero__visual" aria-hidden="true"></div>
     </div>
   </section>
 
@@ -192,99 +181,6 @@ const stats = [
 
 <script>
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-
-  type FeatherDetail = { intensity?: number; burst?: boolean; hold?: number };
-
-  const dispatchFeather = (detail: FeatherDetail) => {
-    window.dispatchEvent(new CustomEvent('df:feather-interact', { detail }));
-  };
-
-  const featherZone = document.querySelector('[data-feather-zone]');
-  const featherDare = document.querySelector('[data-feather-dare]') as HTMLElement | null;
-  const dareHint = document.querySelector('[data-feather-dare-hint]');
-
-  const HOLD_MS = 520;
-
-  const bindHold = (el: HTMLElement | null, opts: { showRing?: boolean } = {}) => {
-    if (!el) return;
-
-    let holdTimer: ReturnType<typeof setTimeout> | null = null;
-    let holdStart = 0;
-    let rafId = 0;
-    let bursting = false;
-
-    const setProgress = (value: number) => {
-      if (opts.showRing) el.style.setProperty('--hold-progress', String(value));
-    };
-
-    const clearHold = () => {
-      if (holdTimer) clearTimeout(holdTimer);
-      holdTimer = null;
-      cancelAnimationFrame(rafId);
-      el.classList.remove('is-holding', 'is-burst');
-      setProgress(0);
-      if (!bursting) dispatchFeather({ intensity: 0, hold: 0 });
-    };
-
-    const tickHold = () => {
-      const progress = Math.min((performance.now() - holdStart) / HOLD_MS, 1);
-      setProgress(progress);
-      dispatchFeather({ intensity: 0.28 + progress * 0.5, hold: progress });
-      if (progress < 1) rafId = requestAnimationFrame(tickHold);
-    };
-
-    const triggerBurst = () => {
-      bursting = true;
-      el.classList.add('is-burst');
-      if (dareHint) dareHint.textContent = '¡la pluma estalla!';
-      dispatchFeather({ intensity: 1.5, burst: true, hold: 1 });
-      window.setTimeout(() => {
-        bursting = false;
-        el.classList.remove('is-burst', 'is-holding');
-        setProgress(0);
-        if (dareHint) dareHint.textContent = 'mantené presionado';
-        dispatchFeather({ intensity: 0.2, hold: 0 });
-        window.setTimeout(() => dispatchFeather({ intensity: 0, hold: 0 }), 400);
-      }, 680);
-    };
-
-    el.addEventListener('pointerdown', (e) => {
-      if (reduceMotion) {
-        triggerBurst();
-        return;
-      }
-      holdStart = performance.now();
-      el.classList.add('is-holding');
-      el.setPointerCapture(e.pointerId);
-      tickHold();
-      holdTimer = setTimeout(triggerBurst, HOLD_MS);
-    });
-
-    el.addEventListener('pointerup', () => {
-      if (!bursting) clearHold();
-    });
-    el.addEventListener('pointercancel', () => {
-      if (!bursting) clearHold();
-    });
-    el.addEventListener('pointerleave', () => {
-      if (!bursting && !el.classList.contains('is-holding')) {
-        dispatchFeather({ intensity: 0, hold: 0 });
-      }
-    });
-
-    if (finePointer && !reduceMotion) {
-      el.addEventListener('pointerenter', () => {
-        if (!el.classList.contains('is-holding')) dispatchFeather({ intensity: 0.22 });
-      });
-      el.addEventListener('pointerleave', () => {
-        if (!el.classList.contains('is-holding') && !bursting) dispatchFeather({ intensity: 0, hold: 0 });
-      });
-    }
-  };
-
-  bindHold(featherDare, { showRing: true });
-  bindHold(featherZone as HTMLElement | null);
 
   document.querySelectorAll('[data-reveal-group]').forEach((group) => {
     group.querySelectorAll('[data-reveal]').forEach((el, i) => {
@@ -393,12 +289,21 @@ const stats = [
     overflow: hidden;
   }
 
-  .home-atmosphere :global(.atmosphere),
+  .home-atmosphere :global(.atmosphere) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
   .home-atmosphere :global(canvas) {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    pointer-events: auto;
+    cursor: default;
   }
 
   .home-atmosphere::before {
@@ -487,67 +392,6 @@ const stats = [
     gap: 1.25rem 1.75rem;
   }
 
-  .hero__dare {
-    position: relative;
-    appearance: none;
-    border: 0;
-    background: transparent;
-    color: var(--mute);
-    font: inherit;
-    font-size: 0.92rem;
-    cursor: pointer;
-    min-height: 2.75rem;
-    min-width: 2.75rem;
-    padding: 0.35rem 0.5rem 0.35rem 2.35rem;
-    transition:
-      color 200ms var(--ease-out),
-      transform 200ms var(--ease-out);
-  }
-
-  .hero__dare-ring {
-    --hold-progress: 0;
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 1.65rem;
-    height: 1.65rem;
-    transform: translateY(-50%);
-    border-radius: 50%;
-    background: conic-gradient(
-      var(--ember-hot) calc(var(--hold-progress) * 360deg),
-      color-mix(in srgb, var(--bone) 12%, transparent) 0
-    );
-    opacity: 0;
-    transition: opacity 200ms var(--ease-out);
-  }
-
-  .hero__dare-ring::after {
-    content: '';
-    position: absolute;
-    inset: 3px;
-    border-radius: 50%;
-    background: var(--void);
-  }
-
-  .hero__dare.is-holding .hero__dare-ring {
-    opacity: 1;
-  }
-
-  .hero__dare.is-burst {
-    color: var(--bone);
-    transform: scale(1.03);
-  }
-
-  .hero__dare:active {
-    transform: scale(0.98);
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .hero__dare:hover {
-      color: var(--bone);
-    }
-  }
-
   .hero__visual {
     position: relative;
     min-height: clamp(16rem, 38vh, 26rem);
@@ -555,9 +399,7 @@ const stats = [
     justify-self: end;
     width: 100%;
     max-width: 28rem;
-    pointer-events: auto;
-    cursor: pointer;
-    touch-action: manipulation;
+    pointer-events: none;
   }
 
   @media (max-width: 959px) {
@@ -609,7 +451,7 @@ const stats = [
       min-height: 2.75rem;
       max-width: none;
       order: 2;
-      pointer-events: auto;
+      pointer-events: none;
     }
 
     .hero__copy {

@@ -403,7 +403,6 @@ const DOT_VERT = /* glsl */ `
   uniform float uGather;
   uniform float uStretchX;
   uniform float uDissolve;
-  uniform float uInteract;
   uniform float uPixelRatio;
   uniform float uTipPulse;
   uniform float uWInicio;
@@ -426,6 +425,7 @@ const DOT_VERT = /* glsl */ `
   varying float vCol;
   varying float vDissolve;
   varying float vFeatherMix;
+  varying vec2 vWorldXY;
 
   void main() {
     vCol = aCol;
@@ -488,7 +488,7 @@ const DOT_VERT = /* glsl */ `
 
     p.xy += inicioOff + grupoOff + lineasOff + oficioOff + contactOff;
 
-    // Residual scatter/gather for interact + contact blend
+    // Residual scatter/gather for section poses + contact blend
     p.xy += radial * uScatter * (0.55 + seed * 0.65);
 
     vec2 shaft = vec2(0.0, -0.14);
@@ -499,13 +499,10 @@ const DOT_VERT = /* glsl */ `
     p.x += sin(uTime * 1.6 + aRow * 20.0) * legacyWave * 0.012;
     p.y += cos(uTime * 1.3 + aCol * 26.0) * legacyWave * 0.008;
 
-    p.xy += vec2(
-      uInteract * 0.028 * sin(uTime * 2.4 + aCol * 40.0),
-      uInteract * 0.018 * cos(uTime * 2.0 + aRow * 30.0)
-    );
+    vWorldXY = (modelMatrix * vec4(p, 1.0)).xy;
 
     vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * (1.0 + uInteract * 0.45 + uTipPulse * 0.2);
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * (1.0 + uTipPulse * 0.2);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -515,17 +512,20 @@ const DOT_FRAG = /* glsl */ `
   uniform vec3 uEmber;
   uniform float uEmberMix;
   uniform float uAlpha;
-  uniform float uInteract;
   uniform float uTipPulse;
   uniform float uDissolve;
   uniform float uTime;
   uniform float uWOficio;
+  uniform vec2 uMouse;
+  uniform float uHoverStrength;
+  uniform float uHoverRadius;
 
   varying float vTip;
   varying float vVisible;
   varying float vCol;
   varying float vDissolve;
   varying float vFeatherMix;
+  varying vec2 vWorldXY;
 
   void main() {
     if (vVisible < 0.02) discard;
@@ -538,9 +538,12 @@ const DOT_FRAG = /* glsl */ `
     float flicker = 1.0 + sin(uTime * 6.8 + vCol * 48.0) * 0.32 * uTipPulse * uWOficio;
     tipAccent *= flicker;
     vec3 col = mix(uWhite, uEmber, tipAccent);
-    col = mix(col, uWhite, uInteract * 0.15);
 
-    float alpha = uAlpha * vVisible * (0.65 + uInteract * 0.25 + uTipPulse * 0.12);
+    float hoverDist = length(vWorldXY - uMouse);
+    float hoverTint = (1.0 - smoothstep(uHoverRadius * 0.28, uHoverRadius, hoverDist)) * uHoverStrength;
+    col = mix(col, uEmber, hoverTint * 0.52);
+
+    float alpha = uAlpha * vVisible * (0.65 + uTipPulse * 0.12);
     alpha *= 1.0 - vDissolve * 0.55;
     if (alpha < 0.03) discard;
 
@@ -570,7 +573,10 @@ export default function Atmosphere() {
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
-    mount.appendChild(renderer.domElement);
+    const canvas = renderer.domElement;
+    canvas.style.pointerEvents = 'auto';
+    canvas.style.cursor = 'default';
+    mount.appendChild(canvas);
 
     const gridDots = buildLogoGrid();
     const geometry = buildGeometry(gridDots);
@@ -585,7 +591,6 @@ export default function Atmosphere() {
       uGather: { value: 0 },
       uStretchX: { value: 1 },
       uDissolve: { value: 0 },
-      uInteract: { value: 0 },
       uEmberMix: { value: 0.15 },
       uAlpha: { value: 0.82 },
       uWhite: { value: WHITE },
@@ -606,6 +611,9 @@ export default function Atmosphere() {
       uLineasFrac: { value: 0 },
       uGrupoPulse: { value: 0 },
       uLineasSnap: { value: 0 },
+      uMouse: { value: new THREE.Vector2(0, 0) },
+      uHoverStrength: { value: 0 },
+      uHoverRadius: { value: 0.14 },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -660,11 +668,39 @@ export default function Atmosphere() {
     const clock = new THREE.Clock();
     let frame = 0;
     let disposed = false;
-    let interactTarget = 0;
-    let interactCurrent = 0;
-    let burstTarget = 0;
-    let burstCurrent = 0;
-    let holdProgress = 0;
+    let viewW = 1;
+    let viewH = 1.18;
+    let hovering = false;
+    let hoverStrength = 0;
+
+    const setMouseFromEvent = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const nx = (e.clientX - rect.left) / rect.width;
+      const ny = (e.clientY - rect.top) / rect.height;
+      uniforms.uMouse.value.set((nx - 0.5) * viewW, -(ny - 0.5) * viewH);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (reduceMotion) return;
+      setMouseFromEvent(e);
+    };
+
+    const onPointerEnter = (e: PointerEvent) => {
+      if (reduceMotion) return;
+      hovering = true;
+      setMouseFromEvent(e);
+    };
+
+    const onPointerLeave = () => {
+      hovering = false;
+    };
+
+    if (!reduceMotion) {
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerenter', onPointerEnter);
+      canvas.addEventListener('pointerleave', onPointerLeave);
+    }
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
     const sm = { scale: 1, offsetX: 0, offsetY: 0 };
@@ -690,14 +726,6 @@ export default function Atmosphere() {
       sectionTransition = { from, to, progress: detail.progress };
     };
 
-    const onFeatherInteract = (e: Event) => {
-      const detail = (e as CustomEvent<{ intensity?: number; burst?: boolean; hold?: number }>).detail;
-      if (detail?.burst) burstTarget = 1;
-      if (detail?.hold !== undefined) holdProgress = detail.hold;
-      interactTarget = THREE.MathUtils.clamp(detail?.intensity ?? 0, 0, 1.5);
-    };
-
-    window.addEventListener('df:feather-interact', onFeatherInteract);
     window.addEventListener('df:lineas-panel', onLineasPanel);
     window.addEventListener('df:section-transition', onSectionTransition);
 
@@ -736,8 +764,8 @@ export default function Atmosphere() {
       if (!w || !h) return;
 
       const aspect = w / h;
-      const viewH = 1.18;
-      const viewW = viewH * aspect;
+      viewH = 1.18;
+      viewW = viewH * aspect;
 
       camera.left = -viewW * 0.5;
       camera.right = viewW * 0.5;
@@ -769,10 +797,6 @@ export default function Atmosphere() {
       cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, SECTION_DAMP, delta);
 
       const pose = blendPose(cur, poses);
-
-      interactCurrent = THREE.MathUtils.damp(interactCurrent, interactTarget, k, delta);
-      burstCurrent = THREE.MathUtils.damp(burstCurrent, burstTarget, k * 1.4, delta);
-      if (burstTarget > 0.95) burstTarget = THREE.MathUtils.damp(burstTarget, 0, 3.5, delta);
 
       const iconTargetMix = cur.lineas > 0.08 ? 1 : 0;
       lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 1.35, delta);
@@ -828,14 +852,13 @@ export default function Atmosphere() {
 
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
       uniforms.uShear.value = pose.shear;
-      uniforms.uWave.value = pose.wave + burstCurrent * 0.035;
-      uniforms.uScatter.value = pose.scatter + interactCurrent * 0.035 + burstCurrent * 0.095 + holdProgress * 0.04;
+      uniforms.uWave.value = pose.wave;
+      uniforms.uScatter.value = pose.scatter;
       uniforms.uGather.value = pose.gather;
       uniforms.uStretchX.value = pose.stretchX;
       uniforms.uDissolve.value = pose.dissolve;
-      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.28 + burstCurrent * 0.65 + holdProgress * 0.3;
-      uniforms.uAlpha.value = pose.alpha + burstCurrent * 0.12;
-      uniforms.uInteract.value = interactCurrent + burstCurrent * 0.85 + holdProgress * 0.35;
+      uniforms.uEmberMix.value = pose.ember;
+      uniforms.uAlpha.value = pose.alpha;
       uniforms.uTipPulse.value = reduceMotion
         ? 0
         : cur.oficio * (0.72 + Math.sin(elapsed * 3.1) * 0.28);
@@ -846,6 +869,12 @@ export default function Atmosphere() {
         : cur.lineas * (0.12 + Math.abs(Math.sin(elapsed * 4.2 + lineasPanel.index)) * 0.28);
 
       if (!reduceMotion) uniforms.uTime.value = elapsed;
+
+      const hoverTarget = hovering ? 1 : 0;
+      hoverStrength = reduceMotion
+        ? 0
+        : THREE.MathUtils.damp(hoverStrength, hoverTarget, 7.5, delta);
+      uniforms.uHoverStrength.value = hoverStrength;
 
       renderer.render(scene, camera);
     };
@@ -867,19 +896,28 @@ export default function Atmosphere() {
       disposed = true;
       cancelAnimationFrame(frame);
       ro.disconnect();
-      window.removeEventListener('df:feather-interact', onFeatherInteract);
       window.removeEventListener('df:lineas-panel', onLineasPanel);
       window.removeEventListener('df:section-transition', onSectionTransition);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerenter', onPointerEnter);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
       geometry.dispose();
       material.dispose();
       renderer.dispose();
-      if (renderer.domElement.parentElement === mount) {
-        mount.removeChild(renderer.domElement);
+      if (canvas.parentElement === mount) {
+        mount.removeChild(canvas);
       }
     };
   }, []);
 
-  return <div ref={mountRef} className="atmosphere" aria-hidden="true" />;
+  return (
+    <div
+      ref={mountRef}
+      className="atmosphere"
+      aria-hidden="true"
+      style={{ pointerEvents: 'none' }}
+    />
+  );
 }
 
 export const LOGO_DOT_COUNT =
