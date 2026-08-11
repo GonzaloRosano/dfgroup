@@ -18,6 +18,9 @@ const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
 const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
+/** Logo path is left-heavy in VIEW_W — shift all shapes into the right panel */
+const SHAPE_OFFSET_X = 0.11;
+const ICON_SCALE = 0.92;
 
 type GridDot = {
   x: number;
@@ -53,7 +56,7 @@ function buildLogoGrid(): GridDot[] {
 
       const nx = col / (GRID_COLS - 1);
       const ny = row / (GRID_ROWS - 1);
-      const x = (nx - 0.5) * (1 - padX * 2);
+      const x = (nx - 0.5) * (1 - padX * 2) + SHAPE_OFFSET_X;
       const y = -(ny - 0.5) * ASPECT * (1 - padY * 2);
       const tip = 1 - ny;
 
@@ -73,7 +76,7 @@ function buildShapeCircle(dots: GridDot[]): Float32Array {
     const t = i / n;
     const angle = t * Math.PI * 2 - Math.PI * 0.5;
     const r = Math.sqrt(dots[i].row * 0.85 + 0.08) * 0.4;
-    out[i * 3] = Math.cos(angle) * r;
+    out[i * 3] = Math.cos(angle) * r + SHAPE_OFFSET_X;
     out[i * 3 + 1] = Math.sin(angle) * r * ASPECT;
     out[i * 3 + 2] = 0;
   }
@@ -88,7 +91,7 @@ function buildShapeWave(dots: GridDot[]): Float32Array {
   for (let i = 0; i < dots.length; i++) {
     const x = (dots[i].col - 0.5) * 1.05;
     const y = Math.sin(dots[i].col * Math.PI * 2.8 + dots[i].row * 1.2) * 0.3 * ASPECT;
-    out[i * 3] = x;
+    out[i * 3] = x + SHAPE_OFFSET_X;
     out[i * 3 + 1] = y;
     out[i * 3 + 2] = 0;
   }
@@ -111,7 +114,7 @@ function buildShapeClusters(dots: GridDot[]): Float32Array {
     const [cx, cy] = centers[cluster];
     const jitter = (dots[i].col - 0.5) * 0.14;
     const jitterY = (dots[i].row - 0.5) * 0.12 * ASPECT;
-    out[i * 3] = cx + jitter;
+    out[i * 3] = cx + jitter + SHAPE_OFFSET_X;
     out[i * 3 + 1] = cy + jitterY;
     out[i * 3 + 2] = 0;
   }
@@ -124,7 +127,7 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
   const out = new Float32Array(dots.length * 3);
 
   for (let i = 0; i < dots.length; i++) {
-    out[i * 3] = (dots[i].col - 0.5) * 1.12;
+    out[i * 3] = (dots[i].col - 0.5) * 1.12 + SHAPE_OFFSET_X;
     out[i * 3 + 1] = (dots[i].row - 0.5) * 0.06 * ASPECT + 0.04;
     out[i * 3 + 2] = 0;
   }
@@ -134,7 +137,38 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
 
 type IconDrawFn = (ctx: CanvasRenderingContext2D) => void;
 
-/** Sample canvas-drawn icon onto the same dot count as the feather grid */
+function nearestFilledCell(
+  filled: Uint8Array,
+  cw: number,
+  ch: number,
+  col: number,
+  row: number,
+): { u: number; v: number } {
+  const gc = Math.round(col * (cw - 1));
+  const gr = Math.round(row * (ch - 1));
+
+  if (filled[gr * cw + gc]) {
+    return { u: gc / (cw - 1), v: gr / (ch - 1) };
+  }
+
+  const maxR = Math.max(cw, ch);
+  for (let r = 1; r < maxR; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+        const c = gc + dx;
+        const g = gr + dy;
+        if (c < 0 || c >= cw || g < 0 || g >= ch) continue;
+        if (!filled[g * cw + c]) continue;
+        return { u: c / (cw - 1), v: g / (ch - 1) };
+      }
+    }
+  }
+
+  return { u: 0.5, v: 0.5 };
+}
+
+/** Map each feather dot to the icon silhouette via matching grid coordinates */
 function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   const cw = GRID_COLS;
   const ch = GRID_ROWS;
@@ -150,38 +184,32 @@ function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   ctx.strokeStyle = '#fff';
   ctx.save();
   ctx.translate(cw * 0.5, ch * 0.5);
-  const scale = Math.min(cw, ch) * 0.82;
+  const scale = Math.min(cw, ch) * ICON_SCALE;
   ctx.scale(scale, scale);
-  ctx.lineWidth = 0.07;
+  ctx.lineWidth = 0.085;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   draw(ctx);
   ctx.restore();
 
   const data = ctx.getImageData(0, 0, cw, ch).data;
-  const samples: { u: number; v: number }[] = [];
+  const filled = new Uint8Array(cw * ch);
 
   for (let row = 0; row < ch; row++) {
     for (let col = 0; col < cw; col++) {
       const idx = (row * cw + col) * 4;
-      if (data[idx + 3] > 128) {
-        samples.push({ u: col / (cw - 1), v: row / (ch - 1) });
-      }
+      filled[row * cw + col] = data[idx + 3] > 128 ? 1 : 0;
     }
   }
 
   const out = new Float32Array(dots.length * 3);
-  if (samples.length === 0) return out;
-
-  samples.sort((a, b) => a.v - b.v || a.u - b.u);
-
   const padX = 0.06;
   const padY = 0.06;
 
   for (let i = 0; i < dots.length; i++) {
-    const s = samples[i % samples.length];
-    out[i * 3] = (s.u - 0.5) * (1 - padX * 2);
-    out[i * 3 + 1] = -(s.v - 0.5) * ASPECT * (1 - padY * 2);
+    const sample = nearestFilledCell(filled, cw, ch, dots[i].col, dots[i].row);
+    out[i * 3] = (sample.u - 0.5) * (1 - padX * 2) + SHAPE_OFFSET_X;
+    out[i * 3 + 1] = -(sample.v - 0.5) * ASPECT * (1 - padY * 2);
     out[i * 3 + 2] = 0;
   }
 
@@ -333,10 +361,11 @@ function iconPanelWeight(panelIdx: number, progress: number) {
 function sectionPresence(el: Element | null, vh: number) {
   if (!el) return 0;
   const r = el.getBoundingClientRect();
-  const bandTop = vh * 0.06;
-  const bandBottom = vh * 0.94;
+  const bandTop = vh * 0.08;
+  const bandBottom = vh * 0.92;
   const overlap = Math.min(r.bottom, bandBottom) - Math.max(r.top, bandTop);
-  const raw = THREE.MathUtils.clamp(overlap / Math.max(r.height * 0.5, vh * 0.36), 0, 1);
+  const denom = Math.max(r.height * 0.42, vh * 0.48);
+  const raw = THREE.MathUtils.clamp(overlap / denom, 0, 1);
   return raw * raw * (3 - 2 * raw);
 }
 
@@ -426,6 +455,7 @@ const DOT_VERT = /* glsl */ `
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
     float ang = atan(p.y, p.x);
+    float iconFocus = uLineasIconMix * clamp(uIconW0 + uIconW1 + uIconW2 + uIconW3, 0.0, 1.0);
 
     // --- #inicio: organic breathe sway ---
     vec2 inicioOff = vec2(
@@ -444,8 +474,8 @@ const DOT_VERT = /* glsl */ `
     vec2 lineasOff = vec2(
       snapWave * 0.014 + uLineasSnap * 0.022 * sin(uTime * 9.0 + aCol * 30.0),
       cos(uTime * 3.1 + aCol * 18.0) * 0.005
-    ) * uWLineas * uMotion;
-    p.x += uShear * p.y * uWLineas * 1.35;
+    ) * uWLineas * uMotion * mix(1.0, 0.12, iconFocus);
+    p.x += uShear * p.y * uWLineas * mix(1.35, 0.25, iconFocus);
 
     // --- #oficio: warm ember tremble at quill tip ---
     float tipMask = smoothstep(0.7, 0.97, aTip);
@@ -601,27 +631,27 @@ export default function Atmosphere() {
 
     const poses = {
       inicio: {
-        scale: 1, breathe: 0.058, offsetX: 0.04, offsetY: 0,
+        scale: 1, breathe: 0.058, offsetX: 0.14, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.006,
         ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
       },
       grupo: {
-        scale: 1.04, breathe: 0, offsetX: 0, offsetY: 0,
+        scale: 1.04, breathe: 0, offsetX: 0.12, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0,
         ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
       },
       lineas: {
-        scale: 1.05, breathe: 0, offsetX: -0.02, offsetY: 0,
-        scatter: 0, gather: 0, stretchX: 1.1, shear: 0.14, wave: 0.008,
+        scale: 1.05, breathe: 0, offsetX: 0.1, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1.06, shear: 0.14, wave: 0.008,
         ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
       },
       oficio: {
-        scale: 0.97, breathe: 0, offsetX: 0, offsetY: 0,
+        scale: 0.97, breathe: 0, offsetX: 0.12, offsetY: 0,
         scatter: 0, gather: 0.035, stretchX: 1, shear: 0, wave: 0.004,
         ember: 0.92, alpha: 0.81, reveal: 1, dissolve: 0,
       },
       contacto: {
-        scale: 0.86, breathe: 0, offsetX: 0, offsetY: 0.04,
+        scale: 0.86, breathe: 0, offsetX: 0.1, offsetY: 0.04,
         scatter: 0.035, gather: 0, stretchX: 1, shear: 0, wave: 0,
         ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
       },
@@ -637,14 +667,27 @@ export default function Atmosphere() {
     let holdProgress = 0;
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
-    const sm = { scale: 1, offsetX: 0.04, offsetY: 0 };
+    const sm = { scale: 1, offsetX: 0.14, offsetY: 0 };
     let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0 };
     let lineasIconMix = 0;
     let iconW = { w0: 1, w1: 0, w2: 0, w3: 0, atelierCode: 0 };
+    let sectionTransition: { from: keyof typeof cur; to: keyof typeof cur; progress: number } | null = null;
 
     const onLineasPanel = (e: Event) => {
       const detail = (e as CustomEvent<{ index: number; frac: number; progress: number; raw: number }>).detail;
       if (detail) lineasPanel = detail;
+    };
+
+    const onSectionTransition = (e: Event) => {
+      const detail = (e as CustomEvent<{ from: string; to: string; progress: number } | null>).detail;
+      if (!detail?.from || !detail?.to) {
+        sectionTransition = null;
+        return;
+      }
+      const from = detail.from as keyof typeof cur;
+      const to = detail.to as keyof typeof cur;
+      if (!(from in cur) || !(to in cur)) return;
+      sectionTransition = { from, to, progress: detail.progress };
     };
 
     const onFeatherInteract = (e: Event) => {
@@ -656,8 +699,18 @@ export default function Atmosphere() {
 
     window.addEventListener('df:feather-interact', onFeatherInteract);
     window.addEventListener('df:lineas-panel', onLineasPanel);
+    window.addEventListener('df:section-transition', onSectionTransition);
 
     const sampleSections = () => {
+      if (sectionTransition) {
+        const t = sectionTransition.progress;
+        const smooth = t * t * (3 - 2 * t);
+        const beats = { inicio: 0, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
+        beats[sectionTransition.from] = 1 - smooth;
+        beats[sectionTransition.to] = smooth;
+        return beats;
+      }
+
       const vh = window.innerHeight;
       const raw = {
         inicio: sectionPresence(sections.inicio, vh),
@@ -685,9 +738,10 @@ export default function Atmosphere() {
       const aspect = w / h;
       const viewH = 1.18;
       const viewW = viewH * aspect;
+      const panX = viewW * 0.045;
 
-      camera.left = -viewW * 0.5;
-      camera.right = viewW * 0.5;
+      camera.left = -viewW * 0.5 - panX;
+      camera.right = viewW * 0.5 - panX;
       camera.top = viewH * 0.5;
       camera.bottom = -viewH * 0.5;
       camera.updateProjectionMatrix();
@@ -816,6 +870,7 @@ export default function Atmosphere() {
       ro.disconnect();
       window.removeEventListener('df:feather-interact', onFeatherInteract);
       window.removeEventListener('df:lineas-panel', onLineasPanel);
+      window.removeEventListener('df:section-transition', onSectionTransition);
       geometry.dispose();
       material.dispose();
       renderer.dispose();
