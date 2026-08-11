@@ -32,7 +32,7 @@ export const siteAssets: SiteAsset[] = [
     label: 'Rejilla wire noir (WebGL)',
     path: null,
     description:
-      'Malla 3D de líneas generada en tiempo real con Three.js. Respira y cambia de cámara según el scroll. Sin texturas cargadas.',
+      'Malla 3D wire noir con pulso viajero, partículas ember, trazos de pluma, parallax y bloom sutil. Generada en tiempo real con Three.js, sin texturas.',
     usedOn: '/',
   },
 ];
