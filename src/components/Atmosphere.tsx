@@ -143,7 +143,13 @@ function updateIconAttributes(geometry: THREE.BufferGeometry, dots: GridDot[], i
 
 function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
-  return 1 - THREE.MathUtils.smoothstep(0.14, 0.78, d);
+  // THREE.MathUtils.smoothstep(x, min, max) — x is distance, not edge constants
+  return 1 - THREE.MathUtils.smoothstep(d, 0.12, 0.72);
+}
+
+function atelierCodeWeight(progress: number) {
+  const sub = THREE.MathUtils.clamp(progress - 2, 0, 1);
+  return THREE.MathUtils.smoothstep(sub, 0.38, 0.82);
 }
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
@@ -228,10 +234,11 @@ const DOT_VERT = /* glsl */ `
     vTip = aTip;
 
     vec3 atelierIcon = mix(aBrush, aCode, uAtelierCode);
-    vec3 iconShape = aServer * uIconW0
+    float iconWSum = uIconW0 + uIconW1 + uIconW2 + uIconW3;
+    vec3 iconShape = (aServer * uIconW0
                    + aSeries * uIconW1
                    + atelierIcon * uIconW2
-                   + aMic * uIconW3;
+                   + aMic * uIconW3) / max(iconWSum, 0.001);
 
     vec3 lineasShape = mix(aWave, iconShape, uLineasIconMix);
 
@@ -621,8 +628,12 @@ export default function Atmosphere() {
       const pose = blendPose(cur, poses);
 
       const lineasScrollActive = lineasPanel.raw > 0.001;
-      const iconTargetMix = lineasScrollActive || cur.lineas > 0.12 ? 1 : 0;
-      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 1.65, delta);
+      const inLineasIcons = lineasScrollActive || cur.lineas > 0.1;
+      const iconTargetMix = inLineasIcons ? 1 : 0;
+      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 2.4, delta);
+      if (inLineasIcons && cur.lineas > 0.22) {
+        lineasIconMix = Math.max(lineasIconMix, Math.min(1, cur.lineas * 1.15));
+      }
 
       const p = lineasPanel.progress;
       const targetIconW = {
@@ -630,7 +641,7 @@ export default function Atmosphere() {
         w1: iconPanelWeight(1, p),
         w2: iconPanelWeight(2, p),
         w3: iconPanelWeight(3, p),
-        atelierCode: THREE.MathUtils.smoothstep(2.45, 2.95, p),
+        atelierCode: atelierCodeWeight(p),
       };
 
       iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.65, delta);
@@ -653,7 +664,7 @@ export default function Atmosphere() {
           uniforms.uIconW1.value = idx === 1 ? 1 : 0;
           uniforms.uIconW2.value = idx === 2 ? 1 : 0;
           uniforms.uIconW3.value = idx === 3 ? 1 : 0;
-          uniforms.uAtelierCode.value = idx === 2 && lineasPanel.progress > 2.7 ? 1 : 0;
+          uniforms.uAtelierCode.value = idx === 2 && lineasPanel.frac > 0.42 ? 1 : 0;
         } else {
           uniforms.uWInicio.value = 1;
           uniforms.uWGrupo.value = 0;
