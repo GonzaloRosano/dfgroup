@@ -131,6 +131,160 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
   return out;
 }
 
+type IconDrawFn = (ctx: CanvasRenderingContext2D) => void;
+
+/** Sample canvas-drawn icon onto the same dot count as the feather grid */
+function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
+  const cw = GRID_COLS;
+  const ch = GRID_ROWS;
+  const canvas = document.createElement('canvas');
+  canvas.width = cw;
+  canvas.height = ch;
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return new Float32Array(dots.length * 3);
+
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#fff';
+  ctx.save();
+  ctx.translate(cw * 0.5, ch * 0.5);
+  const scale = Math.min(cw, ch) * 0.74;
+  ctx.scale(scale, scale);
+  draw(ctx);
+  ctx.restore();
+
+  const data = ctx.getImageData(0, 0, cw, ch).data;
+  const samples: { u: number; v: number }[] = [];
+
+  for (let row = 0; row < ch; row++) {
+    for (let col = 0; col < cw; col++) {
+      const idx = (row * cw + col) * 4;
+      if (data[idx + 3] > 128) {
+        samples.push({ u: col / (cw - 1), v: row / (ch - 1) });
+      }
+    }
+  }
+
+  const out = new Float32Array(dots.length * 3);
+  if (samples.length === 0) return out;
+
+  samples.sort((a, b) => a.v - b.v || a.u - b.u);
+
+  const padX = 0.06;
+  const padY = 0.06;
+
+  for (let i = 0; i < dots.length; i++) {
+    const s = samples[i % samples.length];
+    out[i * 3] = (s.u - 0.5) * (1 - padX * 2);
+    out[i * 3 + 1] = -(s.v - 0.5) * ASPECT * (1 - padY * 2);
+    out[i * 3 + 2] = 0;
+  }
+
+  return out;
+}
+
+function drawIconServer(ctx: CanvasRenderingContext2D) {
+  const w = 0.58;
+  const h = 0.11;
+  const gap = 0.045;
+
+  for (let i = 0; i < 3; i++) {
+    const y = -0.24 + i * (h + gap);
+    ctx.fillRect(-w / 2, y, w, h);
+    ctx.beginPath();
+    ctx.arc(-w / 2 + 0.07, y + h / 2, 0.028, 0, Math.PI * 2);
+    ctx.fill();
+    for (let v = 0; v < 5; v++) {
+      ctx.fillRect(w / 2 - 0.16 + v * 0.032, y + 0.028, 0.018, h - 0.056);
+    }
+  }
+}
+
+function drawIconSeries(ctx: CanvasRenderingContext2D) {
+  const fw = 0.15;
+  const fh = 0.44;
+  const gap = 0.038;
+
+  ctx.lineWidth = 0.028;
+  ctx.strokeStyle = '#fff';
+
+  for (let i = 0; i < 3; i++) {
+    const x = -0.25 + i * (fw + gap);
+    ctx.strokeRect(x, -fh / 2, fw, fh);
+    ctx.fillRect(x + 0.018, -fh / 2 + 0.028, fw - 0.036, fh - 0.056);
+    for (let hole = 0; hole < 3; hole++) {
+      ctx.fillRect(x - 0.028, -0.13 + hole * 0.13, 0.016, 0.042);
+      ctx.fillRect(x + fw + 0.012, -0.13 + hole * 0.13, 0.016, 0.042);
+    }
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(-0.018, -0.07);
+  ctx.lineTo(-0.018, 0.07);
+  ctx.lineTo(0.09, 0);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawIconBrush(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  ctx.rotate(-0.52);
+  ctx.fillRect(-0.042, -0.38, 0.084, 0.58);
+  ctx.beginPath();
+  ctx.moveTo(-0.14, 0.2);
+  ctx.lineTo(0.14, 0.2);
+  ctx.lineTo(0.1, 0.34);
+  ctx.lineTo(-0.1, 0.34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawIconCode(ctx: CanvasRenderingContext2D) {
+  const stroke = 0.048;
+  ctx.lineWidth = stroke;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.beginPath();
+  ctx.moveTo(0.06, -0.3);
+  ctx.lineTo(-0.14, 0);
+  ctx.lineTo(0.06, 0.3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-0.06, -0.3);
+  ctx.lineTo(0.14, 0);
+  ctx.lineTo(-0.06, 0.3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0.03, -0.2);
+  ctx.lineTo(-0.03, 0.2);
+  ctx.lineWidth = stroke * 0.85;
+  ctx.stroke();
+}
+
+function drawIconMic(ctx: CanvasRenderingContext2D) {
+  ctx.beginPath();
+  ctx.ellipse(0, -0.1, 0.13, 0.19, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(-0.075, -0.2 + i * 0.07, 0.15, 0.024);
+  }
+
+  ctx.fillRect(-0.028, 0.1, 0.056, 0.14);
+
+  ctx.lineWidth = 0.042;
+  ctx.beginPath();
+  ctx.arc(0, 0.24, 0.15, 0, Math.PI);
+  ctx.stroke();
+
+  ctx.fillRect(-0.09, 0.24, 0.18, 0.038);
+}
+
 function buildGeometry(dots: GridDot[]) {
   const positions = new Float32Array(dots.length * 3);
   const tips = new Float32Array(dots.length);
@@ -161,7 +315,17 @@ function buildGeometry(dots: GridDot[]) {
   geo.setAttribute('aCircle', new THREE.BufferAttribute(buildShapeCircle(dots), 3));
   geo.setAttribute('aWave', new THREE.BufferAttribute(lineasBlend, 3));
   geo.setAttribute('aLine', new THREE.BufferAttribute(buildShapeLine(dots), 3));
+  geo.setAttribute('aServer', new THREE.BufferAttribute(buildIconShape(dots, drawIconServer), 3));
+  geo.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShape(dots, drawIconSeries), 3));
+  geo.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShape(dots, drawIconBrush), 3));
+  geo.setAttribute('aCode', new THREE.BufferAttribute(buildIconShape(dots, drawIconCode), 3));
+  geo.setAttribute('aMic', new THREE.BufferAttribute(buildIconShape(dots, drawIconMic), 3));
   return geo;
+}
+
+function iconPanelWeight(panelIdx: number, progress: number) {
+  const d = Math.abs(progress - panelIdx);
+  return THREE.MathUtils.smoothstep(1.15, 0.08, d);
 }
 
 function sectionPresence(el: Element | null, vh: number) {
@@ -190,6 +354,11 @@ const DOT_VERT = /* glsl */ `
   attribute vec3 aCircle;
   attribute vec3 aWave;
   attribute vec3 aLine;
+  attribute vec3 aServer;
+  attribute vec3 aSeries;
+  attribute vec3 aBrush;
+  attribute vec3 aCode;
+  attribute vec3 aMic;
 
   uniform float uTime;
   uniform float uMotion;
@@ -208,6 +377,12 @@ const DOT_VERT = /* glsl */ `
   uniform float uWLineas;
   uniform float uWOficio;
   uniform float uWContacto;
+  uniform float uLineasIconMix;
+  uniform float uIconW0;
+  uniform float uIconW1;
+  uniform float uIconW2;
+  uniform float uIconW3;
+  uniform float uAtelierCode;
 
   varying float vTip;
   varying float vVisible;
@@ -225,9 +400,17 @@ const DOT_VERT = /* glsl */ `
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
     vTip = aTip;
 
+    vec3 atelierIcon = mix(aBrush, aCode, uAtelierCode);
+    vec3 iconShape = aServer * uIconW0
+                   + aSeries * uIconW1
+                   + atelierIcon * uIconW2
+                   + aMic * uIconW3;
+
+    vec3 lineasShape = mix(aWave, iconShape, uLineasIconMix);
+
     vec3 p = position * (uWInicio + uWOficio)
            + aCircle * uWGrupo
-           + aWave * uWLineas
+           + lineasShape * uWLineas
            + aLine * uWContacto;
 
     p.x *= mix(1.0, uStretchX, 0.85);
@@ -340,6 +523,12 @@ export default function Atmosphere() {
       uWLineas: { value: 0 },
       uWOficio: { value: 0 },
       uWContacto: { value: 0 },
+      uLineasIconMix: { value: 0 },
+      uIconW0: { value: 0 },
+      uIconW1: { value: 0 },
+      uIconW2: { value: 0 },
+      uIconW3: { value: 0 },
+      uAtelierCode: { value: 0 },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -402,6 +591,14 @@ export default function Atmosphere() {
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
     const sm = { scale: 1, offsetX: 0.04, offsetY: 0 };
+    let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0 };
+    let lineasIconMix = 0;
+    let iconW = { w0: 1, w1: 0, w2: 0, w3: 0, atelierCode: 0 };
+
+    const onLineasPanel = (e: Event) => {
+      const detail = (e as CustomEvent<{ index: number; frac: number; progress: number; raw: number }>).detail;
+      if (detail) lineasPanel = detail;
+    };
 
     const onFeatherInteract = (e: Event) => {
       const detail = (e as CustomEvent<{ intensity?: number; burst?: boolean; hold?: number }>).detail;
@@ -411,6 +608,7 @@ export default function Atmosphere() {
     };
 
     window.addEventListener('df:feather-interact', onFeatherInteract);
+    window.addEventListener('df:lineas-panel', onLineasPanel);
 
     const sampleSections = () => {
       const vh = window.innerHeight;
@@ -476,18 +674,43 @@ export default function Atmosphere() {
       burstCurrent = THREE.MathUtils.damp(burstCurrent, burstTarget, k * 1.4, delta);
       if (burstTarget > 0.95) burstTarget = THREE.MathUtils.damp(burstTarget, 0, 3.5, delta);
 
+      const iconTargetMix = cur.lineas > 0.22 ? 1 : 0;
+      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k, delta);
+
+      const p = lineasPanel.progress;
+      const targetIconW = {
+        w0: iconPanelWeight(0, p),
+        w1: iconPanelWeight(1, p),
+        w2: iconPanelWeight(2, p),
+        w3: iconPanelWeight(3, p),
+        atelierCode: THREE.MathUtils.smoothstep(2.45, 2.95, p),
+      };
+
+      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.2, delta);
+      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.2, delta);
+      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 1.2, delta);
+      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 1.2, delta);
+      iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 1.4, delta);
+
       if (reduceMotion) {
         uniforms.uWInicio.value = 1;
         uniforms.uWGrupo.value = 0;
         uniforms.uWLineas.value = 0;
         uniforms.uWOficio.value = 0;
         uniforms.uWContacto.value = 0;
+        uniforms.uLineasIconMix.value = 0;
       } else {
         uniforms.uWInicio.value = cur.inicio;
         uniforms.uWGrupo.value = cur.grupo;
         uniforms.uWLineas.value = cur.lineas;
         uniforms.uWOficio.value = cur.oficio;
         uniforms.uWContacto.value = cur.contacto;
+        uniforms.uLineasIconMix.value = lineasIconMix;
+        uniforms.uIconW0.value = iconW.w0;
+        uniforms.uIconW1.value = iconW.w1;
+        uniforms.uIconW2.value = iconW.w2;
+        uniforms.uIconW3.value = iconW.w3;
+        uniforms.uAtelierCode.value = iconW.atelierCode;
       }
 
       const inicioLife = cur.inicio;
@@ -538,6 +761,7 @@ export default function Atmosphere() {
       cancelAnimationFrame(frame);
       ro.disconnect();
       window.removeEventListener('df:feather-interact', onFeatherInteract);
+      window.removeEventListener('df:lineas-panel', onLineasPanel);
       geometry.dispose();
       material.dispose();
       renderer.dispose();

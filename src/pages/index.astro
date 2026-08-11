@@ -110,32 +110,48 @@ const stats = [
     </div>
   </section>
 
-  <section id="lineas" class="section lines" aria-label="Líneas del grupo">
-    <div class="container">
-      <p class="section-eyebrow reveal reveal--left" data-reveal>Líneas</p>
-      <h2 class="lines__title reveal" data-reveal>Cuatro frentes bajo una pluma.</h2>
-      <p class="lines__lead reveal" data-reveal>
-        Cada código DF resuelve un frente distinto del universo creativo.
-      </p>
+  <section id="lineas" class="lines-showcase" data-lines-showcase aria-label="Líneas del grupo">
+    <div class="lines-showcase__sticky">
+      <header class="lines-showcase__header container">
+        <p class="section-eyebrow">Líneas</p>
+        <p class="lines-showcase__counter" data-lines-counter aria-live="polite">01 — DF Hosting</p>
+      </header>
 
-      <div class="lines__list" data-reveal-group>
+      <div class="lines-showcase__viewport">
+        <div class="lines-showcase__track" data-lines-track>
+          {
+            lines.map((line, i) => (
+              <article
+                class="lines-showcase__panel"
+                id={line.slug}
+                data-panel={i}
+                aria-label={line.code}
+              >
+                <div class="lines-showcase__copy container">
+                  <span class="lines-showcase__index">{String(i + 1).padStart(2, '0')}</span>
+                  <h2 class="lines-showcase__code">{line.code}</h2>
+                  <p class="lines-showcase__tag">{line.tagline}</p>
+                  <p class="lines-showcase__summary">{line.summary}</p>
+                  <ul class="lines-showcase__points">
+                    {line.points.map((point) => (
+                      <li>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+
+      <div class="lines-showcase__progress" aria-hidden="true">
         {
-          lines.map((line) => (
-            <article class="line-card card-interactive reveal" id={line.slug} data-reveal>
-              <div class="line-card__head">
-                <h3 class="line-card__code">{line.code}</h3>
-                <p class="line-card__tag">{line.tagline}</p>
-              </div>
-              <p class="line-card__summary">{line.summary}</p>
-              <ul class="line-card__points">
-                {line.points.map((point) => (
-                  <li>{point}</li>
-                ))}
-              </ul>
-            </article>
+          lines.map((line, i) => (
+            <span class="lines-showcase__dot" data-lines-dot={i} />
           ))
         }
       </div>
+      <p class="lines-showcase__hint">Scroll para recorrer las líneas</p>
     </div>
   </section>
 
@@ -300,6 +316,51 @@ const stats = [
       el.classList.add('is-visible');
     });
   }
+
+  const linesShowcase = document.querySelector('[data-lines-showcase]') as HTMLElement | null;
+  const linesTrack = document.querySelector('[data-lines-track]') as HTMLElement | null;
+  const linesCounter = document.querySelector('[data-lines-counter]');
+  const linesDots = document.querySelectorAll('[data-lines-dot]');
+  const lineLabels = ['DF Hosting', 'DF Series', 'DF Atelier', 'DF Voices'];
+
+  const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+  const updateLineasScroll = () => {
+    if (!linesShowcase || !linesTrack) return;
+
+    const vh = window.innerHeight;
+    const rect = linesShowcase.getBoundingClientRect();
+    const scrollable = linesShowcase.offsetHeight - vh;
+    const raw = scrollable > 0 ? clamp(-rect.top / scrollable, 0, 1) : 0;
+    const progress = raw * 3;
+    const index = Math.min(3, Math.floor(progress + 0.001));
+    const frac = progress - index;
+
+    if (!reduceMotion) {
+      linesTrack.style.transform = `translate3d(${-raw * 75}%, 0, 0)`;
+    }
+
+    if (linesCounter) {
+      linesCounter.textContent = `${String(index + 1).padStart(2, '0')} — ${lineLabels[index]}`;
+    }
+
+    linesDots.forEach((dot, i) => {
+      dot.classList.toggle('is-active', i === index);
+      dot.classList.toggle('is-near', Math.abs(i - progress) < 0.55);
+    });
+
+    document.documentElement.classList.toggle('is-lineas-active', rect.top < vh * 0.35 && rect.bottom > vh * 0.35);
+
+    window.dispatchEvent(
+      new CustomEvent('df:lineas-panel', {
+        detail: { index, frac, progress, raw },
+      }),
+    );
+  };
+
+  updateLineasScroll();
+  window.addEventListener('scroll', updateLineasScroll, { passive: true });
+  window.addEventListener('resize', updateLineasScroll, { passive: true });
 </script>
 
 <style>
@@ -483,6 +544,26 @@ const stats = [
   }
 
   @media (max-width: 959px) {
+    .lines-showcase {
+      height: 360svh;
+    }
+
+    .lines-showcase__copy {
+      max-width: none;
+      padding-right: 0;
+    }
+
+    .lines-showcase__hint {
+      right: 1.25rem;
+      bottom: 1.25rem;
+    }
+
+    .lines-showcase__progress {
+      bottom: 1.25rem;
+      left: 1.25rem;
+      transform: none;
+    }
+
     .home-atmosphere {
       width: 100%;
       height: min(38svh, 320px);
@@ -607,70 +688,116 @@ const stats = [
     max-width: 22ch;
   }
 
-  .lines__title,
-  .crafts__title,
-  .contact__title {
-    font-size: clamp(2.4rem, 6vw, 4rem);
-    max-width: 16ch;
-    margin-bottom: 1rem;
+  .lines-showcase {
+    position: relative;
+    height: 400svh;
+    z-index: 1;
   }
 
-  .lines__lead,
-  .crafts__lead,
-  .contact__lead {
-    color: var(--fog);
-    font-size: 1.08rem;
-    max-width: 48ch;
-    margin-bottom: var(--space-lg);
-  }
-
-  .lines__list {
+  .lines-showcase__sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
     display: grid;
-    gap: 0;
-    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
   }
 
-  .line-card {
-    padding: 2.5rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  .lines-showcase__header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1.75rem 0.75rem;
   }
 
-  .line-card__code {
+  .lines-showcase__counter {
     font-family: var(--font-display);
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    font-weight: 700;
-    margin-bottom: 0.35rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--mute);
   }
 
-  .line-card__tag {
-    color: var(--ember-hot);
-    font-size: 0.95rem;
-    font-weight: 500;
+  .lines-showcase__viewport {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .lines-showcase__track {
+    display: flex;
+    height: 100%;
+    width: 400%;
+    will-change: transform;
+    transition: transform 80ms linear;
+  }
+
+  .lines-showcase__panel {
+    flex: 0 0 25%;
+    width: 25%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding-block: 1rem 3rem;
+  }
+
+  .lines-showcase__copy {
+    max-width: min(36rem, 52vw);
+    padding-right: 1.5rem;
+  }
+
+  .lines-showcase__index {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    color: var(--mute);
     margin-bottom: 1rem;
   }
 
-  .line-card__summary {
-    color: var(--fog);
-    max-width: 52ch;
+  .lines-showcase__code {
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 7vw, 5rem);
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    margin-bottom: 0.75rem;
+  }
+
+  .lines-showcase__tag {
+    color: var(--ember-hot);
+    font-size: clamp(1rem, 2vw, 1.15rem);
+    font-weight: 500;
     margin-bottom: 1.25rem;
   }
 
-  .line-card__points {
+  .lines-showcase__summary {
+    color: var(--fog);
+    font-size: clamp(1.02rem, 2vw, 1.12rem);
+    line-height: 1.72;
+    max-width: 46ch;
+    margin-bottom: 1.5rem;
+  }
+
+  .lines-showcase__points {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.5rem;
+    gap: 0.55rem;
   }
 
-  .line-card__points li {
+  .lines-showcase__points li {
     color: var(--mute);
     font-size: 0.95rem;
     padding-left: 1rem;
     position: relative;
+    max-width: 44ch;
   }
 
-  .line-card__points li::before {
+  .lines-showcase__points li::before {
     content: '';
     position: absolute;
     left: 0;
@@ -679,6 +806,67 @@ const stats = [
     height: 0.25rem;
     border-radius: 50%;
     background: var(--ember);
+  }
+
+  .lines-showcase__progress {
+    position: absolute;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.55rem;
+    z-index: 2;
+  }
+
+  .lines-showcase__dot {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bone) 18%, transparent);
+    transition:
+      transform 220ms var(--ease-out),
+      background 220ms var(--ease-out);
+  }
+
+  .lines-showcase__dot.is-near {
+    background: color-mix(in srgb, var(--bone) 42%, transparent);
+  }
+
+  .lines-showcase__dot.is-active {
+    transform: scale(1.35);
+    background: var(--ember-hot);
+  }
+
+  .lines-showcase__hint {
+    position: absolute;
+    right: max(1.25rem, calc((100% - min(48%, 680px)) / 2 + 1rem));
+    bottom: 2rem;
+    z-index: 2;
+    color: var(--mute);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    max-width: 12ch;
+    text-align: right;
+  }
+
+  :global(:root.is-lineas-active) .home-atmosphere {
+    width: min(52%, 760px);
+  }
+
+  .crafts__title,
+  .contact__title {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    max-width: 16ch;
+    margin-bottom: 1rem;
+  }
+
+  .crafts__lead,
+  .contact__lead {
+    color: var(--fog);
+    font-size: 1.08rem;
+    max-width: 48ch;
+    margin-bottom: var(--space-lg);
   }
 
   .crafts__grid {
@@ -740,6 +928,11 @@ const stats = [
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .lines-showcase__track {
+      transform: none !important;
+      transition: none;
+    }
+
     .hero-enter__item {
       opacity: 1;
       transform: none;
