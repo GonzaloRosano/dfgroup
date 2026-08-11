@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
+  <!-- Server rack  three units -->
+  <path fill="currentColor" d="M18 20 H78 V36 H18 Z" />
+  <path fill="currentColor" d="M18 44 H78 V60 H18 Z" />
+  <path fill="currentColor" d="M18 68 H78 V84 H18 Z" />
+  <!-- Status LEDs -->
+  <path fill="currentColor" d="M26 26 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0" />
+  <path fill="currentColor" d="M26 50 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0" />
+  <path fill="currentColor" d="M26 74 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0" />
+  <!-- Vent slots -->
+  <path fill="currentColor" d="M58 26 H62 V30 H58 Z M64 26 H68 V30 H64 Z M70 26 H74 V30 H70 Z" />
+  <path fill="currentColor" d="M58 50 H62 V54 H58 Z M64 50 H68 V54 H64 Z M70 50 H74 V54 H70 Z" />
+  <path fill="currentColor" d="M58 74 H62 V78 H58 Z M64 74 H68 V78 H64 Z M70 74 H74 V78 H70 Z" />
+</svg>

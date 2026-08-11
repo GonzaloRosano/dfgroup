@@ -35,6 +35,15 @@ export const siteAssets: SiteAsset[] = [
       'Grilla 2D ortográfica desde logo.svg con morph por sección: pluma, círculo, ola, línea. Animación scroll + hold/hover.',
     usedOn: '/',
   },
+  {
+    id: 'line-icons',
+    kind: 'brand',
+    label: 'public/icons/*.svg',
+    path: '/icons/hosting.svg',
+    description:
+      'Siluetas SVG (hosting, series, atelier, atelier-code, voices) rasterizadas en la misma grilla que logo.svg para los iconos de #lineas.',
+    usedOn: '/#lineas',
+  },
 ];
 
 export const generatedAssets: SiteAsset[] = [];

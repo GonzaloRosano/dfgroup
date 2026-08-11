@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
+  <!-- Microphone capsule -->
+  <path fill="currentColor" d="M36 18 H60 V52 C60 62 54 68 48 68 C42 68 36 62 36 52 Z" />
+  <!-- Grille lines -->
+  <path fill="currentColor" d="M38 28 H58 V32 H38 Z M38 36 H58 V40 H38 Z M38 44 H58 V48 H38 Z M38 52 H58 V56 H38 Z" />
+  <!-- Stem -->
+  <path fill="currentColor" d="M44 68 H52 V78 H44 Z" />
+  <!-- Stand arc (filled band) -->
+  <path fill="currentColor" fill-rule="evenodd" d="M28 78 C28 88 38 94 48 94 C58 94 68 88 68 78 H62 C62 85 56 90 48 90 C40 90 34 85 34 78 Z" />
+  <!-- Base -->
+  <path fill="currentColor" d="M32 94 H64 V100 H32 Z" />
+</svg>

@@ -1,18 +1,21 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import {
+  buildIconShapeFromPaths,
+  buildLogoGrid,
+  loadIconPaths,
+  type GridDot,
+  GRID_COLS,
+  GRID_ROWS,
+} from '../lib/svgDots';
+
+export { GRID_COLS, GRID_ROWS };
 
 /**
  * 2D orthographic dot-grid — each scroll section has a distinct shape + motion personality.
  */
 
-const LOGO_PATH =
-  'M 105.500 12.572 C 101.650 16.136, 91.750 24.155, 83.500 30.392 C 59.486 48.547, 39.599 67.920, 31.913 80.644 C 26.345 89.862, 21.189 100.776, 18.516 109 C 15.715 117.620, 14.266 119.849, 6.897 126.878 C 3.104 130.495, 0 133.803, 0 134.228 C 0 136.216, 4.186 134.531, 11.500 129.600 C 15.900 126.633, 24.900 121.461, 31.500 118.107 C 38.100 114.753, 45.814 110.094, 48.641 107.754 C 69.115 90.814, 80.854 78.771, 89.339 66 C 91.349 62.975, 93.339 60.050, 93.763 59.500 C 95.049 57.828, 101.915 44.930, 105.474 37.500 C 110.421 27.174, 115.681 5.896, 113.250 6.046 C 112.838 6.072, 109.350 9.008, 105.500 12.572';
-
-const VIEW_W = 122;
-const VIEW_H = 135;
-export const GRID_COLS = 96;
-export const GRID_ROWS = 106;
-const ASPECT = VIEW_H / VIEW_W;
+const ASPECT = 135 / 122;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -20,53 +23,8 @@ const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
 /** Shapes are centered in orthographic space; layout uses the right 50% viewport panel */
 const SHAPE_OFFSET_X = 0;
-const ICON_SCALE = 0.96;
-const ICON_DILATE_PX = 2;
 
-type GridDot = {
-  x: number;
-  y: number;
-  tip: number;
-  col: number;
-  row: number;
-};
-
-function buildLogoGrid(): GridDot[] {
-  const cw = GRID_COLS;
-  const ch = GRID_ROWS;
-  const canvas = document.createElement('canvas');
-  canvas.width = cw;
-  canvas.height = ch;
-
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return [];
-
-  ctx.clearRect(0, 0, cw, ch);
-  ctx.scale(cw / VIEW_W, ch / VIEW_H);
-  ctx.fill(new Path2D(LOGO_PATH));
-
-  const data = ctx.getImageData(0, 0, cw, ch).data;
-  const dots: GridDot[] = [];
-  const padX = 0.06;
-  const padY = 0.06;
-
-  for (let row = 0; row < GRID_ROWS; row++) {
-    for (let col = 0; col < GRID_COLS; col++) {
-      const idx = (row * GRID_COLS + col) * 4;
-      if (data[idx + 3] < 128) continue;
-
-      const nx = col / (GRID_COLS - 1);
-      const ny = row / (GRID_ROWS - 1);
-      const x = (nx - 0.5) * (1 - padX * 2) + SHAPE_OFFSET_X;
-      const y = -(ny - 0.5) * ASPECT * (1 - padY * 2);
-      const tip = 1 - ny;
-
-      dots.push({ x, y, tip, col: nx, row: ny });
-    }
-  }
-
-  return dots;
-}
+type IconPaths = Awaited<ReturnType<typeof loadIconPaths>>;
 
 /** Filled disc — #grupo */
 function buildShapeCircle(dots: GridDot[]): Float32Array {
@@ -136,212 +94,7 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
   return out;
 }
 
-type IconDrawFn = (ctx: CanvasRenderingContext2D) => void;
-
-function iconCellToOrtho(u: number, v: number, padX: number, padY: number) {
-  return {
-    x: (u - 0.5) * (1 - padX * 2) + SHAPE_OFFSET_X,
-    y: -(v - 0.5) * ASPECT * (1 - padY * 2),
-  };
-}
-
-/** Thicken rasterized icon strokes so thin lines survive the dot grid */
-function dilateFilled(filled: Uint8Array, cw: number, ch: number, radius: number): Uint8Array {
-  if (radius <= 0) return filled;
-
-  const out = new Uint8Array(cw * ch);
-  for (let row = 0; row < ch; row++) {
-    for (let col = 0; col < cw; col++) {
-      if (!filled[row * cw + col]) continue;
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const c = col + dx;
-          const g = row + dy;
-          if (c < 0 || c >= cw || g < 0 || g >= ch) continue;
-          out[g * cw + c] = 1;
-        }
-      }
-    }
-  }
-
-  return out;
-}
-
-/** Assign feather dots to rasterized icon pixels so silhouettes read clearly */
-function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
-  const cw = GRID_COLS;
-  const ch = GRID_ROWS;
-  const canvas = document.createElement('canvas');
-  canvas.width = cw;
-  canvas.height = ch;
-
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return new Float32Array(dots.length * 3);
-
-  ctx.clearRect(0, 0, cw, ch);
-  ctx.fillStyle = '#fff';
-  ctx.strokeStyle = '#fff';
-  ctx.save();
-  ctx.translate(cw * 0.5, ch * 0.5);
-  const scale = Math.min(cw, ch) * ICON_SCALE;
-  ctx.scale(scale, scale);
-  ctx.lineWidth = 0.11;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  draw(ctx);
-  ctx.restore();
-
-  const data = ctx.getImageData(0, 0, cw, ch).data;
-  const raw = new Uint8Array(cw * ch);
-
-  for (let row = 0; row < ch; row++) {
-    for (let col = 0; col < cw; col++) {
-      const idx = (row * cw + col) * 4;
-      raw[row * cw + col] = data[idx + 3] > 96 ? 1 : 0;
-    }
-  }
-
-  const filled = dilateFilled(raw, cw, ch, ICON_DILATE_PX);
-  const padX = 0.06;
-  const padY = 0.06;
-  const targets: { u: number; v: number; x: number; y: number }[] = [];
-
-  for (let row = 0; row < ch; row++) {
-    for (let col = 0; col < cw; col++) {
-      if (!filled[row * cw + col]) continue;
-      const u = col / (cw - 1);
-      const v = row / (ch - 1);
-      const { x, y } = iconCellToOrtho(u, v, padX, padY);
-      targets.push({ u, v, x, y });
-    }
-  }
-
-  const out = new Float32Array(dots.length * 3);
-  if (targets.length === 0) return out;
-
-  targets.sort((a, b) => a.v - b.v || a.u - b.u);
-
-  const order = dots.map((_, i) => i);
-  order.sort((a, b) => dots[a].row - dots[b].row || dots[a].col - dots[b].col);
-
-  for (let j = 0; j < order.length; j++) {
-    const i = order[j];
-    const target = targets[j % targets.length];
-    out[i * 3] = target.x;
-    out[i * 3 + 1] = target.y;
-    out[i * 3 + 2] = 0;
-  }
-
-  return out;
-}
-
-function drawIconServer(ctx: CanvasRenderingContext2D) {
-  const w = 0.64;
-  const h = 0.13;
-  const gap = 0.048;
-  const left = -w / 2;
-
-  for (let i = 0; i < 3; i++) {
-    const y = -0.27 + i * (h + gap);
-    ctx.fillRect(left, y, w, h);
-    ctx.beginPath();
-    ctx.arc(left + 0.09, y + h / 2, 0.034, 0, Math.PI * 2);
-    ctx.fill();
-    for (let v = 0; v < 4; v++) {
-      ctx.fillRect(left + w - 0.24 + v * 0.04, y + 0.028, 0.024, h - 0.056);
-    }
-  }
-}
-
-function drawIconSeries(ctx: CanvasRenderingContext2D) {
-  const fw = 0.17;
-  const fh = 0.5;
-  const gap = 0.034;
-  const startX = -0.28;
-
-  for (let i = 0; i < 3; i++) {
-    const x = startX + i * (fw + gap);
-    ctx.fillRect(x, -fh / 2, fw, fh);
-    ctx.clearRect(x + 0.022, -fh / 2 + 0.034, fw - 0.044, fh - 0.068);
-    for (let hole = 0; hole < 4; hole++) {
-      const hy = -0.16 + hole * 0.11;
-      ctx.fillRect(x - 0.034, hy, 0.02, 0.048);
-      ctx.fillRect(x + fw + 0.014, hy, 0.02, 0.048);
-    }
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(-0.04, -0.11);
-  ctx.lineTo(-0.04, 0.11);
-  ctx.lineTo(0.14, 0);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawIconBrush(ctx: CanvasRenderingContext2D) {
-  ctx.save();
-  ctx.rotate(-0.48);
-  ctx.fillRect(-0.055, -0.42, 0.11, 0.54);
-  ctx.fillRect(-0.07, 0.1, 0.14, 0.07);
-  ctx.beginPath();
-  ctx.moveTo(-0.17, 0.19);
-  ctx.lineTo(0.17, 0.19);
-  ctx.lineTo(0.12, 0.36);
-  ctx.lineTo(-0.12, 0.36);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawIconCode(ctx: CanvasRenderingContext2D) {
-  const s = 0.36;
-
-  ctx.beginPath();
-  ctx.moveTo(0.1, -s);
-  ctx.lineTo(-0.2, 0);
-  ctx.lineTo(0.1, s);
-  ctx.lineTo(0.0, s);
-  ctx.lineTo(-0.3, 0);
-  ctx.lineTo(0.0, -s);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(-0.1, -s);
-  ctx.lineTo(0.2, 0);
-  ctx.lineTo(-0.1, s);
-  ctx.lineTo(0.0, s);
-  ctx.lineTo(0.3, 0);
-  ctx.lineTo(0.0, -s);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.save();
-  ctx.rotate(0.22);
-  ctx.fillRect(-0.04, -0.24, 0.08, 0.48);
-  ctx.restore();
-}
-
-function drawIconMic(ctx: CanvasRenderingContext2D) {
-  ctx.beginPath();
-  ctx.ellipse(0, -0.12, 0.15, 0.22, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  for (let i = 0; i < 5; i++) {
-    ctx.fillRect(-0.1, -0.24 + i * 0.08, 0.2, 0.028);
-  }
-
-  ctx.fillRect(-0.04, 0.1, 0.08, 0.14);
-
-  ctx.lineWidth = 0.058;
-  ctx.beginPath();
-  ctx.arc(0, 0.2, 0.17, 0.12, Math.PI - 0.12);
-  ctx.stroke();
-
-  ctx.fillRect(-0.13, 0.32, 0.26, 0.05);
-}
-
-function buildGeometry(dots: GridDot[]) {
+function buildGeometry(dots: GridDot[], icons: IconPaths) {
   const positions = new Float32Array(dots.length * 3);
   const tips = new Float32Array(dots.length);
   const cols = new Float32Array(dots.length);
@@ -371,11 +124,11 @@ function buildGeometry(dots: GridDot[]) {
   geo.setAttribute('aCircle', new THREE.BufferAttribute(buildShapeCircle(dots), 3));
   geo.setAttribute('aWave', new THREE.BufferAttribute(lineasBlend, 3));
   geo.setAttribute('aLine', new THREE.BufferAttribute(buildShapeLine(dots), 3));
-  geo.setAttribute('aServer', new THREE.BufferAttribute(buildIconShape(dots, drawIconServer), 3));
-  geo.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShape(dots, drawIconSeries), 3));
-  geo.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShape(dots, drawIconBrush), 3));
-  geo.setAttribute('aCode', new THREE.BufferAttribute(buildIconShape(dots, drawIconCode), 3));
-  geo.setAttribute('aMic', new THREE.BufferAttribute(buildIconShape(dots, drawIconMic), 3));
+  geo.setAttribute('aServer', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.hosting, dots), 3));
+  geo.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.series, dots), 3));
+  geo.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelier, dots), 3));
+  geo.setAttribute('aCode', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelierCode, dots), 3));
+  geo.setAttribute('aMic', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.voices, dots), 3));
   return geo;
 }
 
@@ -586,28 +339,40 @@ export default function Atmosphere() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let disposed = false;
+    let teardown: (() => void) | undefined;
 
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
-    } catch {
-      return;
-    }
+    (async () => {
+      let icons: IconPaths;
+      try {
+        icons = await loadIconPaths();
+      } catch {
+        return;
+      }
+      if (disposed) return;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
-    camera.position.z = 1;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
-    const canvas = renderer.domElement;
-    canvas.style.pointerEvents = 'auto';
-    canvas.style.cursor = 'default';
-    mount.appendChild(canvas);
+      let renderer: THREE.WebGLRenderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
+      } catch {
+        return;
+      }
 
-    const gridDots = buildLogoGrid();
-    const geometry = buildGeometry(gridDots);
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
+      camera.position.z = 1;
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0);
+      const canvas = renderer.domElement;
+      canvas.style.pointerEvents = 'auto';
+      canvas.style.cursor = 'default';
+      mount.appendChild(canvas);
+
+      const gridDots = buildLogoGrid();
+      const geometry = buildGeometry(gridDots, icons);
 
     const uniforms = {
       uTime: { value: 0 },
@@ -952,8 +717,7 @@ export default function Atmosphere() {
       frame = requestAnimationFrame(tick);
     }
 
-    return () => {
-      disposed = true;
+    teardown = () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
       window.removeEventListener('df:lineas-panel', onLineasPanel);
@@ -971,6 +735,12 @@ export default function Atmosphere() {
       if (canvas.parentElement === mount) {
         mount.removeChild(canvas);
       }
+    };
+    })();
+
+    return () => {
+      disposed = true;
+      teardown?.();
     };
   }, []);
 
