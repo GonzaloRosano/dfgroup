@@ -37,6 +37,11 @@
   );
   --scroll-offset: calc(var(--nav-height) + 0.65rem);
   --home-viewport-h: calc(100svh - var(--nav-height));
+  --home-hero-min-h: 92svh;
+  --home-section-pad-y: clamp(6rem, 10vw, 8rem);
+  --home-section-pad-bottom: clamp(7rem, 11vw, 9rem);
+  --lineas-scroll-track: 280svh;
+  --lineas-scroll-track-mobile: 250svh;
 
   --header-bg: color-mix(in srgb, var(--void) 76%, transparent);
   --header-bg-scrolled: color-mix(in srgb, var(--void) 92%, transparent);
