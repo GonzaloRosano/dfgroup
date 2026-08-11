@@ -20,8 +20,8 @@ const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
 /** Shapes are centered in orthographic space; layout uses the right 50% viewport panel */
 const SHAPE_OFFSET_X = 0;
-const ICON_SCALE = 0.94;
-const ICON_DILATE_PX = 1;
+const ICON_SCALE = 0.96;
+const ICON_DILATE_PX = 2;
 
 type GridDot = {
   x: number;
@@ -138,35 +138,11 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
 
 type IconDrawFn = (ctx: CanvasRenderingContext2D) => void;
 
-function nearestFilledCell(
-  filled: Uint8Array,
-  cw: number,
-  ch: number,
-  col: number,
-  row: number,
-): { u: number; v: number } {
-  const gc = Math.round(col * (cw - 1));
-  const gr = Math.round(row * (ch - 1));
-
-  if (filled[gr * cw + gc]) {
-    return { u: gc / (cw - 1), v: gr / (ch - 1) };
-  }
-
-  const maxR = Math.max(cw, ch);
-  for (let r = 1; r < maxR; r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-        const c = gc + dx;
-        const g = gr + dy;
-        if (c < 0 || c >= cw || g < 0 || g >= ch) continue;
-        if (!filled[g * cw + c]) continue;
-        return { u: c / (cw - 1), v: g / (ch - 1) };
-      }
-    }
-  }
-
-  return { u: 0.5, v: 0.5 };
+function iconCellToOrtho(u: number, v: number, padX: number, padY: number) {
+  return {
+    x: (u - 0.5) * (1 - padX * 2) + SHAPE_OFFSET_X,
+    y: -(v - 0.5) * ASPECT * (1 - padY * 2),
+  };
 }
 
 /** Thicken rasterized icon strokes so thin lines survive the dot grid */
@@ -191,7 +167,7 @@ function dilateFilled(filled: Uint8Array, cw: number, ch: number, radius: number
   return out;
 }
 
-/** Map each feather dot to the icon silhouette via matching grid coordinates */
+/** Assign feather dots to rasterized icon pixels so silhouettes read clearly */
 function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   const cw = GRID_COLS;
   const ch = GRID_ROWS;
@@ -226,15 +202,33 @@ function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   }
 
   const filled = dilateFilled(raw, cw, ch, ICON_DILATE_PX);
-
-  const out = new Float32Array(dots.length * 3);
   const padX = 0.06;
   const padY = 0.06;
+  const targets: { u: number; v: number; x: number; y: number }[] = [];
 
-  for (let i = 0; i < dots.length; i++) {
-    const sample = nearestFilledCell(filled, cw, ch, dots[i].col, dots[i].row);
-    out[i * 3] = (sample.u - 0.5) * (1 - padX * 2) + SHAPE_OFFSET_X;
-    out[i * 3 + 1] = -(sample.v - 0.5) * ASPECT * (1 - padY * 2);
+  for (let row = 0; row < ch; row++) {
+    for (let col = 0; col < cw; col++) {
+      if (!filled[row * cw + col]) continue;
+      const u = col / (cw - 1);
+      const v = row / (ch - 1);
+      const { x, y } = iconCellToOrtho(u, v, padX, padY);
+      targets.push({ u, v, x, y });
+    }
+  }
+
+  const out = new Float32Array(dots.length * 3);
+  if (targets.length === 0) return out;
+
+  targets.sort((a, b) => a.v - b.v || a.u - b.u);
+
+  const order = dots.map((_, i) => i);
+  order.sort((a, b) => dots[a].row - dots[b].row || dots[a].col - dots[b].col);
+
+  for (let j = 0; j < order.length; j++) {
+    const i = order[j];
+    const target = targets[j % targets.length];
+    out[i * 3] = target.x;
+    out[i * 3 + 1] = target.y;
     out[i * 3 + 2] = 0;
   }
 
@@ -390,13 +384,15 @@ function iconPanelWeight(panelIdx: number, progress: number) {
   return 1 - THREE.MathUtils.smoothstep(0.08, 1.05, d);
 }
 
-function sectionPresence(el: Element | null, vh: number) {
+function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
   if (!el) return 0;
   const r = el.getBoundingClientRect();
   const bandTop = vh * 0.08;
   const bandBottom = vh * 0.92;
   const overlap = Math.min(r.bottom, bandBottom) - Math.max(r.top, bandTop);
-  const denom = Math.max(r.height * 0.42, vh * 0.48);
+  const denom = scrollTrack
+    ? Math.max(vh * 0.68, 1)
+    : Math.max(r.height * 0.42, vh * 0.48);
   const raw = THREE.MathUtils.clamp(overlap / denom, 0, 1);
   return raw * raw * (3 - 2 * raw);
 }
@@ -785,7 +781,7 @@ export default function Atmosphere() {
       const raw = {
         inicio: sectionPresence(sections.inicio, vh),
         grupo: sectionPresence(sections.grupo, vh),
-        lineas: sectionPresence(sections.lineas, vh),
+        lineas: sectionPresence(sections.lineas, vh, true),
         oficio: sectionPresence(sections.oficio, vh),
         contacto: sectionPresence(sections.contacto, vh),
       };
@@ -840,8 +836,9 @@ export default function Atmosphere() {
 
       const pose = blendPose(cur, poses);
 
-      const iconTargetMix = cur.lineas > 0.08 ? 1 : 0;
-      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 1.35, delta);
+      const lineasScrollActive = lineasPanel.raw > 0.001;
+      const iconTargetMix = lineasScrollActive || cur.lineas > 0.12 ? 1 : 0;
+      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 1.65, delta);
 
       const p = lineasPanel.progress;
       const targetIconW = {
@@ -859,7 +856,7 @@ export default function Atmosphere() {
       iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 1.8, delta);
 
       if (reduceMotion) {
-        const inLineas = beats.lineas > 0.45;
+        const inLineas = beats.lineas > 0.35 || lineasPanel.raw > 0.001;
         if (inLineas) {
           uniforms.uWInicio.value = 0;
           uniforms.uWGrupo.value = 0;
