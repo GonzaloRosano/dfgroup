@@ -40,8 +40,15 @@
   --home-hero-min-h: 92svh;
   --home-section-pad-y: clamp(6rem, 10vw, 8rem);
   --home-section-pad-bottom: clamp(7rem, 11vw, 9rem);
-  --lineas-scroll-track: 280svh;
-  --lineas-scroll-track-mobile: 250svh;
+  --lineas-panel-count: 4;
+  --lineas-scroll-per-panel: 100svh;
+  --lineas-scroll-per-panel-mobile: 88svh;
+  --lineas-scroll-track: calc(
+    (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel)
+  );
+  --lineas-scroll-track-mobile: calc(
+    (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel-mobile)
+  );
 
   --header-bg: color-mix(in srgb, var(--void) 76%, transparent);
   --header-bg-scrolled: color-mix(in srgb, var(--void) 92%, transparent);

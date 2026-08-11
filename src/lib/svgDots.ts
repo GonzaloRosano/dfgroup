@@ -89,7 +89,11 @@ export function rasterizePaths(
   ctx.fillStyle = '#fff';
 
   for (const d of paths) {
-    ctx.fill(new Path2D(d));
+    try {
+      ctx.fill(new Path2D(d));
+    } catch {
+      // Skip invalid path data — feather grid still renders.
+    }
   }
 
   const data = ctx.getImageData(0, 0, cols, rows).data;
@@ -188,10 +192,23 @@ export async function fetchSvgPaths(url: string): Promise<string[]> {
   return paths;
 }
 
+export const EMPTY_ICON_PATHS = Object.fromEntries(
+  Object.keys(ICON_SVGS).map((key) => [key, [] as string[]]),
+) as Record<keyof typeof ICON_SVGS, string[]>;
+
+/** Loads line icon SVG paths; failed icons resolve to [] so the feather grid still renders. */
 export async function loadIconPaths(): Promise<Record<keyof typeof ICON_SVGS, string[]>> {
-  const entries = await Promise.all(
-    Object.entries(ICON_SVGS).map(async ([key, url]) => [key, await fetchSvgPaths(url)] as const),
+  const result = { ...EMPTY_ICON_PATHS };
+
+  await Promise.all(
+    Object.entries(ICON_SVGS).map(async ([key, url]) => {
+      try {
+        result[key as keyof typeof ICON_SVGS] = await fetchSvgPaths(url);
+      } catch (err) {
+        console.warn(`[svgDots] icon unavailable: ${url}`, err);
+      }
+    }),
   );
 
-  return Object.fromEntries(entries) as Record<keyof typeof ICON_SVGS, string[]>;
+  return result;
 }

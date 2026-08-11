@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   buildIconShapeFromPaths,
   buildLogoGrid,
+  EMPTY_ICON_PATHS,
   loadIconPaths,
   type GridDot,
   GRID_COLS,
@@ -132,9 +133,17 @@ function buildGeometry(dots: GridDot[], icons: IconPaths) {
   return geo;
 }
 
+function updateIconAttributes(geometry: THREE.BufferGeometry, dots: GridDot[], icons: IconPaths) {
+  geometry.setAttribute('aServer', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.hosting, dots), 3));
+  geometry.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.series, dots), 3));
+  geometry.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelier, dots), 3));
+  geometry.setAttribute('aCode', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelierCode, dots), 3));
+  geometry.setAttribute('aMic', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.voices, dots), 3));
+}
+
 function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
-  return 1 - THREE.MathUtils.smoothstep(0.08, 1.05, d);
+  return 1 - THREE.MathUtils.smoothstep(0.14, 0.78, d);
 }
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
@@ -342,22 +351,15 @@ export default function Atmosphere() {
     let disposed = false;
     let teardown: (() => void) | undefined;
 
-    (async () => {
-      let icons: IconPaths;
-      try {
-        icons = await loadIconPaths();
-      } catch {
-        return;
-      }
-      if (disposed) return;
-
+    try {
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let renderer: THREE.WebGLRenderer;
       try {
         renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
-      } catch {
-        return;
+      } catch (err) {
+        console.error('[Atmosphere] WebGL unavailable', err);
+        return () => {};
       }
 
       const scene = new THREE.Scene();
@@ -372,7 +374,14 @@ export default function Atmosphere() {
       mount.appendChild(canvas);
 
       const gridDots = buildLogoGrid();
-      const geometry = buildGeometry(gridDots, icons);
+      if (gridDots.length === 0) {
+        console.warn('[Atmosphere] logo grid is empty — check Path2D / canvas support');
+        renderer.dispose();
+        mount.removeChild(canvas);
+        return () => {};
+      }
+
+      const geometry = buildGeometry(gridDots, EMPTY_ICON_PATHS);
 
     const uniforms = {
       uTime: { value: 0 },
@@ -563,7 +572,7 @@ export default function Atmosphere() {
     const fit = () => {
       const w = mount.clientWidth;
       const h = mount.clientHeight;
-      if (!w || !h) return;
+      if (!w || !h) return false;
 
       const aspect = w / h;
       viewH = 1.18;
@@ -579,6 +588,17 @@ export default function Atmosphere() {
       const pr = Math.min(window.devicePixelRatio, 2);
       renderer.setPixelRatio(pr);
       uniforms.uPixelRatio.value = pr;
+      return true;
+    };
+
+    let fitAttempts = 0;
+    const tryFit = () => {
+      if (disposed) return;
+      if (fit()) {
+        if (reduceMotion) renderFrame(0, 0);
+        return;
+      }
+      if (++fitAttempts < 24) requestAnimationFrame(tryFit);
     };
 
     const ro = new ResizeObserver(() => {
@@ -586,7 +606,7 @@ export default function Atmosphere() {
       if (reduceMotion) renderFrame(0, 0);
     });
     ro.observe(mount);
-    fit();
+    tryFit();
 
     const renderFrame = (delta: number, elapsed: number) => {
       const k = reduceMotion ? 0 : DAMP;
@@ -716,6 +736,11 @@ export default function Atmosphere() {
       frame = requestAnimationFrame(tick);
     }
 
+    void loadIconPaths().then((icons) => {
+      if (disposed) return;
+      updateIconAttributes(geometry, gridDots, icons);
+    });
+
     teardown = () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
@@ -735,7 +760,9 @@ export default function Atmosphere() {
         mount.removeChild(canvas);
       }
     };
-    })();
+    } catch (err) {
+      console.error('[Atmosphere] init failed', err);
+    }
 
     return () => {
       disposed = true;
@@ -753,5 +780,11 @@ export default function Atmosphere() {
   );
 }
 
-export const LOGO_DOT_COUNT =
-  typeof document === 'undefined' ? 0 : buildLogoGrid().length;
+export const LOGO_DOT_COUNT = (() => {
+  if (typeof document === 'undefined') return 0;
+  try {
+    return buildLogoGrid().length;
+  } catch {
+    return 0;
+  }
+})();

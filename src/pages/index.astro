@@ -212,11 +212,14 @@ const stats = [
   }
 
   const linesShowcase = document.querySelector('[data-lines-showcase]') as HTMLElement | null;
+  const linesSticky = document.querySelector('.lines-showcase__sticky') as HTMLElement | null;
   const linesTrack = document.querySelector('[data-lines-track]') as HTMLElement | null;
   const linesCounter = document.querySelector('[data-lines-counter]');
   const linesDots = document.querySelectorAll('[data-lines-dot]');
   const linesPanels = document.querySelectorAll('.lines-showcase__panel');
   const lineLabels = ['DF Hosting', 'DF Series', 'DF Atelier', 'DF Voices'];
+  const PANEL_COUNT = linesPanels.length || 4;
+  const PANEL_STEPS = Math.max(PANEL_COUNT - 1, 1);
 
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -225,20 +228,21 @@ const stats = [
     return t * t * (3 - 2 * t);
   };
 
+  const navHeight = () =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 0;
+
   const updateLineasScroll = () => {
     if (!linesShowcase || !linesTrack) return;
 
-    const vh = window.innerHeight;
+    const stickyH = linesSticky?.offsetHeight ?? window.innerHeight;
+    const scrollable = Math.max(linesShowcase.offsetHeight - stickyH, 1);
     const rect = linesShowcase.getBoundingClientRect();
-    const scrollable = linesShowcase.offsetHeight - vh;
-    const raw = scrollable > 0 ? clamp(-rect.top / scrollable, 0, 1) : 0;
-    const progress = raw * 3;
-    const index = Math.min(3, Math.floor(progress + 0.001));
+    const raw = clamp((navHeight() - rect.top) / scrollable, 0, 1);
+    const progress = raw * PANEL_STEPS;
+    const index = Math.min(PANEL_STEPS, Math.floor(progress + 0.001));
     const frac = progress - index;
-
-    if (!reduceMotion) {
-      linesTrack.style.transform = `translate3d(${-raw * 75}%, 0, 0)`;
-    }
+    linesShowcase.style.setProperty('--lines-raw', String(raw));
+    linesShowcase.style.setProperty('--lines-progress', String(progress));
 
     if (linesCounter) {
       linesCounter.textContent = `${String(index + 1).padStart(2, '0')} — ${lineLabels[index]}`;
@@ -246,19 +250,19 @@ const stats = [
 
     linesDots.forEach((dot, i) => {
       dot.classList.toggle('is-active', i === index);
-      dot.classList.toggle('is-near', Math.abs(i - progress) < 0.55);
+      dot.classList.toggle('is-near', Math.abs(i - progress) < 0.45);
     });
 
     linesPanels.forEach((panel, i) => {
       const dist = Math.abs(progress - i);
-      const panelOpacity = 1 - smoothstep(0.18, 1.05, dist);
+      const panelOpacity = 1 - smoothstep(0.28, 0.92, dist);
       (panel as HTMLElement).style.setProperty('--panel-opacity', String(panelOpacity));
       panel.classList.toggle('is-active', i === index);
     });
 
     document.documentElement.classList.toggle(
       'is-lineas-active',
-      rect.top <= vh * 0.15 && rect.bottom >= vh * 0.85,
+      rect.top <= navHeight() + 8 && rect.bottom >= stickyH * 0.72,
     );
 
     window.dispatchEvent(
@@ -571,6 +575,8 @@ const stats = [
     position: relative;
     height: calc(var(--home-viewport-h) + var(--lineas-scroll-track));
     z-index: 1;
+    --lines-raw: 0;
+    --lines-progress: 0;
   }
 
   .lines-showcase__sticky {
@@ -609,18 +615,24 @@ const stats = [
   .lines-showcase__track {
     display: flex;
     height: 100%;
-    width: 400%;
+    width: calc(var(--lineas-panel-count) * 100%);
     will-change: transform;
+    transform: translate3d(
+      calc(-1 * var(--lines-raw) * (var(--lineas-panel-count) - 1) / var(--lineas-panel-count) * 100%),
+      0,
+      0
+    );
   }
 
   .lines-showcase__panel {
-    flex: 0 0 25%;
-    width: 25%;
+    flex: 0 0 calc(100% / var(--lineas-panel-count));
+    width: calc(100% / var(--lineas-panel-count));
     height: 100%;
     display: flex;
     align-items: center;
     padding-block: 1rem 3rem;
     opacity: var(--panel-opacity, 1);
+    transition: opacity 120ms linear;
   }
 
   .lines-showcase__panel.is-active {
