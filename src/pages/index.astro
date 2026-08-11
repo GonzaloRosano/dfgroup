@@ -271,7 +271,7 @@ const crafts = [
     top: var(--nav-height);
     right: 0;
     width: 50%;
-    height: calc(100svh - var(--nav-height));
+    height: calc(100vh - var(--nav-height));
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
@@ -316,6 +316,7 @@ const crafts = [
     justify-content: center;
     box-sizing: border-box;
     min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
     padding: var(--nav-height) 0 clamp(2.5rem, 5vh, 4rem);
     overflow: hidden;
   }
@@ -397,17 +398,19 @@ const crafts = [
     flex-direction: column;
     box-sizing: border-box;
     min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
     padding-block: 0;
     padding-top: var(--nav-height);
   }
 
   .about__inner {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     max-width: 52rem;
-    padding-block: clamp(2.5rem, 6vh, 4.5rem);
+    padding-block: clamp(1.5rem, 4vh, 3rem);
   }
 
   .crafts,
@@ -416,6 +419,7 @@ const crafts = [
     flex-direction: column;
     box-sizing: border-box;
     min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
     padding-block: 0;
     padding-top: var(--nav-height);
   }
@@ -423,17 +427,14 @@ const crafts = [
   .crafts > .container,
   .contact > .container {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding-block: clamp(2.5rem, 6vh, 4.5rem);
+    padding-block: clamp(1.5rem, 4vh, 3rem);
   }
 
   @media (max-width: 959px) {
-    .lines-showcase {
-      height: calc(var(--home-viewport-h) + var(--lineas-scroll-track-mobile));
-    }
-
     .lines-showcase__copy {
       max-width: none;
       padding-right: 0;
@@ -452,7 +453,7 @@ const crafts = [
 
     .home-atmosphere {
       width: 100%;
-      height: min(32svh, 280px);
+      height: min(32vh, 280px);
       top: auto;
       bottom: 0;
       opacity: 0.88;
@@ -460,14 +461,16 @@ const crafts = [
 
     .hero {
       min-height: var(--home-section-min-h);
+      height: var(--home-section-min-h);
       padding-top: var(--nav-height);
-      padding-bottom: min(30svh, 260px);
+      padding-bottom: min(30vh, 260px);
     }
 
     .about,
     .crafts,
     .contact {
       min-height: var(--home-section-min-h);
+      height: var(--home-section-min-h);
     }
 
     .hero__shield {
@@ -566,8 +569,10 @@ const crafts = [
 
   .lines-showcase__sticky {
     position: sticky;
-    top: var(--nav-height);
+    top: 0;
     height: var(--home-viewport-h);
+    box-sizing: border-box;
+    padding-top: var(--nav-height);
     display: grid;
     grid-template-rows: auto 1fr auto;
     overflow: hidden;

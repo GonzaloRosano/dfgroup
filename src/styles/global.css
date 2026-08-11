@@ -36,13 +36,13 @@
     var(--header-inset-y) * 2 + var(--header-bar-pad-y) * 2 + var(--header-bar-min)
   );
   --scroll-offset: calc(var(--nav-height) + 0.65rem);
-  --home-viewport-h: calc(100svh - var(--nav-height));
-  --home-section-min-h: 100svh;
+  --home-viewport-h: 100vh;
+  --home-section-min-h: 100vh;
   --home-section-pad-y: clamp(6rem, 10vw, 8rem);
   --home-section-pad-bottom: clamp(7rem, 11vw, 9rem);
   --lineas-panel-count: 4;
-  --lineas-scroll-per-panel: 100svh;
-  --lineas-scroll-per-panel-mobile: 88svh;
+  --lineas-scroll-per-panel: 100vh;
+  --lineas-scroll-per-panel-mobile: 100vh;
   --lineas-scroll-track: calc(
     (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel)
   );
