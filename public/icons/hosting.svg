@@ -1,14 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Server rack: three stacked units -->
-  <path fill="currentColor" d="M16 14 L80 14 L80 36 L16 36 Z" />
-  <path fill="currentColor" d="M16 40 L80 40 L80 62 L16 62 Z" />
-  <path fill="currentColor" d="M16 66 L80 66 L80 88 L16 88 Z" />
+  <!-- Server rack: monolithic stack with divider gaps -->
+  <path
+    fill="currentColor"
+    fill-rule="evenodd"
+    d="M 20 10 H 76 V 96 H 20 Z M 20 36 H 76 V 40 H 20 Z M 20 62 H 76 V 66 H 20 Z"
+  />
   <!-- Status LEDs -->
-  <path fill="currentColor" d="M24 22 L32 22 L32 30 L24 30 Z" />
-  <path fill="currentColor" d="M24 48 L32 48 L32 56 L24 56 Z" />
-  <path fill="currentColor" d="M24 74 L32 74 L32 82 L24 82 Z" />
-  <!-- Vent slots -->
-  <path fill="currentColor" d="M56 22 L60 22 L60 28 L56 28 Z M62 22 L66 22 L66 28 L62 28 Z M68 22 L72 22 L72 28 L68 28 Z" />
-  <path fill="currentColor" d="M56 48 L60 48 L60 54 L56 54 Z M62 48 L66 48 L66 54 L62 54 Z M68 48 L72 48 L72 54 L68 54 Z" />
-  <path fill="currentColor" d="M56 74 L60 74 L60 80 L56 80 Z M62 74 L66 74 L66 80 L62 80 Z M68 74 L72 74 L72 80 L68 80 Z" />
+  <path
+    fill="currentColor"
+    d="M 28 18 A 5 5 0 1 1 27.99 18 Z M 28 44 A 5 5 0 1 1 27.99 44 Z M 28 70 A 5 5 0 1 1 27.99 70 Z"
+  />
+  <!-- Vent bars -->
+  <path fill="currentColor" d="M 56 20 H 70 V 26 H 56 Z M 56 46 H 70 V 52 H 56 Z M 56 72 H 70 V 78 H 56 Z" />
 </svg>

@@ -189,6 +189,10 @@ export async function fetchSvgPaths(url: string): Promise<string[]> {
     if (d) paths.push(d);
   });
 
+  if (paths.length === 0) {
+    console.warn(`[svgDots] no paths parsed from SVG (check XML validity): ${url}`);
+  }
+
   return paths;
 }
 
