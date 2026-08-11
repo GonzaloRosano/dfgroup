@@ -39,6 +39,7 @@ const stats = [
   </div>
 
   <section id="inicio" class="hero">
+    <div class="hero__shield" aria-hidden="true"></div>
     <div class="container hero__grid">
       <div class="hero__copy">
         <p class="hero__eyebrow">Dark Feather Group</p>
@@ -241,9 +242,13 @@ const stats = [
 <style>
   .home-atmosphere {
     position: fixed;
-    inset: 0;
+    top: 0;
+    right: 0;
+    width: min(52%, 760px);
+    height: 100svh;
     z-index: 0;
     pointer-events: none;
+    overflow: hidden;
   }
 
   .home-atmosphere :global(.atmosphere),
@@ -254,13 +259,17 @@ const stats = [
     height: 100%;
   }
 
-  .home-atmosphere::after {
+  .home-atmosphere::before {
     content: '';
     position: absolute;
     inset: 0;
-    background:
-      linear-gradient(90deg, rgba(13, 13, 13, 0.92) 0%, rgba(13, 13, 13, 0.35) 42%, transparent 68%),
-      radial-gradient(ellipse 90% 80% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.45) 100%);
+    background: linear-gradient(
+      90deg,
+      var(--void) 0%,
+      color-mix(in srgb, var(--void) 88%, transparent) 18%,
+      transparent 42%
+    );
+    z-index: 1;
     pointer-events: none;
   }
 
@@ -272,12 +281,36 @@ const stats = [
     flex-direction: column;
     justify-content: center;
     padding: 7rem 0 5rem;
+    overflow: hidden;
+  }
+
+  .hero__shield {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(58%, 680px);
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      var(--void) 0%,
+      var(--void) 78%,
+      color-mix(in srgb, var(--void) 92%, transparent) 92%,
+      transparent 100%
+    );
+    z-index: 1;
+    pointer-events: none;
   }
 
   .hero__grid {
+    position: relative;
+    z-index: 2;
     display: grid;
     gap: 3rem;
     align-items: center;
+  }
+
+  .hero__copy {
+    max-width: 36rem;
   }
 
   .hero__eyebrow {
@@ -332,9 +365,36 @@ const stats = [
 
   .hero__visual {
     position: relative;
-    min-height: clamp(16rem, 40vw, 28rem);
+    min-height: clamp(14rem, 32vw, 22rem);
     pointer-events: auto;
     cursor: crosshair;
+  }
+
+  @media (max-width: 959px) {
+    .home-atmosphere {
+      width: 100%;
+      height: min(42svh, 360px);
+      top: auto;
+      bottom: 0;
+      opacity: 0.85;
+    }
+
+    .hero__shield {
+      width: 100%;
+      height: 62%;
+      background: linear-gradient(
+        180deg,
+        var(--void) 0%,
+        var(--void) 72%,
+        color-mix(in srgb, var(--void) 90%, transparent) 88%,
+        transparent 100%
+      );
+    }
+
+    .hero__visual {
+      min-height: 0;
+      pointer-events: none;
+    }
   }
 
   .hero__visual-hint {
@@ -354,6 +414,7 @@ const stats = [
     flex-direction: column;
     gap: 1.75rem;
     text-align: right;
+    z-index: 2;
   }
 
   .hero__stat-value {
@@ -585,8 +646,12 @@ const stats = [
 
   @media (min-width: 960px) {
     .hero__grid {
-      grid-template-columns: 1fr 1fr;
-      gap: 4rem;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 3rem;
+    }
+
+    .hero__visual {
+      min-height: clamp(18rem, 50vh, 32rem);
     }
 
     .hero__stats {

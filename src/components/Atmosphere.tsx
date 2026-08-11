@@ -1,12 +1,9 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 /**
  * Logo-derived pointillism feather — sampled from public/logo.svg via Canvas 2D.
- * Sections: #inicio #grupo #lineas #oficio #contacto
+ * Right-panel accent only; normal blending, no bloom (avoids white washout).
  */
 
 const LOGO_PATH =
@@ -14,12 +11,12 @@ const LOGO_PATH =
 
 const VIEW_W = 122;
 const VIEW_H = 135;
-const TARGET_DOTS = 3400;
-const VOID = 0x0d0d0d;
-const EMBER = new THREE.Color(0xc45a4a);
-const BONE = new THREE.Color(0xd4d4d8);
-const FOG = new THREE.Color(0x71717a);
+const TARGET_DOTS = 2800;
 const DAMP = 4.8;
+
+const EMBER = new THREE.Color(0x9a3b3b);
+const BONE = new THREE.Color(0xa1a1aa);
+const FOG = new THREE.Color(0x52525b);
 
 const DOT_VERT = /* glsl */ `
   attribute float aSeed;
@@ -34,7 +31,6 @@ const DOT_VERT = /* glsl */ `
 
   varying float vSeed;
   varying float vTip;
-  varying float vDepth;
   varying float vTwinkle;
 
   void main() {
@@ -42,17 +38,16 @@ const DOT_VERT = /* glsl */ `
     vTip = aTip;
 
     vec3 p = position;
-    float wave = sin(uTime * 0.85 + aSeed * 18.0) * 0.008 * uBreathe * uMotion;
+    float wave = sin(uTime * 0.75 + aSeed * 18.0) * 0.004 * uBreathe * uMotion;
     p.z += wave;
-    p.x += cos(uTime * 0.55 + aSeed * 9.0) * 0.006 * uBreathe * uMotion;
-    p.y += sin(uTime * 0.65 + aSeed * 11.0) * 0.007 * uBreathe * uMotion;
-    p += normalize(vec3(p.x, p.y, 0.001)) * uInteract * 0.035 * sin(uTime * 2.0 + aSeed * 30.0);
+    p.x += cos(uTime * 0.5 + aSeed * 9.0) * 0.003 * uBreathe * uMotion;
+    p.y += sin(uTime * 0.6 + aSeed * 11.0) * 0.003 * uBreathe * uMotion;
+    p += normalize(vec3(p.x, p.y, 0.001)) * uInteract * 0.018 * sin(uTime * 2.0 + aSeed * 30.0);
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    vDepth = -mv.z;
-    vTwinkle = sin(uTime * 2.4 + aSeed * 40.0) * 0.5 + 0.5;
+    vTwinkle = sin(uTime * 2.0 + aSeed * 40.0) * 0.5 + 0.5;
 
-    gl_PointSize = aSize * (280.0 / -mv.z) * mix(0.9, 1.2, vTwinkle * uTwinkle * (1.0 + uInteract * 0.35));
+    gl_PointSize = aSize * (95.0 / -mv.z) * (1.0 + vTwinkle * uTwinkle * 0.12 + uInteract * 0.08);
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -66,7 +61,6 @@ const DOT_FRAG = /* glsl */ `
 
   varying float vSeed;
   varying float vTip;
-  varying float vDepth;
   varying float vTwinkle;
 
   void main() {
@@ -74,16 +68,16 @@ const DOT_FRAG = /* glsl */ `
     float d = length(uv);
     if (d > 0.5) discard;
 
-    float soft = smoothstep(0.5, 0.12, d);
-    float depthFade = smoothstep(14.0, 2.0, vDepth);
+    float dotShape = 1.0 - smoothstep(0.38, 0.5, d);
 
     float tip = smoothstep(0.55, 0.95, vTip);
-    vec3 base = mix(uFog, uBone, 0.55 + vSeed * 0.35);
+    vec3 base = mix(uFog, uBone, 0.35 + vSeed * 0.25);
     vec3 col = mix(base, uEmber, tip * uEmberMix);
-    col += uEmber * tip * uEmberMix * 0.35;
-    col *= mix(0.88, 1.08, vTwinkle * 0.35);
+    col *= mix(0.92, 1.06, vTwinkle * 0.2);
 
-    float alpha = soft * depthFade * uFade * mix(0.35, 0.92, tip * 0.5 + 0.5);
+    float alpha = dotShape * uFade * mix(0.22, 0.52, tip * 0.4 + 0.35);
+    if (alpha < 0.02) discard;
+
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -119,8 +113,8 @@ function sampleLogoDots(): SampledDot[] {
       const tip = 1 - THREE.MathUtils.clamp(svgY / VIEW_H, 0, 1);
 
       candidates.push({
-        x: (u - 0.5) * 2.35,
-        y: -(v - 0.5) * 2.6,
+        x: (u - 0.5) * 1.65,
+        y: -(v - 0.5) * 1.85,
         u,
         v,
         tip,
@@ -137,27 +131,24 @@ function sampleLogoDots(): SampledDot[] {
   const picked = candidates.slice(0, Math.min(TARGET_DOTS, candidates.length));
 
   for (const dot of picked) {
-    dot.x += (Math.random() - 0.5) * 0.012;
-    dot.y += (Math.random() - 0.5) * 0.012;
+    dot.x += (Math.random() - 0.5) * 0.006;
+    dot.y += (Math.random() - 0.5) * 0.006;
   }
 
   return picked;
 }
 
 function buildDotGeometry(dots: SampledDot[]) {
-  const layers = [-0.035, 0, 0.035];
   const positions: number[] = [];
   const seeds: number[] = [];
   const tips: number[] = [];
   const sizes: number[] = [];
 
   for (const dot of dots) {
-    for (const lz of layers) {
-      positions.push(dot.x, dot.y, lz + (Math.random() - 0.5) * 0.018);
-      seeds.push(dot.seed);
-      tips.push(dot.tip);
-      sizes.push(THREE.MathUtils.lerp(2.2, 4.8, dot.tip * 0.4 + dot.seed * 0.6));
-    }
+    positions.push(dot.x, dot.y, (Math.random() - 0.5) * 0.008);
+    seeds.push(dot.seed);
+    tips.push(dot.tip);
+    sizes.push(THREE.MathUtils.lerp(1.1, 2.2, dot.tip * 0.35 + dot.seed * 0.45));
   }
 
   const geo = new THREE.BufferGeometry();
@@ -206,10 +197,9 @@ export default function Atmosphere() {
     }
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(VOID, 0.045);
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 40);
-    camera.position.set(0, 0.1, 5.4);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40);
+    camera.position.set(0, 0, 6.4);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x000000, 0);
@@ -222,10 +212,10 @@ export default function Atmosphere() {
       uTime: { value: 0 },
       uMotion: { value: reduceMotion ? 0 : 1 },
       uBreathe: { value: 1 },
-      uTwinkle: { value: 0.4 },
+      uTwinkle: { value: 0.25 },
       uInteract: { value: 0 },
-      uFade: { value: 0.92 },
-      uEmberMix: { value: 0.45 },
+      uFade: { value: 0.75 },
+      uEmberMix: { value: 0.55 },
       uEmber: { value: EMBER },
       uBone: { value: BONE },
       uFog: { value: FOG },
@@ -237,17 +227,12 @@ export default function Atmosphere() {
       fragmentShader: DOT_FRAG,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     });
 
     const feather = new THREE.Points(dotGeo, dotMat);
-    feather.rotation.z = -0.08;
+    feather.rotation.z = -0.06;
     scene.add(feather);
-
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.35, 0.88);
-    composer.addPass(bloomPass);
 
     const sections = {
       inicio: document.getElementById('inicio'),
@@ -259,24 +244,24 @@ export default function Atmosphere() {
 
     const poses = {
       inicio: {
-        fx: 0.55, fy: 0.05, fz: 0, scale: 1.12, rotx: 0, roty: 0.18, rotz: -0.05,
-        camY: 0.08, camZ: 5.5, fov: 42, breathe: 0.75, twinkle: 0.35, ember: 0.42, fade: 0.9,
+        fx: 0.08, fy: 0.02, fz: 0, scale: 0.78, rotx: 0, roty: 0.12, rotz: -0.04,
+        camY: 0, camZ: 6.4, fov: 38, breathe: 0.6, twinkle: 0.22, ember: 0.55, fade: 0.72,
       },
       grupo: {
-        fx: 0.42, fy: 0, fz: 0.04, scale: 1.05, rotx: 0.08, roty: -0.2, rotz: 0.04,
-        camY: 0, camZ: 5.1, fov: 40, breathe: 0.85, twinkle: 0.55, ember: 0.58, fade: 0.88,
+        fx: 0.05, fy: 0, fz: 0.02, scale: 0.72, rotx: 0.06, roty: -0.15, rotz: 0.03,
+        camY: 0, camZ: 6.2, fov: 37, breathe: 0.55, twinkle: 0.3, ember: 0.62, fade: 0.65,
       },
       lineas: {
-        fx: 0.22, fy: -0.06, fz: 0.08, scale: 1, rotx: 0.15, roty: 0.65, rotz: 0.1,
-        camY: -0.05, camZ: 4.85, fov: 38, breathe: 0.7, twinkle: 0.75, ember: 0.72, fade: 0.82,
+        fx: -0.02, fy: -0.04, fz: 0.04, scale: 0.68, rotx: 0.1, roty: 0.45, rotz: 0.06,
+        camY: -0.03, camZ: 6, fov: 36, breathe: 0.45, twinkle: 0.38, ember: 0.7, fade: 0.58,
       },
       oficio: {
-        fx: -0.05, fy: 0.04, fz: 0.02, scale: 0.92, rotx: -0.05, roty: 1.05, rotz: 0.02,
-        camY: 0, camZ: 4.65, fov: 37, breathe: 0.55, twinkle: 0.85, ember: 0.95, fade: 0.75,
+        fx: -0.06, fy: 0.02, fz: 0.02, scale: 0.62, rotx: -0.04, roty: 0.85, rotz: 0.02,
+        camY: 0, camZ: 5.85, fov: 35, breathe: 0.35, twinkle: 0.45, ember: 0.78, fade: 0.5,
       },
       contacto: {
-        fx: 0, fy: -0.18, fz: 0.12, scale: 0.75, rotx: 0.2, roty: 1.35, rotz: 0.12,
-        camY: -0.12, camZ: 5.8, fov: 36, breathe: 0.25, twinkle: 0.2, ember: 0.35, fade: 0.38,
+        fx: 0, fy: -0.1, fz: 0.06, scale: 0.52, rotx: 0.12, roty: 1.1, rotz: 0.08,
+        camY: -0.08, camZ: 6.6, fov: 34, breathe: 0.2, twinkle: 0.15, ember: 0.45, fade: 0.32,
       },
     };
 
@@ -285,14 +270,14 @@ export default function Atmosphere() {
     let disposed = false;
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
-    const cam = { y: 0.1, z: 5.4, fov: 42 };
+    const cam = { y: 0, z: 6.4, fov: 38 };
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
     let interactTarget = 0;
     let interactCurrent = 0;
 
     const onFeatherInteract = (e: Event) => {
       const detail = (e as CustomEvent<{ intensity?: number }>).detail;
-      interactTarget = THREE.MathUtils.clamp(detail?.intensity ?? 0, 0, 1.2);
+      interactTarget = THREE.MathUtils.clamp(detail?.intensity ?? 0, 0, 1);
     };
 
     window.addEventListener('df:feather-interact', onFeatherInteract);
@@ -325,21 +310,21 @@ export default function Atmosphere() {
       camera.updateProjectionMatrix();
       renderer.setSize(w, h, false);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-      composer.setSize(w, h);
-      bloomPass.resolution.set(w, h);
     };
 
     const onPointerMove = (e: PointerEvent) => {
       if (!finePointer) return;
-      pointer.tx = (e.clientX / window.innerWidth - 0.5) * 2;
-      pointer.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      const rect = mount.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      pointer.tx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+      pointer.ty = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
     };
 
-    if (finePointer) window.addEventListener('pointermove', onPointerMove, { passive: true });
+    if (finePointer) mount.addEventListener('pointermove', onPointerMove, { passive: true });
 
     const ro = new ResizeObserver(() => {
       fit();
-      if (reduceMotion) composer.render();
+      if (reduceMotion) renderer.render(scene, camera);
     });
     ro.observe(mount);
     fit();
@@ -356,40 +341,37 @@ export default function Atmosphere() {
 
       pointer.x = THREE.MathUtils.damp(pointer.x, pointer.tx, k, delta);
       pointer.y = THREE.MathUtils.damp(pointer.y, pointer.ty, k, delta);
-      const px = finePointer ? pointer.x * 0.1 : 0;
-      const py = finePointer ? pointer.y * 0.06 : 0;
+      const px = finePointer ? pointer.x * 0.06 : 0;
+      const py = finePointer ? pointer.y * 0.04 : 0;
 
       cam.y = THREE.MathUtils.damp(cam.y, pose.camY, k, delta);
       cam.z = THREE.MathUtils.damp(cam.z, pose.camZ, k, delta);
       cam.fov = THREE.MathUtils.damp(cam.fov, pose.fov, k, delta);
       camera.fov = cam.fov;
       camera.updateProjectionMatrix();
-      camera.position.set(px * 0.25, cam.y, cam.z);
-      camera.lookAt(pose.fx * 0.35 + px * 0.15, 0, 0);
+      camera.position.set(px * 0.12, cam.y, cam.z);
+      camera.lookAt(pose.fx * 0.2 + px * 0.08, 0, 0);
 
-      const floatY = reduceMotion ? 0 : Math.sin(elapsed * 0.75) * 0.035 * pose.breathe;
+      const floatY = reduceMotion ? 0 : Math.sin(elapsed * 0.65) * 0.018 * pose.breathe;
 
       feather.position.set(
-        THREE.MathUtils.damp(feather.position.x, pose.fx + px, k, delta),
-        THREE.MathUtils.damp(feather.position.y, pose.fy + floatY + py, k, delta),
+        THREE.MathUtils.damp(feather.position.x, pose.fx + px * 0.04, k, delta),
+        THREE.MathUtils.damp(feather.position.y, pose.fy + floatY + py * 0.04, k, delta),
         THREE.MathUtils.damp(feather.position.z, pose.fz, k, delta),
       );
 
-      const densityPulse = reduceMotion ? 1 : 1 + Math.sin(elapsed * 1.2) * 0.025 * pose.twinkle;
-      feather.scale.setScalar(pose.scale * densityPulse);
+      feather.scale.setScalar(pose.scale);
 
       feather.rotation.x = THREE.MathUtils.damp(feather.rotation.x, pose.rotx, k, delta);
       feather.rotation.z = THREE.MathUtils.damp(feather.rotation.z, pose.rotz, k, delta);
-      feather.rotation.y = pose.roty + (reduceMotion ? 0 : elapsed * 0.04);
+      feather.rotation.y = pose.roty + (reduceMotion ? 0 : elapsed * 0.025);
 
       interactCurrent = THREE.MathUtils.damp(interactCurrent, interactTarget, k, delta);
       uniforms.uInteract.value = interactCurrent;
-      uniforms.uTwinkle.value = pose.twinkle + interactCurrent * 0.45;
-      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.25;
+      uniforms.uTwinkle.value = pose.twinkle + interactCurrent * 0.25;
+      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.15;
       uniforms.uFade.value = pose.fade;
-      uniforms.uBreathe.value = pose.breathe + interactCurrent * 0.15;
-
-      bloomPass.strength = THREE.MathUtils.lerp(0.18, 0.42, pose.ember + interactCurrent * 0.2);
+      uniforms.uBreathe.value = pose.breathe + interactCurrent * 0.1;
     };
 
     const tick = () => {
@@ -398,13 +380,13 @@ export default function Atmosphere() {
       const elapsed = clock.elapsedTime;
       applyBeats(sample(), delta, elapsed);
       if (!reduceMotion) uniforms.uTime.value = elapsed;
-      composer.render();
+      renderer.render(scene, camera);
       frame = requestAnimationFrame(tick);
     };
 
     if (reduceMotion) {
       applyBeats(sample(), 1, 0);
-      composer.render();
+      renderer.render(scene, camera);
     } else {
       frame = requestAnimationFrame(tick);
     }
@@ -413,11 +395,10 @@ export default function Atmosphere() {
       disposed = true;
       cancelAnimationFrame(frame);
       ro.disconnect();
-      if (finePointer) window.removeEventListener('pointermove', onPointerMove);
+      if (finePointer) mount.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('df:feather-interact', onFeatherInteract);
       dotGeo.dispose();
       dotMat.dispose();
-      composer.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);
