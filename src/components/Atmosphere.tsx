@@ -2,127 +2,97 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 /**
- * Home-only living film still. Full-viewport textured plane with subtle
- * displacement, parallax UV drift, film grain, and a slow light sweep.
+ * Noir wire lattice — 3D line geometry with scroll-driven camera and warp.
+ * No textures, no fullscreen post shader, no particles.
  *
- * Texture: /images/grupo-asphalt.jpg (wet asphalt, noir still).
- *
- * Scroll beats (data-atmosphere on index.astro):
- *   uHero     — parallax drift, sweep visible, open exposure
- *   uLines    — about + products: horizontal shear / UV stretch
- *   uPreview  — craft + contact: dims and tightens toward footer
- *
- * prefers-reduced-motion: static still, no time-driven effects.
+ * Sections: #inicio #grupo #lineas #oficio #contacto
  */
 
-const TEXTURE_URL = '/images/grupo-asphalt.jpg';
-const VOID = new THREE.Color(0x0d0d0d);
+const VOID = 0x0d0d0d;
+const EMBER = new THREE.Color(0xc45a4a);
+const BONE = new THREE.Color(0xd4d4d8);
 
-const VERTEX = /* glsl */ `
-  varying vec2 vUv;
-  varying vec2 vParallax;
-
+const LINE_VERT = /* glsl */ `
+  attribute vec3 aOffset;
   uniform float uTime;
   uniform float uMotion;
-  uniform float uHero;
-  uniform float uLines;
-  uniform float uPreview;
-  uniform float uHeroTravel;
-  uniform vec2 uParallax;
+  uniform float uBreath;
+  uniform float uShear;
+  uniform float uLift;
 
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-      u.y
-    );
-  }
+  varying float vDepth;
+  varying float vAxis;
 
   void main() {
-    vUv = uv;
+    vec3 p = position;
 
-    vec2 drift = uParallax * mix(0.018, 0.006, uPreview);
-    drift.x += uLines * 0.014;
-    drift.y -= uHeroTravel * uHero * 0.022;
-    vParallax = uv + drift;
+    float wave = sin(p.x * 1.6 + uTime * 0.55) * cos(p.z * 1.1 + uTime * 0.35);
+    p.y += wave * uBreath * 0.14 * uMotion;
+    p.x += sin(p.z * 0.9 + uTime * 0.4) * uShear * 0.22;
+    p.y += uLift * 0.35;
 
-    vec3 pos = position;
-    float dispAmp = uMotion * mix(0.028, 0.008, uPreview) * (0.55 + uHero * 0.45);
-    float n = noise(uv * 3.4 + vec2(uTime * 0.04, uTime * 0.025));
-    pos.z += (n - 0.5) * dispAmp;
-    pos.z -= uHeroTravel * uHero * 0.08;
-
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    vDepth = -mv.z;
+    vAxis = aOffset.x;
+    gl_Position = projectionMatrix * mv;
   }
 `;
 
-const FRAGMENT = /* glsl */ `
-  uniform sampler2D uMap;
-  uniform float uTime;
-  uniform float uMotion;
-  uniform float uHero;
-  uniform float uLines;
-  uniform float uPreview;
-  uniform vec3 uVoid;
+const LINE_FRAG = /* glsl */ `
+  uniform float uGlow;
+  uniform float uFade;
+  uniform vec3 uEmber;
+  uniform vec3 uBone;
 
-  varying vec2 vUv;
-  varying vec2 vParallax;
-
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
+  varying float vDepth;
+  varying float vAxis;
 
   void main() {
-    vec2 uv = vParallax;
-
-    float stretchX = 1.0 + uLines * 0.06;
-    float stretchY = 1.0 - uPreview * 0.04;
-    uv.x = (uv.x - 0.5) / stretchX + 0.5;
-    uv.y = (uv.y - 0.5) / stretchY + 0.5;
-
-    vec4 tex = texture2D(uMap, uv);
-    vec3 col = tex.rgb;
-
-    float sweep = sin((uv.x + uv.y * 0.35) * 6.2832 - uTime * 0.22) * 0.5 + 0.5;
-    sweep = pow(sweep, 4.5) * uMotion * mix(0.08, 0.02, uPreview) * (0.4 + uHero * 0.6);
-    col += vec3(0.07, 0.06, 0.05) * sweep;
-
-    float grain = hash(uv * vec2(1920.0, 1080.0) + uTime * 120.0);
-    grain = (grain - 0.5) * uMotion * mix(0.09, 0.04, uPreview);
-    col += vec3(grain);
-
-    float vig = smoothstep(0.95, 0.28, length((vUv - 0.5) * vec2(1.05, 0.92)));
-    col *= mix(0.72, 0.92, vig);
-
-    float dim = 1.0 - uPreview * 0.42 - uLines * 0.1;
-    col *= dim;
-
-    col = mix(uVoid, col, 0.88 + uHero * 0.12);
-
-    float alpha = mix(0.55, 0.82, uHero) * vig;
+    float depthFade = smoothstep(14.0, 2.5, vDepth);
+    float axisMix = mix(0.55, 1.0, vAxis);
+    vec3 col = mix(uBone * 0.35, uEmber, uGlow * axisMix);
+    float alpha = depthFade * uFade * mix(0.22, 0.72, uGlow) * axisMix;
     gl_FragColor = vec4(col, alpha);
   }
 `;
 
-function presence(el: Element, vh: number, pad: number) {
-  const r = el.getBoundingClientRect();
-  const top = r.top - pad;
-  const bottom = r.bottom + pad;
-  const overlap = Math.min(bottom, vh * 0.9) - Math.max(top, vh * 0.08);
-  const denom = Math.max(72, Math.min(bottom - top, vh * 0.72));
-  return THREE.MathUtils.clamp(overlap / denom, 0, 1);
+function buildLattice(cols: number, rows: number, width: number, depth: number) {
+  const positions: number[] = [];
+  const offsets: number[] = [];
+  const halfW = width * 0.5;
+  const halfD = depth * 0.5;
+
+  for (let r = 0; r <= rows; r++) {
+    const z = (r / rows) * depth - halfD;
+    for (let c = 0; c < cols; c++) {
+      const x0 = (c / cols) * width - halfW;
+      const x1 = ((c + 1) / cols) * width - halfW;
+      positions.push(x0, 0, z, x1, 0, z);
+      offsets.push(0, 0, 1, 1);
+    }
+  }
+
+  for (let c = 0; c <= cols; c++) {
+    const x = (c / cols) * width - halfW;
+    for (let r = 0; r < rows; r++) {
+      const z0 = (r / rows) * depth - halfD;
+      const z1 = ((r + 1) / rows) * depth - halfD;
+      positions.push(x, 0, z0, x, 0, z1);
+      offsets.push(1, 1, 1, 1);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('aOffset', new THREE.Float32BufferAttribute(offsets, 1));
+  return geo;
 }
 
-function travel(el: Element, vh: number) {
+function sectionPresence(el: Element | null, vh: number) {
+  if (!el) return 0;
   const r = el.getBoundingClientRect();
-  return THREE.MathUtils.clamp(-r.top / Math.max(r.height * 0.85, vh * 0.65), 0, 1);
+  const overlap = Math.min(r.bottom, vh * 0.88) - Math.max(r.top, vh * 0.1);
+  return THREE.MathUtils.clamp(overlap / Math.max(r.height * 0.65, vh * 0.45), 0, 1);
 }
 
 export default function Atmosphere() {
@@ -136,165 +106,138 @@ export default function Atmosphere() {
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({
-        antialias: false,
-        alpha: true,
-        powerPreference: 'low-power',
-      });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
     } catch {
       return;
     }
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 20);
-    camera.position.set(0, 0, 1.35);
+    scene.background = null;
+    scene.fog = new THREE.FogExp2(VOID, 0.07);
 
-    const pixelRatio = Math.min(window.devicePixelRatio, 1.5);
-    renderer.setPixelRatio(pixelRatio);
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 40);
+    camera.position.set(0, 2.8, 5.2);
+    camera.lookAt(0, 0, -0.5);
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x000000, 0);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.domElement.style.display = 'block';
     mount.appendChild(renderer.domElement);
 
-    const loader = new THREE.TextureLoader();
-    const texture = loader.load(TEXTURE_URL);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-
     const uniforms = {
-      uMap: { value: texture },
       uTime: { value: 0 },
       uMotion: { value: reduceMotion ? 0 : 1 },
-      uHero: { value: 1 },
-      uLines: { value: 0 },
-      uPreview: { value: 0 },
-      uHeroTravel: { value: 0 },
-      uParallax: { value: new THREE.Vector2(0, 0) },
-      uVoid: { value: VOID },
+      uBreath: { value: 1 },
+      uShear: { value: 0 },
+      uLift: { value: 0 },
+      uGlow: { value: 0.35 },
+      uFade: { value: 0.85 },
+      uEmber: { value: EMBER },
+      uBone: { value: BONE },
     };
 
-    const geo = new THREE.PlaneGeometry(2.8, 1.75, 48, 32);
-    const mat = new THREE.ShaderMaterial({
+    const latticeGeo = buildLattice(28, 20, 9, 7);
+    latticeGeo.rotateX(-0.55);
+    latticeGeo.translate(0, -0.4, -0.8);
+
+    const latticeMat = new THREE.ShaderMaterial({
       uniforms,
-      vertexShader: VERTEX,
-      fragmentShader: FRAGMENT,
+      vertexShader: LINE_VERT,
+      fragmentShader: LINE_FRAG,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      blending: THREE.AdditiveBlending,
     });
 
-    const plane = new THREE.Mesh(geo, mat);
-    scene.add(plane);
+    const lattice = new THREE.LineSegments(latticeGeo, latticeMat);
+    scene.add(lattice);
 
-    const heroEl = document.querySelector('[data-atmosphere="hero"]');
-    const aboutEl = document.querySelector('[data-atmosphere="about"]');
-    const productsEl = document.querySelector('[data-atmosphere="products"]');
-    const craftEl = document.querySelector('[data-atmosphere="craft"]');
-    const contactEl = document.querySelector('[data-atmosphere="contact"]');
+    const sections = {
+      inicio: document.getElementById('inicio'),
+      grupo: document.getElementById('grupo'),
+      lineas: document.getElementById('lineas'),
+      oficio: document.getElementById('oficio'),
+      contacto: document.getElementById('contacto'),
+    };
 
     const clock = new THREE.Clock();
     let frame = 0;
     let disposed = false;
 
-    const cur = { hero: 1, lines: 0, preview: 0, travel: 0, px: 0, py: 0 };
+    const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
+    const cam = { y: 2.8, z: 5.2, rx: -0.55 };
 
-    const sampleBeats = () => {
+    const sample = () => {
       const vh = window.innerHeight;
-      let h = heroEl ? presence(heroEl, vh, 0) : 1;
-      const about = aboutEl ? presence(aboutEl, vh, vh * 0.12) : 0;
-      const products = productsEl ? presence(productsEl, vh, vh * 0.08) : 0;
-      const craft = craftEl ? presence(craftEl, vh, vh * 0.06) : 0;
-      const contact = contactEl ? presence(contactEl, vh, vh * 0.04) : 0;
-
-      let l = about + products;
-      let p = craft + contact;
-
-      const sum = h + l + p;
-      if (sum > 0.001) {
-        h /= sum;
-        l /= sum;
-        p /= sum;
-      } else {
-        h = 1;
-        l = 0;
-        p = 0;
-      }
-
-      const t = heroEl ? travel(heroEl, vh) : 0;
-      return { h, l, p, t };
+      return {
+        inicio: sectionPresence(sections.inicio, vh),
+        grupo: sectionPresence(sections.grupo, vh),
+        lineas: sectionPresence(sections.lineas, vh),
+        oficio: sectionPresence(sections.oficio, vh),
+        contacto: sectionPresence(sections.contacto, vh),
+      };
     };
 
-    const fitPlane = () => {
+    const fit = () => {
       const w = mount.clientWidth;
       const h = mount.clientHeight;
       if (!w || !h) return;
-
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h, false);
-
-      const pr = Math.min(window.devicePixelRatio, 1.5);
-      renderer.setPixelRatio(pr);
-    };
-
-    const coverPlane = () => {
-      const dist = camera.position.z;
-      const vFov = (camera.fov * Math.PI) / 180;
-      const visibleH = 2 * Math.tan(vFov / 2) * dist;
-      const visibleW = visibleH * camera.aspect;
-      const cover = Math.max(visibleW / 2.8, visibleH / 1.75) * 1.08;
-      plane.scale.set(cover, cover, 1);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     };
 
     const ro = new ResizeObserver(() => {
-      fitPlane();
-      coverPlane();
+      fit();
       if (reduceMotion) renderer.render(scene, camera);
     });
     ro.observe(mount);
-    fitPlane();
-    coverPlane();
+    fit();
+
+    const applyBeats = (beats: ReturnType<typeof sample>, delta: number) => {
+      const k = reduceMotion ? 0 : 8.5;
+      cur.inicio = THREE.MathUtils.damp(cur.inicio, beats.inicio, k, delta);
+      cur.grupo = THREE.MathUtils.damp(cur.grupo, beats.grupo, k, delta);
+      cur.lineas = THREE.MathUtils.damp(cur.lineas, beats.lineas, k, delta);
+      cur.oficio = THREE.MathUtils.damp(cur.oficio, beats.oficio, k, delta);
+      cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, k, delta);
+
+      uniforms.uBreath.value = THREE.MathUtils.lerp(
+        1.0,
+        0.35,
+        THREE.MathUtils.clamp(cur.grupo + cur.lineas * 0.5, 0, 1),
+      );
+      uniforms.uShear.value = THREE.MathUtils.lerp(0, 1, cur.lineas);
+      uniforms.uLift.value = THREE.MathUtils.lerp(0, 0.6, cur.oficio);
+      uniforms.uGlow.value = THREE.MathUtils.lerp(
+        0.3,
+        0.95,
+        THREE.MathUtils.clamp(cur.lineas * 0.7 + cur.oficio * 0.4, 0, 1),
+      );
+      uniforms.uFade.value = THREE.MathUtils.lerp(0.9, 0.35, cur.contacto);
+
+      const targetCamY = THREE.MathUtils.lerp(2.8, 1.6, cur.grupo + cur.lineas * 0.35);
+      const targetCamZ = THREE.MathUtils.lerp(5.2, 4.1, cur.lineas + cur.oficio * 0.3);
+      cam.y = THREE.MathUtils.damp(cam.y, targetCamY, k, delta);
+      cam.z = THREE.MathUtils.damp(cam.z, targetCamZ, k, delta);
+      camera.position.set(0, cam.y, cam.z);
+      camera.lookAt(0, -0.2 + cur.oficio * 0.15, -0.8 - cur.contacto * 0.4);
+
+      lattice.rotation.z = THREE.MathUtils.lerp(0, 0.08, cur.lineas);
+      lattice.rotation.y = THREE.MathUtils.lerp(0, -0.05, cur.oficio);
+    };
 
     const tick = () => {
       if (disposed) return;
       const delta = clock.getDelta();
-      const beats = sampleBeats();
-      const k = reduceMotion ? 0 : 9.2;
-
-      cur.hero = THREE.MathUtils.damp(cur.hero, beats.h, k, delta);
-      cur.lines = THREE.MathUtils.damp(cur.lines, beats.l, k, delta);
-      cur.preview = THREE.MathUtils.damp(cur.preview, beats.p, k, delta);
-      cur.travel = THREE.MathUtils.damp(cur.travel, beats.t, k, delta);
-
-      const targetPx = cur.lines * 0.035 - cur.preview * 0.012;
-      const targetPy = cur.travel * cur.hero * 0.04 - cur.preview * 0.018;
-      cur.px = THREE.MathUtils.damp(cur.px, targetPx, k, delta);
-      cur.py = THREE.MathUtils.damp(cur.py, targetPy, k, delta);
-
-      uniforms.uHero.value = cur.hero;
-      uniforms.uLines.value = cur.lines;
-      uniforms.uPreview.value = cur.preview;
-      uniforms.uHeroTravel.value = cur.travel;
-      uniforms.uParallax.value.set(cur.px, cur.py);
-      if (!reduceMotion) {
-        uniforms.uTime.value = clock.elapsedTime;
-      }
-
-      const zT = 1.35 - cur.lines * 0.06 + cur.preview * 0.04;
-      camera.position.z = THREE.MathUtils.damp(camera.position.z, zT, k, delta);
-      coverPlane();
-
+      applyBeats(sample(), delta);
+      if (!reduceMotion) uniforms.uTime.value = clock.elapsedTime;
       renderer.render(scene, camera);
       frame = requestAnimationFrame(tick);
     };
 
     if (reduceMotion) {
-      const beats = sampleBeats();
-      uniforms.uHero.value = beats.h;
-      uniforms.uLines.value = beats.l;
-      uniforms.uPreview.value = beats.p;
-      uniforms.uHeroTravel.value = beats.t;
+      applyBeats(sample(), 1);
       renderer.render(scene, camera);
     } else {
       frame = requestAnimationFrame(tick);
@@ -304,9 +247,8 @@ export default function Atmosphere() {
       disposed = true;
       cancelAnimationFrame(frame);
       ro.disconnect();
-      geo.dispose();
-      mat.dispose();
-      texture.dispose();
+      latticeGeo.dispose();
+      latticeMat.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);

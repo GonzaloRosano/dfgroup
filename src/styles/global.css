@@ -1,18 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Figtree:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 :root {
   --ink: #050506;
   --void: #0d0d0d;
   --asphalt: #101114;
   --panel: #12141a;
-  --fog: #9aa3b2;
-  --mute: #6b7280;
+  --fog: #a1a1aa;
+  --mute: #71717a;
   --bone: #f4f4f5;
   --ember: #9a3b3b;
   --ember-hot: #c45a4a;
 
-  --font-display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
-  --font-body: 'Figtree', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
 
   --space-xs: 0.5rem;
   --space-sm: 1rem;
@@ -23,6 +23,7 @@
 
   --measure: 62ch;
   --page: min(1120px, calc(100% - 2rem));
+  --radius-soft: 0.75rem;
   --radius-pill: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -59,7 +60,7 @@ body {
   color: var(--bone);
   font-family: var(--font-body);
   font-size: 1.05rem;
-  line-height: 1.6;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -89,9 +90,9 @@ h2,
 h3,
 .display {
   font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 0.95;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
   margin: 0;
 }
 
@@ -195,7 +196,6 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  justify-content: center;
 }
 
 .page-hero {

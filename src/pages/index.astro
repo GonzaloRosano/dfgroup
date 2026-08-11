@@ -4,6 +4,13 @@ import Atmosphere from '../components/Atmosphere';
 import ScrollProgress from '../components/ScrollProgress.astro';
 import { lines } from '../data/lines';
 
+const lineVisuals: Record<string, string> = {
+  hosting: 'grid-hosting',
+  series: 'grid-series',
+  atelier: 'grid-atelier',
+  voices: 'grid-voices',
+};
+
 const crafts = [
   {
     title: 'Diseño',
@@ -31,31 +38,29 @@ const crafts = [
     <Atmosphere client:load />
   </div>
 
-  <section id="inicio" class="home-hero" data-atmosphere="hero">
-    <div class="container home-hero__content">
-      <p class="home-hero__eyebrow">Colectivo creativo · noir moderno</p>
-      <h1 class="home-hero__title">
-        Diseñado para<br aria-hidden="true" /> significar algo.
-      </h1>
-      <p class="home-hero__lead">
-        Dark Feather Group une diseño, desarrollo, arte y producción bajo una
-        sola atmósfera. Cuatro líneas. Un mismo oficio a contraluz.
-      </p>
-      <div class="btn-row">
-        <a class="btn btn--solid" href="#contacto">Empezar conversación</a>
-        <a class="btn btn--ghost" href="#grupo">Conocer el grupo</a>
+  <section id="inicio" class="home-hero">
+    <div class="container home-hero__grid">
+      <div class="home-hero__content">
+        <p class="home-hero__eyebrow">Colectivo creativo noir</p>
+        <h1 class="home-hero__title">Diseñado para significar algo.</h1>
+        <p class="home-hero__lead">
+          Dark Feather Group une diseño, desarrollo, arte y producción bajo una
+          sola atmósfera. Cuatro líneas. Un mismo oficio a contraluz.
+        </p>
+        <div class="btn-row">
+          <a class="btn btn--solid" href="#contacto">Empezar conversación</a>
+          <a class="btn btn--ghost" href="#grupo">Conocer el grupo</a>
+        </div>
       </div>
-      <div class="home-hero__scroll" aria-hidden="true">
-        <span class="home-hero__scroll-line"></span>
-        <span>Scroll</span>
+      <div class="home-hero__mark" aria-hidden="true">
+        <img src="/logo.svg" alt="" width="120" height="133" />
       </div>
     </div>
   </section>
 
-  <section id="grupo" class="section about" data-atmosphere="about">
+  <section id="grupo" class="section about">
     <div class="container about__grid">
       <div class="about__intro">
-        <p class="section__kicker">El colectivo</p>
         <h2 class="section__title section__title--left">
           El colectivo detrás de la pluma.
         </h2>
@@ -71,32 +76,33 @@ const crafts = [
     </div>
   </section>
 
-  <section id="lineas" class="section products" data-atmosphere="products" aria-label="Líneas del grupo">
+  <section id="lineas" class="section products" aria-label="Líneas del grupo">
     <div class="container">
-      <p class="section__kicker">Productos</p>
       <h2 class="section__title">Cuatro líneas. Una atmósfera.</h2>
       <p class="section__lead">
-        Cada código DF resuelve un frente distinto del universo creativo — sin
+        Cada código DF resuelve un frente distinto del universo creativo, sin
         perder la pluma ni el tono noir del grupo.
       </p>
 
       <div class="products__grid">
         {
-          lines.map((line, i) => (
+          lines.map((line) => (
             <article class="product-card" id={line.slug} data-reveal>
-              <span class="product-card__index">{String(i + 1).padStart(2, '0')}</span>
-              <h3 class="product-card__code">{line.code}</h3>
-              <p class="product-card__tagline">{line.tagline}</p>
-              <p class="product-card__summary">{line.summary}</p>
-              <ul class="product-card__points">
-                {line.points.map((point) => (
-                  <li>{point}</li>
-                ))}
-              </ul>
-              <a class="product-card__link" href={`#${line.slug}`}>
-                Explorar {line.code}
-                <span aria-hidden="true">→</span>
-              </a>
+              <div class:list={['product-card__visual', lineVisuals[line.slug]]} aria-hidden="true" />
+              <div class="product-card__body">
+                <h3 class="product-card__code">{line.code}</h3>
+                <p class="product-card__tagline">{line.tagline}</p>
+                <p class="product-card__summary">{line.summary}</p>
+                <ul class="product-card__points">
+                  {line.points.map((point) => (
+                    <li>{point}</li>
+                  ))}
+                </ul>
+                <a class="product-card__link" href={`#${line.slug}`}>
+                  Explorar {line.code}
+                  <span aria-hidden="true">→</span>
+                </a>
+              </div>
             </article>
           ))
         }
@@ -104,13 +110,12 @@ const crafts = [
     </div>
   </section>
 
-  <section id="oficio" class="section craft" data-atmosphere="craft">
+  <section id="oficio" class="section craft">
     <div class="container">
-      <p class="section__kicker">Oficio</p>
       <h2 class="section__title">Oficio con atmósfera.</h2>
       <p class="section__lead">
-        No vendemos plantillas. Construimos mundos — visuales, técnicos y
-        sonoros — que se sostienen solos.
+        No vendemos plantillas. Construimos mundos visuales, técnicos y
+        sonoros que se sostienen solos.
       </p>
 
       <div class="craft__grid">
@@ -126,21 +131,20 @@ const crafts = [
     </div>
   </section>
 
-  <section id="contacto" class="section contact" data-atmosphere="contact">
+  <section id="contacto" class="section contact">
     <div class="container contact__inner">
-      <p class="section__kicker">Contacto</p>
       <h2 class="section__title">En la sombra, a un mensaje.</h2>
       <p class="section__lead">
         Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
         foco, no con un formulario vacío de promesas.
       </p>
-      <div class="btn-row">
+      <div class="btn-row contact__cta">
         <a class="btn btn--solid" href="mailto:hola@darkfeathergroup.com">
           hola@darkfeathergroup.com
         </a>
       </div>
       <p class="contact__hint">
-        Correo de ejemplo — reemplazá con el canal real del grupo.
+        Correo de ejemplo. Reemplazá con el canal real del grupo.
       </p>
 
       <ul class="contact__lines">
@@ -187,7 +191,7 @@ const crafts = [
   .home-atmosphere {
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: 0;
     pointer-events: none;
   }
 
@@ -204,18 +208,9 @@ const crafts = [
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 48% 36% at 50% 42%, rgba(0, 0, 0, 0.42) 0%, transparent 68%),
-      radial-gradient(ellipse 100% 90% at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.38) 100%);
+      radial-gradient(ellipse 55% 40% at 18% 38%, rgba(0, 0, 0, 0.55) 0%, transparent 70%),
+      radial-gradient(ellipse 100% 90% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.5) 100%);
     pointer-events: none;
-  }
-
-  .section__kicker {
-    color: var(--mute);
-    font-size: 0.78rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    text-align: center;
-    margin-bottom: 0.85rem;
   }
 
   .section__title--left,
@@ -228,60 +223,51 @@ const crafts = [
     position: relative;
     z-index: 1;
     min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding: 6rem 0 4rem;
+  }
+
+  .home-hero__grid {
     display: grid;
-    place-items: center;
-    padding: 7rem 0 4rem;
+    gap: 3rem;
+    align-items: center;
   }
 
   .home-hero__content {
-    position: relative;
-    z-index: 2;
-    text-align: center;
     animation: rise 900ms var(--ease-out) both;
   }
 
   .home-hero__eyebrow {
     color: var(--mute);
     font-size: 0.82rem;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     margin-bottom: 1.25rem;
   }
 
   .home-hero__title {
-    font-size: clamp(3rem, 10vw, 6.25rem);
-    max-width: 11ch;
-    margin-inline: auto;
+    font-size: clamp(2.8rem, 8vw, 5.5rem);
+    max-width: 12ch;
     margin-bottom: 1.25rem;
-    line-height: 0.92;
   }
 
   .home-hero__lead {
     color: var(--fog);
-    margin-inline: auto;
     margin-bottom: 1.85rem;
     font-size: 1.12rem;
     max-width: 42ch;
   }
 
-  .home-hero__scroll {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.65rem;
-    margin-top: 3.5rem;
-    color: var(--mute);
-    font-size: 0.72rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
+  .home-hero__mark {
+    justify-self: center;
+    opacity: 0.12;
   }
 
-  .home-hero__scroll-line {
-    display: block;
-    width: 1px;
-    height: 2.5rem;
-    background: linear-gradient(to bottom, var(--mute), transparent);
-    animation: scroll-pulse 2.4s var(--ease-out) infinite;
+  .home-hero__mark img {
+    width: clamp(5rem, 18vw, 9rem);
+    height: auto;
+    filter: invert(1);
   }
 
   .about {
@@ -298,7 +284,7 @@ const crafts = [
 
   .about__stat {
     padding: 1.75rem;
-    border-radius: 1.25rem;
+    border-radius: var(--radius-soft);
     border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
     background: color-mix(in srgb, var(--panel) 80%, transparent);
   }
@@ -327,10 +313,12 @@ const crafts = [
   }
 
   .product-card {
-    padding: 2rem 1.75rem;
-    border-radius: 1.35rem;
+    display: grid;
+    gap: 0;
+    border-radius: var(--radius-soft);
     border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
     background: color-mix(in srgb, var(--panel) 72%, transparent);
+    overflow: hidden;
     opacity: 0;
     transform: translateY(20px);
     transition:
@@ -348,17 +336,58 @@ const crafts = [
     border-color: color-mix(in srgb, var(--bone) 22%, transparent);
   }
 
-  .product-card__index {
-    display: block;
-    color: var(--mute);
-    font-size: 0.78rem;
-    letter-spacing: 0.1em;
-    margin-bottom: 1rem;
+  .product-card__visual {
+    min-height: 5.5rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+
+  .grid-hosting {
+    background:
+      linear-gradient(var(--bone) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bone) 1px, transparent 1px);
+    background-size: 1.25rem 1.25rem;
+    background-color: var(--asphalt);
+    opacity: 0.35;
+  }
+
+  .grid-series {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 0.65rem,
+      color-mix(in srgb, var(--ember-hot) 35%, transparent) 0.65rem,
+      color-mix(in srgb, var(--ember-hot) 35%, transparent) 0.7rem
+    );
+    background-color: var(--asphalt);
+    opacity: 0.5;
+  }
+
+  .grid-atelier {
+    background:
+      radial-gradient(circle at 30% 40%, color-mix(in srgb, var(--ember) 25%, transparent), transparent 55%),
+      radial-gradient(circle at 70% 60%, color-mix(in srgb, var(--bone) 8%, transparent), transparent 50%);
+    background-color: var(--asphalt);
+  }
+
+  .grid-voices {
+    background: repeating-linear-gradient(
+      -12deg,
+      transparent,
+      transparent 0.4rem,
+      color-mix(in srgb, var(--bone) 12%, transparent) 0.4rem,
+      color-mix(in srgb, var(--bone) 12%, transparent) 0.45rem
+    );
+    background-color: var(--asphalt);
+    opacity: 0.45;
+  }
+
+  .product-card__body {
+    padding: 1.75rem;
   }
 
   .product-card__code {
     font-family: var(--font-display);
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: clamp(1.85rem, 4vw, 2.6rem);
     text-transform: uppercase;
     margin-bottom: 0.35rem;
   }
@@ -424,7 +453,7 @@ const crafts = [
   }
 
   .craft__item {
-    padding: 1.75rem;
+    padding: 1.75rem 0;
     border-top: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
     opacity: 0;
     transform: translateY(16px);
@@ -458,6 +487,10 @@ const crafts = [
     text-align: center;
   }
 
+  .contact__cta {
+    justify-content: center;
+  }
+
   .contact__hint {
     margin-top: 1rem;
     color: var(--mute);
@@ -479,7 +512,7 @@ const crafts = [
     flex-direction: column;
     gap: 0.25rem;
     padding: 1.15rem 1.25rem;
-    border-radius: 1rem;
+    border-radius: var(--radius-soft);
     border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
     background: color-mix(in srgb, var(--panel) 80%, transparent);
     text-align: left;
@@ -513,19 +546,15 @@ const crafts = [
     }
   }
 
-  @keyframes scroll-pulse {
-    0%,
-    100% {
-      opacity: 0.35;
-      transform: scaleY(0.85);
-    }
-    50% {
-      opacity: 1;
-      transform: scaleY(1);
-    }
-  }
-
   @media (min-width: 720px) {
+    .home-hero__grid {
+      grid-template-columns: 1.15fr 0.35fr;
+    }
+
+    .home-hero__mark {
+      justify-self: end;
+    }
+
     .about__grid {
       grid-template-columns: 1.4fr 0.6fr;
     }
@@ -543,8 +572,7 @@ const crafts = [
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .home-hero__content,
-    .home-hero__scroll-line {
+    .home-hero__content {
       animation: none;
     }
 

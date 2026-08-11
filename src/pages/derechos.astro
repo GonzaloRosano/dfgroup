@@ -1,47 +1,46 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { generatedStills, thirdPartyStills } from '../data/stills';
+import { siteAssets } from '../data/assets';
 ---
 
 <BaseLayout
   title="Derechos e imágenes · Dark Feather Group"
-  description="Origen y licencia de las imágenes del sitio Dark Feather Group."
+  description="Origen y licencia de los activos del sitio Dark Feather Group."
 >
   <section class="page-hero">
     <div class="container">
       <h1 class="page-hero__title">Derechos e imágenes</h1>
       <p class="page-hero__lead">
-        Este sitio usa atmósfera visual, no un archivo de producción. Las
-        imágenes no son fotografías de trabajo real de Dark Feather Group.
+        Este sitio no usa fotografías de archivo. La atmósfera es tipográfica,
+        CSS y WebGL procedural.
       </p>
     </div>
   </section>
 
   <section class="section">
     <div class="container rights">
-      <h2>Imágenes generadas</h2>
-      <p>
-        Los archivos de esta lista los creó un modelo de imagen para este sitio.
-        Son sintéticos: no documentan un taller, una sala de servidores, una
-        sala de proyección ni un estudio reales del grupo.
-      </p>
+      <h2>Activos del sitio</h2>
       <ul class="rights-list">
         {
-          generatedStills.map((still) => (
+          siteAssets.map((asset) => (
             <li>
-              <img src={still.src} alt={still.alt} width="480" height="320" loading="lazy" />
+              {asset.path ? (
+                <img src={asset.path} alt={asset.description} width="120" height="120" loading="lazy" />
+              ) : (
+                <div class="rights-procedural" aria-hidden="true" />
+              )}
               <div>
-                <p class="rights-list__file">{still.src}</p>
-                <p>Generada con IA para este sitio.</p>
+                <p class="rights-list__file">{asset.label}</p>
+                <p>{asset.description}</p>
                 <p>
-                  {still.usedOn ? (
-                    <>
-                      En <a href={still.usedOn}>{still.usedOn}</a>
-                    </>
-                  ) : (
-                    'Archivo del sitio, sin página asignada.'
-                  )}
+                  En <a href={asset.usedOn}>{asset.usedOn}</a>
                 </p>
+                {asset.license && (
+                  <p>
+                    Licencia{' '}
+                    <a href={asset.licenseUrl}>{asset.license}</a>
+                  </p>
+                )}
               </div>
             </li>
           ))
@@ -52,62 +51,15 @@ import { generatedStills, thirdPartyStills } from '../data/stills';
 
   <section class="section">
     <div class="container rights">
-      <h2>Imágenes de terceros</h2>
+      <h2>Tipografía</h2>
       <p>
-        Fotografías reutilizables, descargadas al repositorio. No se enlazan
-        en caliente.
+        Bricolage Grotesque e IBM Plex Sans se cargan desde Google Fonts con
+        licencia abierta (SIL Open Font License).
       </p>
-      <ul class="rights-list">
-        {
-          thirdPartyStills.map((still) => (
-            <li>
-              <img src={still.src} alt={still.alt} width="480" height="320" loading="lazy" />
-              <div>
-                <p class="rights-list__file">{still.src}</p>
-                <p>
-                  {still.author}. Licencia{' '}
-                  <a href={still.licenseUrl}>{still.license}</a>.
-                </p>
-                <p>
-                  Fuente:{' '}
-                  <a href={still.source}>{still.source}</a>
-                </p>
-                <p>
-                  {still.usedOn ? (
-                    <>
-                      En <a href={still.usedOn}>{still.usedOn}</a>
-                    </>
-                  ) : (
-                    'Archivo del sitio, sin página asignada.'
-                  )}
-                </p>
-              </div>
-            </li>
-          ))
-        }
-      </ul>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container rights">
-      <h2>Marca</h2>
       <p>
-        El archivo <code>/logo.svg</code> (<code>public/logo.svg</code>) es la
-        marca de Dark Feather Group. No forma parte de las imágenes generadas
-        ni de las fotografías de terceros.
-      </p>
-      <img class="rights-logo" src="/logo.svg" alt="Marca Dark Feather Group" width="48" height="53" />
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container rights">
-      <h2>Obra real</h2>
-      <p>
-        Las páginas de producto describen líneas del grupo. Hasta que el
-        colectivo entregue trabajo propio, no hay estudios de caso
-        fotográficos: las imágenes son atmósfera, no evidencia de encargos.
+        <a href="https://fonts.google.com/specimen/Bricolage+Grotesque">Bricolage Grotesque</a>
+        {' · '}
+        <a href="https://fonts.google.com/specimen/IBM+Plex+Sans">IBM Plex Sans</a>
       </p>
     </div>
   </section>
@@ -143,10 +95,22 @@ import { generatedStills, thirdPartyStills } from '../data/stills';
   }
 
   .rights-list img {
-    width: 100%;
-    height: 8.5rem;
-    object-fit: cover;
-    background: var(--asphalt);
+    width: 5rem;
+    height: auto;
+    filter: invert(1);
+  }
+
+  .rights-procedural {
+    width: 5rem;
+    height: 5rem;
+    border-radius: var(--radius-soft);
+    border: 1px solid color-mix(in srgb, var(--ember-hot) 40%, transparent);
+    background:
+      linear-gradient(var(--bone) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bone) 1px, transparent 1px);
+    background-size: 0.75rem 0.75rem;
+    background-color: var(--asphalt);
+    opacity: 0.5;
   }
 
   .rights-list__file {
@@ -159,27 +123,5 @@ import { generatedStills, thirdPartyStills } from '../data/stills';
     color: var(--bone);
     text-decoration: underline;
     text-underline-offset: 0.2em;
-  }
-
-  .rights-logo {
-    width: 2.75rem;
-    height: auto;
-    filter: invert(1);
-  }
-
-  code {
-    font-size: 0.92em;
-  }
-
-  @media (min-width: 720px) {
-    .rights-list li {
-      grid-template-columns: 12rem 1fr;
-      align-items: start;
-      gap: 1.5rem;
-    }
-
-    .rights-list img {
-      height: 7.5rem;
-    }
   }
 </style>
