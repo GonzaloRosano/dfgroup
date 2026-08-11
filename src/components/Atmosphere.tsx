@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 /**
- * 2D orthographic dot-grid feather from public/logo.svg.
- * Section-blended poses: rotation, scale, scatter, gather, shear — not vertical drift.
+ * 2D orthographic dot-grid — morphs between feather, circle, wave, line per scroll section.
  */
 
 const LOGO_PATH =
@@ -13,6 +12,7 @@ const VIEW_W = 122;
 const VIEW_H = 135;
 export const GRID_COLS = 96;
 export const GRID_ROWS = 106;
+const ASPECT = VIEW_H / VIEW_W;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -42,7 +42,6 @@ function buildLogoGrid(): GridDot[] {
 
   const data = ctx.getImageData(0, 0, cw, ch).data;
   const dots: GridDot[] = [];
-  const aspect = VIEW_H / VIEW_W;
   const padX = 0.06;
   const padY = 0.06;
 
@@ -54,7 +53,7 @@ function buildLogoGrid(): GridDot[] {
       const nx = col / (GRID_COLS - 1);
       const ny = row / (GRID_ROWS - 1);
       const x = (nx - 0.5) * (1 - padX * 2);
-      const y = -(ny - 0.5) * aspect * (1 - padY * 2);
+      const y = -(ny - 0.5) * ASPECT * (1 - padY * 2);
       const tip = 1 - ny;
 
       dots.push({ x, y, tip, col: nx, row: ny });
@@ -62,6 +61,74 @@ function buildLogoGrid(): GridDot[] {
   }
 
   return dots;
+}
+
+/** Filled disc — #grupo */
+function buildShapeCircle(dots: GridDot[]): Float32Array {
+  const out = new Float32Array(dots.length * 3);
+  const n = dots.length;
+
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const angle = t * Math.PI * 2 - Math.PI * 0.5;
+    const r = Math.sqrt(dots[i].row * 0.85 + 0.08) * 0.4;
+    out[i * 3] = Math.cos(angle) * r;
+    out[i * 3 + 1] = Math.sin(angle) * r * ASPECT;
+    out[i * 3 + 2] = 0;
+  }
+
+  return out;
+}
+
+/** Sinusoidal wave band — #lineas */
+function buildShapeWave(dots: GridDot[]): Float32Array {
+  const out = new Float32Array(dots.length * 3);
+
+  for (let i = 0; i < dots.length; i++) {
+    const x = (dots[i].col - 0.5) * 1.05;
+    const y = Math.sin(dots[i].col * Math.PI * 2.8 + dots[i].row * 1.2) * 0.3 * ASPECT;
+    out[i * 3] = x;
+    out[i * 3 + 1] = y;
+    out[i * 3 + 2] = 0;
+  }
+
+  return out;
+}
+
+/** 2×2 four-cluster echo — blended into lineas via second target */
+function buildShapeClusters(dots: GridDot[]): Float32Array {
+  const out = new Float32Array(dots.length * 3);
+  const centers = [
+    [-0.26, 0.2 * ASPECT],
+    [0.26, 0.2 * ASPECT],
+    [-0.26, -0.2 * ASPECT],
+    [0.26, -0.2 * ASPECT],
+  ];
+
+  for (let i = 0; i < dots.length; i++) {
+    const cluster = i % 4;
+    const [cx, cy] = centers[cluster];
+    const jitter = (dots[i].col - 0.5) * 0.14;
+    const jitterY = (dots[i].row - 0.5) * 0.12 * ASPECT;
+    out[i * 3] = cx + jitter;
+    out[i * 3 + 1] = cy + jitterY;
+    out[i * 3 + 2] = 0;
+  }
+
+  return out;
+}
+
+/** Horizontal line + slight spread — #contacto */
+function buildShapeLine(dots: GridDot[]): Float32Array {
+  const out = new Float32Array(dots.length * 3);
+
+  for (let i = 0; i < dots.length; i++) {
+    out[i * 3] = (dots[i].col - 0.5) * 1.12;
+    out[i * 3 + 1] = (dots[i].row - 0.5) * 0.06 * ASPECT + 0.04;
+    out[i * 3 + 2] = 0;
+  }
+
+  return out;
 }
 
 function buildGeometry(dots: GridDot[]) {
@@ -79,11 +146,21 @@ function buildGeometry(dots: GridDot[]) {
     rows[i] = dot.row;
   });
 
+  const wave = buildShapeWave(dots);
+  const clusters = buildShapeClusters(dots);
+  const lineasBlend = new Float32Array(dots.length * 3);
+  for (let i = 0; i < dots.length * 3; i++) {
+    lineasBlend[i] = wave[i] * 0.55 + clusters[i] * 0.45;
+  }
+
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setAttribute('aTip', new THREE.BufferAttribute(tips, 1));
   geo.setAttribute('aCol', new THREE.BufferAttribute(cols, 1));
   geo.setAttribute('aRow', new THREE.BufferAttribute(rows, 1));
+  geo.setAttribute('aCircle', new THREE.BufferAttribute(buildShapeCircle(dots), 3));
+  geo.setAttribute('aWave', new THREE.BufferAttribute(lineasBlend, 3));
+  geo.setAttribute('aLine', new THREE.BufferAttribute(buildShapeLine(dots), 3));
   return geo;
 }
 
@@ -110,10 +187,12 @@ const DOT_VERT = /* glsl */ `
   attribute float aTip;
   attribute float aCol;
   attribute float aRow;
+  attribute vec3 aCircle;
+  attribute vec3 aWave;
+  attribute vec3 aLine;
 
   uniform float uTime;
   uniform float uMotion;
-  uniform float uOffsetY;
   uniform float uShear;
   uniform float uWave;
   uniform float uReveal;
@@ -124,22 +203,32 @@ const DOT_VERT = /* glsl */ `
   uniform float uInteract;
   uniform float uPixelRatio;
   uniform float uTipPulse;
+  uniform float uWInicio;
+  uniform float uWGrupo;
+  uniform float uWLineas;
+  uniform float uWOficio;
+  uniform float uWContacto;
 
   varying float vTip;
   varying float vVisible;
   varying float vCol;
   varying float vDissolve;
+  varying float vFeatherMix;
 
   void main() {
-    vTip = aTip;
     vCol = aCol;
     vDissolve = uDissolve;
+    vFeatherMix = uWInicio + uWOficio;
 
     float waveFront = uReveal + sin(uTime * 2.0 + aCol * 14.0) * uWave * 0.35;
     float minTip = 1.0 - waveFront;
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
+    vTip = aTip;
 
-    vec3 p = position;
+    vec3 p = position * (uWInicio + uWOficio)
+           + aCircle * uWGrupo
+           + aWave * uWLineas
+           + aLine * uWContacto;
 
     p.x *= mix(1.0, uStretchX, 0.85);
 
@@ -150,7 +239,6 @@ const DOT_VERT = /* glsl */ `
     vec2 shaft = vec2(0.0, -0.14);
     p.xy = mix(p.xy, shaft + (p.xy - shaft) * 0.72, uGather);
 
-    p.y += uOffsetY;
     p.x += uShear * p.y;
 
     p.x += sin(uTime * 1.6 + aRow * 20.0) * uWave * uMotion * 0.018;
@@ -182,6 +270,7 @@ const DOT_FRAG = /* glsl */ `
   varying float vVisible;
   varying float vCol;
   varying float vDissolve;
+  varying float vFeatherMix;
 
   void main() {
     if (vVisible < 0.02) discard;
@@ -190,7 +279,7 @@ const DOT_FRAG = /* glsl */ `
     float d = length(uv);
     if (d > 0.46) discard;
 
-    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.55);
+    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.55) * vFeatherMix;
     vec3 col = mix(uWhite, uEmber, tipAccent);
     col = mix(col, uWhite, uInteract * 0.15);
 
@@ -232,7 +321,6 @@ export default function Atmosphere() {
     const uniforms = {
       uTime: { value: 0 },
       uMotion: { value: reduceMotion ? 0 : 1 },
-      uOffsetY: { value: 0 },
       uShear: { value: 0 },
       uWave: { value: 0 },
       uReveal: { value: reduceMotion ? 1 : 0.92 },
@@ -247,6 +335,11 @@ export default function Atmosphere() {
       uEmber: { value: EMBER },
       uPixelRatio: { value: 1 },
       uTipPulse: { value: 0 },
+      uWInicio: { value: 1 },
+      uWGrupo: { value: 0 },
+      uWLineas: { value: 0 },
+      uWOficio: { value: 0 },
+      uWContacto: { value: 0 },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -270,32 +363,31 @@ export default function Atmosphere() {
       contacto: document.getElementById('contacto'),
     };
 
-    /** Section poses — Y capped ~±0.06; motion via rot/scale/scatter/shear/gather */
     const poses = {
       inicio: {
-        rotZ: 0, scale: 1, breathe: 0.04, offsetX: 0.04, offsetY: 0,
+        scale: 1, breathe: 0.04, offsetX: 0.04, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.012,
         ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
       },
       grupo: {
-        rotZ: 0.38, scale: 1.09, breathe: 0, offsetX: 0, offsetY: 0.015,
-        scatter: 0.032, gather: 0, stretchX: 1, shear: 0, wave: 0.022,
-        ember: 0.2, alpha: 0.85, reveal: 1, dissolve: 0,
+        scale: 1.02, breathe: 0, offsetX: 0, offsetY: 0,
+        scatter: 0.01, gather: 0, stretchX: 1, shear: 0, wave: 0.018,
+        ember: 0.08, alpha: 0.85, reveal: 1, dissolve: 0,
       },
       lineas: {
-        rotZ: 0.08, scale: 1.03, breathe: 0, offsetX: -0.02, offsetY: 0,
-        scatter: 0, gather: 0, stretchX: 1.14, shear: 0.1, wave: 0.048,
-        ember: 0.28, alpha: 0.82, reveal: 1, dissolve: 0,
+        scale: 1.03, breathe: 0, offsetX: -0.01, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1.06, shear: 0.06, wave: 0.042,
+        ember: 0.1, alpha: 0.82, reveal: 1, dissolve: 0,
       },
       oficio: {
-        rotZ: -0.06, scale: 0.93, breathe: 0, offsetX: 0, offsetY: 0.01,
-        scatter: 0, gather: 0.038, stretchX: 0.96, shear: 0.02, wave: 0.018,
-        ember: 0.95, alpha: 0.8, reveal: 1, dissolve: 0,
+        scale: 0.96, breathe: 0, offsetX: 0, offsetY: 0,
+        scatter: 0, gather: 0.02, stretchX: 1, shear: 0, wave: 0.014,
+        ember: 0.88, alpha: 0.8, reveal: 1, dissolve: 0,
       },
       contacto: {
-        rotZ: 0.05, scale: 0.84, breathe: 0, offsetX: 0.02, offsetY: 0.055,
-        scatter: 0.022, gather: 0, stretchX: 1, shear: 0, wave: 0.008,
-        ember: 0.32, alpha: 0.42, reveal: 1, dissolve: 0.65,
+        scale: 0.88, breathe: 0, offsetX: 0, offsetY: 0.03,
+        scatter: 0.018, gather: 0, stretchX: 1, shear: 0, wave: 0.006,
+        ember: 0.15, alpha: 0.45, reveal: 1, dissolve: 0.55,
       },
     };
 
@@ -309,7 +401,7 @@ export default function Atmosphere() {
     let holdProgress = 0;
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
-    const sm = { rotZ: 0, scale: 1, offsetX: 0.04, offsetY: 0 };
+    const sm = { scale: 1, offsetX: 0.04, offsetY: 0 };
 
     const onFeatherInteract = (e: Event) => {
       const detail = (e as CustomEvent<{ intensity?: number; burst?: boolean; hold?: number }>).detail;
@@ -384,21 +476,32 @@ export default function Atmosphere() {
       burstCurrent = THREE.MathUtils.damp(burstCurrent, burstTarget, k * 1.4, delta);
       if (burstTarget > 0.95) burstTarget = THREE.MathUtils.damp(burstTarget, 0, 3.5, delta);
 
+      if (reduceMotion) {
+        uniforms.uWInicio.value = 1;
+        uniforms.uWGrupo.value = 0;
+        uniforms.uWLineas.value = 0;
+        uniforms.uWOficio.value = 0;
+        uniforms.uWContacto.value = 0;
+      } else {
+        uniforms.uWInicio.value = cur.inicio;
+        uniforms.uWGrupo.value = cur.grupo;
+        uniforms.uWLineas.value = cur.lineas;
+        uniforms.uWOficio.value = cur.oficio;
+        uniforms.uWContacto.value = cur.contacto;
+      }
+
       const inicioLife = cur.inicio;
       const breatheScale = reduceMotion ? 1 : 1 + Math.sin(elapsed * 0.85) * pose.breathe * inicioLife;
-      const breatheRot = reduceMotion ? 0 : Math.sin(elapsed * 0.65) * 0.14 * inicioLife;
 
-      sm.rotZ = THREE.MathUtils.damp(sm.rotZ, pose.rotZ + breatheRot, k, delta);
       sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
       sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
       sm.offsetY = THREE.MathUtils.damp(sm.offsetY, pose.offsetY, k, delta);
 
-      points.rotation.z = sm.rotZ;
       points.scale.setScalar(sm.scale);
       points.position.set(sm.offsetX, sm.offsetY, 0);
+      points.rotation.z = 0;
 
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
-      uniforms.uOffsetY.value = 0;
       uniforms.uShear.value = pose.shear;
       uniforms.uWave.value = pose.wave + burstCurrent * 0.035;
       uniforms.uScatter.value = pose.scatter + interactCurrent * 0.035 + burstCurrent * 0.095 + holdProgress * 0.04;
@@ -410,7 +513,7 @@ export default function Atmosphere() {
       uniforms.uInteract.value = interactCurrent + burstCurrent * 0.85 + holdProgress * 0.35;
       uniforms.uTipPulse.value = reduceMotion
         ? 0
-        : beats.oficio * 0.65 + Math.sin(elapsed * 2.8) * 0.18 * beats.oficio;
+        : cur.oficio * 0.65 + Math.sin(elapsed * 2.8) * 0.18 * cur.oficio;
 
       if (!reduceMotion) uniforms.uTime.value = elapsed;
 

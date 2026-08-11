@@ -32,7 +32,7 @@ export const siteAssets: SiteAsset[] = [
     label: 'Pluma puntillista (WebGL)',
     path: null,
     description:
-      'Pluma en grilla 2D ortográfica desde public/logo.svg: 96×106 celdas, puntos blancos #e8e6e1 visibles, animación por scroll. Panel derecho del hero.',
+      'Grilla 2D ortográfica desde logo.svg con morph por sección: pluma, círculo, ola, línea. Animación scroll + hold/hover.',
     usedOn: '/',
   },
 ];
