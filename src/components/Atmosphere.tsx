@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 /**
- * Logo-derived pointillism feather — sampled from public/logo.svg via Canvas 2D.
- * Right-panel accent only; normal blending, no bloom (avoids white washout).
+ * 2D orthographic dot-grid feather from public/logo.svg.
+ * Regular grid cells → white stipple dots; scroll drives reveal, parallax, shear, tip ember.
  */
 
 const LOGO_PATH =
@@ -11,82 +11,24 @@ const LOGO_PATH =
 
 const VIEW_W = 122;
 const VIEW_H = 135;
-const TARGET_DOTS = 2800;
-const DAMP = 4.8;
+export const GRID_COLS = 96;
+export const GRID_ROWS = 106;
+const DOT_PX = 2.4;
+const WHITE = new THREE.Color(0xe8e6e1);
+const EMBER = new THREE.Color(0xc45a4a);
+const DAMP = 5.5;
 
-const EMBER = new THREE.Color(0x9a3b3b);
-const BONE = new THREE.Color(0xa1a1aa);
-const FOG = new THREE.Color(0x52525b);
+type GridDot = {
+  x: number;
+  y: number;
+  tip: number;
+  col: number;
+  row: number;
+};
 
-const DOT_VERT = /* glsl */ `
-  attribute float aSeed;
-  attribute float aTip;
-  attribute float aSize;
-
-  uniform float uTime;
-  uniform float uMotion;
-  uniform float uBreathe;
-  uniform float uTwinkle;
-  uniform float uInteract;
-
-  varying float vSeed;
-  varying float vTip;
-  varying float vTwinkle;
-
-  void main() {
-    vSeed = aSeed;
-    vTip = aTip;
-
-    vec3 p = position;
-    float wave = sin(uTime * 0.75 + aSeed * 18.0) * 0.004 * uBreathe * uMotion;
-    p.z += wave;
-    p.x += cos(uTime * 0.5 + aSeed * 9.0) * 0.003 * uBreathe * uMotion;
-    p.y += sin(uTime * 0.6 + aSeed * 11.0) * 0.003 * uBreathe * uMotion;
-    p += normalize(vec3(p.x, p.y, 0.001)) * uInteract * 0.018 * sin(uTime * 2.0 + aSeed * 30.0);
-
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    vTwinkle = sin(uTime * 2.0 + aSeed * 40.0) * 0.5 + 0.5;
-
-    gl_PointSize = aSize * (95.0 / -mv.z) * (1.0 + vTwinkle * uTwinkle * 0.12 + uInteract * 0.08);
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-
-const DOT_FRAG = /* glsl */ `
-  uniform float uFade;
-  uniform float uEmberMix;
-  uniform vec3 uEmber;
-  uniform vec3 uBone;
-  uniform vec3 uFog;
-
-  varying float vSeed;
-  varying float vTip;
-  varying float vTwinkle;
-
-  void main() {
-    vec2 uv = gl_PointCoord - 0.5;
-    float d = length(uv);
-    if (d > 0.5) discard;
-
-    float dotShape = 1.0 - smoothstep(0.38, 0.5, d);
-
-    float tip = smoothstep(0.55, 0.95, vTip);
-    vec3 base = mix(uFog, uBone, 0.35 + vSeed * 0.25);
-    vec3 col = mix(base, uEmber, tip * uEmberMix);
-    col *= mix(0.92, 1.06, vTwinkle * 0.2);
-
-    float alpha = dotShape * uFade * mix(0.22, 0.52, tip * 0.4 + 0.35);
-    if (alpha < 0.02) discard;
-
-    gl_FragColor = vec4(col, alpha);
-  }
-`;
-
-type SampledDot = { x: number; y: number; u: number; v: number; tip: number; seed: number };
-
-function sampleLogoDots(): SampledDot[] {
-  const cw = 280;
-  const ch = Math.round(cw * (VIEW_H / VIEW_W));
+function buildLogoGrid(): GridDot[] {
+  const cw = GRID_COLS;
+  const ch = GRID_ROWS;
   const canvas = document.createElement('canvas');
   canvas.width = cw;
   canvas.height = ch;
@@ -99,72 +41,57 @@ function sampleLogoDots(): SampledDot[] {
   ctx.fill(new Path2D(LOGO_PATH));
 
   const data = ctx.getImageData(0, 0, cw, ch).data;
-  const candidates: SampledDot[] = [];
-  const step = 2;
+  const dots: GridDot[] = [];
+  const aspect = VIEW_H / VIEW_W;
+  const padX = 0.06;
+  const padY = 0.06;
 
-  for (let py = 0; py < ch; py += step) {
-    for (let px = 0; px < cw; px += step) {
-      const idx = (py * cw + px) * 4;
-      if (data[idx + 3] < 100) continue;
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const idx = (row * GRID_COLS + col) * 4;
+      if (data[idx + 3] < 128) continue;
 
-      const u = px / cw;
-      const v = py / ch;
-      const svgY = (py / ch) * VIEW_H;
-      const tip = 1 - THREE.MathUtils.clamp(svgY / VIEW_H, 0, 1);
+      const nx = col / (GRID_COLS - 1);
+      const ny = row / (GRID_ROWS - 1);
+      const x = (nx - 0.5) * (1 - padX * 2);
+      const y = -(ny - 0.5) * aspect * (1 - padY * 2);
+      const tip = 1 - ny;
 
-      candidates.push({
-        x: (u - 0.5) * 1.65,
-        y: -(v - 0.5) * 1.85,
-        u,
-        v,
-        tip,
-        seed: Math.random(),
-      });
+      dots.push({ x, y, tip, col: nx, row: ny });
     }
   }
 
-  for (let i = candidates.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-  }
-
-  const picked = candidates.slice(0, Math.min(TARGET_DOTS, candidates.length));
-
-  for (const dot of picked) {
-    dot.x += (Math.random() - 0.5) * 0.006;
-    dot.y += (Math.random() - 0.5) * 0.006;
-  }
-
-  return picked;
+  return dots;
 }
 
-function buildDotGeometry(dots: SampledDot[]) {
-  const positions: number[] = [];
-  const seeds: number[] = [];
-  const tips: number[] = [];
-  const sizes: number[] = [];
+function buildGeometry(dots: GridDot[]) {
+  const positions = new Float32Array(dots.length * 3);
+  const tips = new Float32Array(dots.length);
+  const cols = new Float32Array(dots.length);
+  const rows = new Float32Array(dots.length);
 
-  for (const dot of dots) {
-    positions.push(dot.x, dot.y, (Math.random() - 0.5) * 0.008);
-    seeds.push(dot.seed);
-    tips.push(dot.tip);
-    sizes.push(THREE.MathUtils.lerp(1.1, 2.2, dot.tip * 0.35 + dot.seed * 0.45));
-  }
+  dots.forEach((dot, i) => {
+    positions[i * 3] = dot.x;
+    positions[i * 3 + 1] = dot.y;
+    positions[i * 3 + 2] = 0;
+    tips[i] = dot.tip;
+    cols[i] = dot.col;
+    rows[i] = dot.row;
+  });
 
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('aSeed', new THREE.Float32BufferAttribute(seeds, 1));
-  geo.setAttribute('aTip', new THREE.Float32BufferAttribute(tips, 1));
-  geo.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
-  geo.computeBoundingSphere();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('aTip', new THREE.BufferAttribute(tips, 1));
+  geo.setAttribute('aCol', new THREE.BufferAttribute(cols, 1));
+  geo.setAttribute('aRow', new THREE.BufferAttribute(rows, 1));
   return geo;
 }
 
 function sectionPresence(el: Element | null, vh: number) {
   if (!el) return 0;
   const r = el.getBoundingClientRect();
-  const overlap = Math.min(r.bottom, vh * 0.88) - Math.max(r.top, vh * 0.1);
-  return THREE.MathUtils.clamp(overlap / Math.max(r.height * 0.65, vh * 0.45), 0, 1);
+  const overlap = Math.min(r.bottom, vh * 0.88) - Math.max(r.top, vh * 0.12);
+  return THREE.MathUtils.clamp(overlap / Math.max(r.height * 0.6, vh * 0.42), 0, 1);
 }
 
 function blendPose(weights: Record<string, number>, poses: Record<string, Record<string, number>>) {
@@ -179,6 +106,71 @@ function blendPose(weights: Record<string, number>, poses: Record<string, Record
   return out;
 }
 
+const DOT_VERT = /* glsl */ `
+  attribute float aTip;
+  attribute float aCol;
+  attribute float aRow;
+
+  uniform float uTime;
+  uniform float uMotion;
+  uniform float uOffsetY;
+  uniform float uShear;
+  uniform float uWave;
+  uniform float uReveal;
+  uniform float uParallax;
+  uniform float uInteract;
+
+  varying float vTip;
+  varying float vVisible;
+  varying float vCol;
+
+  void main() {
+    vTip = aTip;
+    vCol = aCol;
+
+    float minTip = 1.0 - uReveal;
+    vVisible = smoothstep(minTip - 0.04, minTip + 0.02, aTip);
+
+    vec3 p = position;
+    p.y += uOffsetY + uParallax;
+    p.x += uShear * p.y;
+    p.y += sin(uTime * 1.15 + aCol * 28.0 + aRow * 16.0) * uWave * uMotion;
+    p.x += sin(uTime * 0.9 + aRow * 22.0) * uWave * uMotion * 0.35;
+    p += vec3(uInteract * 0.012 * sin(uTime * 2.2 + aCol * 40.0), 0.0, 0.0);
+
+    vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio;
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const DOT_FRAG = /* glsl */ `
+  uniform vec3 uWhite;
+  uniform vec3 uEmber;
+  uniform float uEmberMix;
+  uniform float uAlpha;
+  uniform float uInteract;
+
+  varying float vTip;
+  varying float vVisible;
+  varying float vCol;
+
+  void main() {
+    if (vVisible < 0.02) discard;
+
+    vec2 uv = gl_PointCoord - 0.5;
+    float d = length(uv);
+    if (d > 0.46) discard;
+
+    float tipAccent = smoothstep(0.78, 0.97, vTip) * uEmberMix;
+    vec3 col = mix(uWhite, uEmber, tipAccent);
+    col = mix(col, uWhite, uInteract * 0.08);
+
+    float alpha = uAlpha * vVisible * (0.62 + uInteract * 0.12);
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
 export default function Atmosphere() {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -187,52 +179,53 @@ export default function Atmosphere() {
     if (!mount) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const finePointer = window.matchMedia('(pointer: fine)').matches && !reduceMotion;
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
     } catch {
       return;
     }
 
     const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
+    camera.position.z = 1;
 
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 40);
-    camera.position.set(0, 0, 6.4);
-
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
 
-    const dots2d = sampleLogoDots();
-    const dotGeo = buildDotGeometry(dots2d);
+    const gridDots = buildLogoGrid();
+    const geometry = buildGeometry(gridDots);
 
     const uniforms = {
       uTime: { value: 0 },
       uMotion: { value: reduceMotion ? 0 : 1 },
-      uBreathe: { value: 1 },
-      uTwinkle: { value: 0.25 },
+      uOffsetY: { value: 0 },
+      uShear: { value: 0 },
+      uWave: { value: 0 },
+      uReveal: { value: reduceMotion ? 1 : 0.88 },
+      uParallax: { value: 0 },
       uInteract: { value: 0 },
-      uFade: { value: 0.75 },
-      uEmberMix: { value: 0.55 },
+      uEmberMix: { value: 0.15 },
+      uAlpha: { value: 0.78 },
+      uWhite: { value: WHITE },
       uEmber: { value: EMBER },
-      uBone: { value: BONE },
-      uFog: { value: FOG },
+      uPixelRatio: { value: 1 },
     };
 
-    const dotMat = new THREE.ShaderMaterial({
+    const material = new THREE.ShaderMaterial({
       uniforms,
       vertexShader: DOT_VERT,
       fragmentShader: DOT_FRAG,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       blending: THREE.NormalBlending,
     });
 
-    const feather = new THREE.Points(dotGeo, dotMat);
-    feather.rotation.z = -0.06;
-    scene.add(feather);
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
 
     const sections = {
       inicio: document.getElementById('inicio'),
@@ -243,37 +236,20 @@ export default function Atmosphere() {
     };
 
     const poses = {
-      inicio: {
-        fx: 0.08, fy: 0.02, fz: 0, scale: 0.78, rotx: 0, roty: 0.12, rotz: -0.04,
-        camY: 0, camZ: 6.4, fov: 38, breathe: 0.6, twinkle: 0.22, ember: 0.55, fade: 0.72,
-      },
-      grupo: {
-        fx: 0.05, fy: 0, fz: 0.02, scale: 0.72, rotx: 0.06, roty: -0.15, rotz: 0.03,
-        camY: 0, camZ: 6.2, fov: 37, breathe: 0.55, twinkle: 0.3, ember: 0.62, fade: 0.65,
-      },
-      lineas: {
-        fx: -0.02, fy: -0.04, fz: 0.04, scale: 0.68, rotx: 0.1, roty: 0.45, rotz: 0.06,
-        camY: -0.03, camZ: 6, fov: 36, breathe: 0.45, twinkle: 0.38, ember: 0.7, fade: 0.58,
-      },
-      oficio: {
-        fx: -0.06, fy: 0.02, fz: 0.02, scale: 0.62, rotx: -0.04, roty: 0.85, rotz: 0.02,
-        camY: 0, camZ: 5.85, fov: 35, breathe: 0.35, twinkle: 0.45, ember: 0.78, fade: 0.5,
-      },
-      contacto: {
-        fx: 0, fy: -0.1, fz: 0.06, scale: 0.52, rotx: 0.12, roty: 1.1, rotz: 0.08,
-        camY: -0.08, camZ: 6.6, fov: 34, breathe: 0.2, twinkle: 0.15, ember: 0.45, fade: 0.32,
-      },
+      inicio: { reveal: 0.88, offsetY: 0, shear: 0, wave: 0.008, ember: 0.12, alpha: 0.8, parallax: 0 },
+      grupo: { reveal: 1, offsetY: -0.025, shear: 0, wave: 0.012, ember: 0.18, alpha: 0.82, parallax: -0.018 },
+      lineas: { reveal: 1, offsetY: -0.05, shear: 0.09, wave: 0.022, ember: 0.22, alpha: 0.8, parallax: -0.04 },
+      oficio: { reveal: 1, offsetY: -0.07, shear: 0.04, wave: 0.014, ember: 0.85, alpha: 0.78, parallax: -0.065 },
+      contacto: { reveal: 1, offsetY: -0.1, shear: 0, wave: 0.006, ember: 0.35, alpha: 0.48, parallax: -0.09 },
     };
 
     const clock = new THREE.Clock();
     let frame = 0;
     let disposed = false;
-
-    const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
-    const cam = { y: 0, z: 6.4, fov: 38 };
-    const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
     let interactTarget = 0;
     let interactCurrent = 0;
+
+    const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
 
     const onFeatherInteract = (e: Event) => {
       const detail = (e as CustomEvent<{ intensity?: number }>).detail;
@@ -282,7 +258,7 @@ export default function Atmosphere() {
 
     window.addEventListener('df:feather-interact', onFeatherInteract);
 
-    const sample = () => {
+    const sampleSections = () => {
       const vh = window.innerHeight;
       const raw = {
         inicio: sectionPresence(sections.inicio, vh),
@@ -302,35 +278,44 @@ export default function Atmosphere() {
       };
     };
 
+    const scrollProgress = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      return max > 0 ? window.scrollY / max : 0;
+    };
+
     const fit = () => {
       const w = mount.clientWidth;
       const h = mount.clientHeight;
       if (!w || !h) return;
-      camera.aspect = w / h;
+
+      const aspect = w / h;
+      const viewH = 1.18;
+      const viewW = viewH * aspect;
+
+      camera.left = -viewW * 0.5;
+      camera.right = viewW * 0.5;
+      camera.top = viewH * 0.5;
+      camera.bottom = -viewH * 0.5;
       camera.updateProjectionMatrix();
+
       renderer.setSize(w, h, false);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      const pr = Math.min(window.devicePixelRatio, 2);
+      renderer.setPixelRatio(pr);
+      uniforms.uPixelRatio.value = pr;
     };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!finePointer) return;
-      const rect = mount.getBoundingClientRect();
-      if (rect.width <= 0) return;
-      pointer.tx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-      pointer.ty = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    };
-
-    if (finePointer) mount.addEventListener('pointermove', onPointerMove, { passive: true });
 
     const ro = new ResizeObserver(() => {
       fit();
-      if (reduceMotion) renderer.render(scene, camera);
+      if (reduceMotion) renderFrame(0, 0);
     });
     ro.observe(mount);
     fit();
 
-    const applyBeats = (beats: ReturnType<typeof sample>, delta: number, elapsed: number) => {
+    const renderFrame = (delta: number, elapsed: number) => {
       const k = reduceMotion ? 0 : DAMP;
+      const beats = sampleSections();
+
       cur.inicio = THREE.MathUtils.damp(cur.inicio, beats.inicio, k, delta);
       cur.grupo = THREE.MathUtils.damp(cur.grupo, beats.grupo, k, delta);
       cur.lineas = THREE.MathUtils.damp(cur.lineas, beats.lineas, k, delta);
@@ -338,55 +323,39 @@ export default function Atmosphere() {
       cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, k, delta);
 
       const pose = blendPose(cur, poses);
-
-      pointer.x = THREE.MathUtils.damp(pointer.x, pointer.tx, k, delta);
-      pointer.y = THREE.MathUtils.damp(pointer.y, pointer.ty, k, delta);
-      const px = finePointer ? pointer.x * 0.06 : 0;
-      const py = finePointer ? pointer.y * 0.04 : 0;
-
-      cam.y = THREE.MathUtils.damp(cam.y, pose.camY, k, delta);
-      cam.z = THREE.MathUtils.damp(cam.z, pose.camZ, k, delta);
-      cam.fov = THREE.MathUtils.damp(cam.fov, pose.fov, k, delta);
-      camera.fov = cam.fov;
-      camera.updateProjectionMatrix();
-      camera.position.set(px * 0.12, cam.y, cam.z);
-      camera.lookAt(pose.fx * 0.2 + px * 0.08, 0, 0);
-
-      const floatY = reduceMotion ? 0 : Math.sin(elapsed * 0.65) * 0.018 * pose.breathe;
-
-      feather.position.set(
-        THREE.MathUtils.damp(feather.position.x, pose.fx + px * 0.04, k, delta),
-        THREE.MathUtils.damp(feather.position.y, pose.fy + floatY + py * 0.04, k, delta),
-        THREE.MathUtils.damp(feather.position.z, pose.fz, k, delta),
-      );
-
-      feather.scale.setScalar(pose.scale);
-
-      feather.rotation.x = THREE.MathUtils.damp(feather.rotation.x, pose.rotx, k, delta);
-      feather.rotation.z = THREE.MathUtils.damp(feather.rotation.z, pose.rotz, k, delta);
-      feather.rotation.y = pose.roty + (reduceMotion ? 0 : elapsed * 0.025);
+      const progress = scrollProgress();
 
       interactCurrent = THREE.MathUtils.damp(interactCurrent, interactTarget, k, delta);
+
+      uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
+      uniforms.uOffsetY.value = pose.offsetY;
+      uniforms.uShear.value = pose.shear;
+      uniforms.uWave.value = pose.wave;
+      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.12;
+      uniforms.uAlpha.value = pose.alpha;
+      uniforms.uParallax.value = pose.parallax + (reduceMotion ? 0 : progress * -0.06);
       uniforms.uInteract.value = interactCurrent;
-      uniforms.uTwinkle.value = pose.twinkle + interactCurrent * 0.25;
-      uniforms.uEmberMix.value = pose.ember + interactCurrent * 0.15;
-      uniforms.uFade.value = pose.fade;
-      uniforms.uBreathe.value = pose.breathe + interactCurrent * 0.1;
+
+      if (!reduceMotion) uniforms.uTime.value = elapsed;
+
+      renderer.render(scene, camera);
     };
 
     const tick = () => {
       if (disposed) return;
       const delta = Math.min(clock.getDelta(), 0.05);
-      const elapsed = clock.elapsedTime;
-      applyBeats(sample(), delta, elapsed);
-      if (!reduceMotion) uniforms.uTime.value = elapsed;
-      renderer.render(scene, camera);
+      renderFrame(delta, clock.elapsedTime);
       frame = requestAnimationFrame(tick);
     };
 
+    const onScroll = () => {
+      if (reduceMotion) renderFrame(0, 0);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
     if (reduceMotion) {
-      applyBeats(sample(), 1, 0);
-      renderer.render(scene, camera);
+      renderFrame(0, 0);
     } else {
       frame = requestAnimationFrame(tick);
     }
@@ -395,10 +364,10 @@ export default function Atmosphere() {
       disposed = true;
       cancelAnimationFrame(frame);
       ro.disconnect();
-      if (finePointer) mount.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('df:feather-interact', onFeatherInteract);
-      dotGeo.dispose();
-      dotMat.dispose();
+      geometry.dispose();
+      material.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);
@@ -409,4 +378,5 @@ export default function Atmosphere() {
   return <div ref={mountRef} className="atmosphere" aria-hidden="true" />;
 }
 
-export const LOGO_DOT_COUNT = TARGET_DOTS;
+export const LOGO_DOT_COUNT =
+  typeof document === 'undefined' ? 0 : buildLogoGrid().length;
