@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 /**
- * 2D orthographic dot-grid — morphs between feather, circle, wave, line per scroll section.
+ * 2D orthographic dot-grid — each scroll section has a distinct shape + motion personality.
  */
 
 const LOGO_PATH =
@@ -149,8 +149,11 @@ function buildIconShape(dots: GridDot[], draw: IconDrawFn): Float32Array {
   ctx.strokeStyle = '#fff';
   ctx.save();
   ctx.translate(cw * 0.5, ch * 0.5);
-  const scale = Math.min(cw, ch) * 0.74;
+  const scale = Math.min(cw, ch) * 0.82;
   ctx.scale(scale, scale);
+  ctx.lineWidth = 0.07;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   draw(ctx);
   ctx.restore();
 
@@ -206,13 +209,10 @@ function drawIconSeries(ctx: CanvasRenderingContext2D) {
   const fh = 0.44;
   const gap = 0.038;
 
-  ctx.lineWidth = 0.028;
-  ctx.strokeStyle = '#fff';
-
   for (let i = 0; i < 3; i++) {
     const x = -0.25 + i * (fw + gap);
-    ctx.strokeRect(x, -fh / 2, fw, fh);
-    ctx.fillRect(x + 0.018, -fh / 2 + 0.028, fw - 0.036, fh - 0.056);
+    ctx.fillRect(x, -fh / 2, fw, fh);
+    ctx.clearRect(x + 0.018, -fh / 2 + 0.028, fw - 0.036, fh - 0.056);
     for (let hole = 0; hole < 3; hole++) {
       ctx.fillRect(x - 0.028, -0.13 + hole * 0.13, 0.016, 0.042);
       ctx.fillRect(x + fw + 0.012, -0.13 + hole * 0.13, 0.016, 0.042);
@@ -242,28 +242,29 @@ function drawIconBrush(ctx: CanvasRenderingContext2D) {
 }
 
 function drawIconCode(ctx: CanvasRenderingContext2D) {
-  const stroke = 0.048;
-  ctx.lineWidth = stroke;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  const thick = 0.09;
 
   ctx.beginPath();
-  ctx.moveTo(0.06, -0.3);
-  ctx.lineTo(-0.14, 0);
-  ctx.lineTo(0.06, 0.3);
-  ctx.stroke();
+  ctx.moveTo(0.08, -0.32);
+  ctx.lineTo(-0.16, 0);
+  ctx.lineTo(0.08, 0.32);
+  ctx.lineTo(-0.02, 0.32);
+  ctx.lineTo(-0.24, 0);
+  ctx.lineTo(-0.02, -0.32);
+  ctx.closePath();
+  ctx.fill();
 
   ctx.beginPath();
-  ctx.moveTo(-0.06, -0.3);
-  ctx.lineTo(0.14, 0);
-  ctx.lineTo(-0.06, 0.3);
-  ctx.stroke();
+  ctx.moveTo(-0.08, -0.32);
+  ctx.lineTo(0.16, 0);
+  ctx.lineTo(-0.08, 0.32);
+  ctx.lineTo(0.02, 0.32);
+  ctx.lineTo(0.24, 0);
+  ctx.lineTo(0.02, -0.32);
+  ctx.closePath();
+  ctx.fill();
 
-  ctx.beginPath();
-  ctx.moveTo(0.03, -0.2);
-  ctx.lineTo(-0.03, 0.2);
-  ctx.lineWidth = stroke * 0.85;
-  ctx.stroke();
+  ctx.fillRect(-0.04, -0.18, thick * 0.55, 0.36);
 }
 
 function drawIconMic(ctx: CanvasRenderingContext2D) {
@@ -383,6 +384,9 @@ const DOT_VERT = /* glsl */ `
   uniform float uIconW2;
   uniform float uIconW3;
   uniform float uAtelierCode;
+  uniform float uLineasFrac;
+  uniform float uGrupoPulse;
+  uniform float uLineasSnap;
 
   varying float vTip;
   varying float vVisible;
@@ -417,17 +421,49 @@ const DOT_VERT = /* glsl */ `
 
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
+    float ang = atan(p.y, p.x);
+
+    // --- #inicio: organic breathe sway ---
+    vec2 inicioOff = vec2(
+      sin(uTime * 0.62 + aCol * 11.0 + aRow * 5.0),
+      cos(uTime * 0.48 + aRow * 13.0 + aCol * 4.0)
+    ) * 0.018 * uWInicio * uMotion;
+
+    // --- #grupo: orbital drift + pulsing radius ---
+    float orbitPhase = uTime * 0.52 + seed * 6.28318 + ang * 0.4;
+    float orbitAmp = 0.032 * (0.6 + 0.4 * sin(uTime * 1.3 + seed * 5.0));
+    vec2 grupoOff = vec2(cos(orbitPhase), sin(orbitPhase)) * orbitAmp * uWGrupo * uMotion;
+    p.xy *= mix(vec2(1.0), vec2(1.0 + uGrupoPulse * 0.08), uWGrupo);
+
+    // --- #lineas: snap shear + panel-driven horizontal jitter ---
+    float snapWave = sin(uTime * 4.2 + aRow * 24.0);
+    vec2 lineasOff = vec2(
+      snapWave * 0.014 + uLineasSnap * 0.022 * sin(uTime * 9.0 + aCol * 30.0),
+      cos(uTime * 3.1 + aCol * 18.0) * 0.005
+    ) * uWLineas * uMotion;
+    p.x += uShear * p.y * uWLineas * 1.35;
+
+    // --- #oficio: warm ember tremble at quill tip ---
+    float tipMask = smoothstep(0.7, 0.97, aTip);
+    vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
+
+    // --- #contacto: outward scatter + dissolve drift ---
+    vec2 contactOff = radial * (0.03 + seed * 0.05) * (0.7 + 0.3 * sin(uTime * 0.55 + seed * 10.0))
+                    * uWContacto * uMotion;
+    p.xy += radial * uDissolve * sin(uTime * 0.7 + seed * 14.0) * 0.06 * uWContacto;
+
+    p.xy += inicioOff + grupoOff + lineasOff + oficioOff + contactOff;
+
+    // Residual scatter/gather for interact + contact blend
     p.xy += radial * uScatter * (0.55 + seed * 0.65);
 
     vec2 shaft = vec2(0.0, -0.14);
     p.xy = mix(p.xy, shaft + (p.xy - shaft) * 0.72, uGather);
 
-    p.x += uShear * p.y;
-
-    p.x += sin(uTime * 1.6 + aRow * 20.0) * uWave * uMotion * 0.018;
-    p.y += cos(uTime * 1.3 + aCol * 26.0) * uWave * uMotion * 0.01;
-
-    p.xy += radial * uDissolve * sin(uTime * 0.75 + seed * 12.0) * 0.035;
+    // Legacy wave only bleeds through non-grupo sections lightly
+    float legacyWave = uWave * uMotion * (1.0 - uWGrupo * 0.85);
+    p.x += sin(uTime * 1.6 + aRow * 20.0) * legacyWave * 0.012;
+    p.y += cos(uTime * 1.3 + aCol * 26.0) * legacyWave * 0.008;
 
     p.xy += vec2(
       uInteract * 0.028 * sin(uTime * 2.4 + aCol * 40.0),
@@ -448,6 +484,8 @@ const DOT_FRAG = /* glsl */ `
   uniform float uInteract;
   uniform float uTipPulse;
   uniform float uDissolve;
+  uniform float uTime;
+  uniform float uWOficio;
 
   varying float vTip;
   varying float vVisible;
@@ -462,7 +500,9 @@ const DOT_FRAG = /* glsl */ `
     float d = length(uv);
     if (d > 0.46) discard;
 
-    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.55) * vFeatherMix;
+    float tipAccent = smoothstep(0.78, 0.97, vTip) * (uEmberMix + uTipPulse * 0.65) * vFeatherMix;
+    float flicker = 1.0 + sin(uTime * 6.8 + vCol * 48.0) * 0.32 * uTipPulse * uWOficio;
+    tipAccent *= flicker;
     vec3 col = mix(uWhite, uEmber, tipAccent);
     col = mix(col, uWhite, uInteract * 0.15);
 
@@ -529,6 +569,9 @@ export default function Atmosphere() {
       uIconW2: { value: 0 },
       uIconW3: { value: 0 },
       uAtelierCode: { value: 0 },
+      uLineasFrac: { value: 0 },
+      uGrupoPulse: { value: 0 },
+      uLineasSnap: { value: 0 },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -554,29 +597,29 @@ export default function Atmosphere() {
 
     const poses = {
       inicio: {
-        scale: 1, breathe: 0.04, offsetX: 0.04, offsetY: 0,
-        scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.012,
+        scale: 1, breathe: 0.058, offsetX: 0.04, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.006,
         ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
       },
       grupo: {
-        scale: 1.02, breathe: 0, offsetX: 0, offsetY: 0,
-        scatter: 0.01, gather: 0, stretchX: 1, shear: 0, wave: 0.018,
-        ember: 0.08, alpha: 0.85, reveal: 1, dissolve: 0,
+        scale: 1.04, breathe: 0, offsetX: 0, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0,
+        ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
       },
       lineas: {
-        scale: 1.03, breathe: 0, offsetX: -0.01, offsetY: 0,
-        scatter: 0, gather: 0, stretchX: 1.06, shear: 0.06, wave: 0.042,
-        ember: 0.1, alpha: 0.82, reveal: 1, dissolve: 0,
+        scale: 1.05, breathe: 0, offsetX: -0.02, offsetY: 0,
+        scatter: 0, gather: 0, stretchX: 1.1, shear: 0.14, wave: 0.008,
+        ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
       },
       oficio: {
-        scale: 0.96, breathe: 0, offsetX: 0, offsetY: 0,
-        scatter: 0, gather: 0.02, stretchX: 1, shear: 0, wave: 0.014,
-        ember: 0.88, alpha: 0.8, reveal: 1, dissolve: 0,
+        scale: 0.97, breathe: 0, offsetX: 0, offsetY: 0,
+        scatter: 0, gather: 0.035, stretchX: 1, shear: 0, wave: 0.004,
+        ember: 0.92, alpha: 0.81, reveal: 1, dissolve: 0,
       },
       contacto: {
-        scale: 0.88, breathe: 0, offsetX: 0, offsetY: 0.03,
-        scatter: 0.018, gather: 0, stretchX: 1, shear: 0, wave: 0.006,
-        ember: 0.15, alpha: 0.45, reveal: 1, dissolve: 0.55,
+        scale: 0.86, breathe: 0, offsetX: 0, offsetY: 0.04,
+        scatter: 0.035, gather: 0, stretchX: 1, shear: 0, wave: 0,
+        ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
       },
     };
 
@@ -674,8 +717,8 @@ export default function Atmosphere() {
       burstCurrent = THREE.MathUtils.damp(burstCurrent, burstTarget, k * 1.4, delta);
       if (burstTarget > 0.95) burstTarget = THREE.MathUtils.damp(burstTarget, 0, 3.5, delta);
 
-      const iconTargetMix = cur.lineas > 0.22 ? 1 : 0;
-      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k, delta);
+      const iconTargetMix = cur.lineas > 0.1 ? 1 : 0;
+      lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 2.0, delta);
 
       const p = lineasPanel.progress;
       const targetIconW = {
@@ -686,11 +729,11 @@ export default function Atmosphere() {
         atelierCode: THREE.MathUtils.smoothstep(2.45, 2.95, p),
       };
 
-      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.2, delta);
-      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.2, delta);
-      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 1.2, delta);
-      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 1.2, delta);
-      iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 1.4, delta);
+      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 2.4, delta);
+      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 2.4, delta);
+      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 2.4, delta);
+      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 2.4, delta);
+      iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 2.6, delta);
 
       if (reduceMotion) {
         uniforms.uWInicio.value = 1;
@@ -714,7 +757,9 @@ export default function Atmosphere() {
       }
 
       const inicioLife = cur.inicio;
-      const breatheScale = reduceMotion ? 1 : 1 + Math.sin(elapsed * 0.85) * pose.breathe * inicioLife;
+      const breatheScale = reduceMotion
+        ? 1
+        : 1 + Math.sin(elapsed * 0.75) * pose.breathe * inicioLife;
 
       sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
       sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
@@ -722,7 +767,7 @@ export default function Atmosphere() {
 
       points.scale.setScalar(sm.scale);
       points.position.set(sm.offsetX, sm.offsetY, 0);
-      points.rotation.z = 0;
+      points.rotation.z = reduceMotion ? 0 : elapsed * 0.024 * cur.inicio;
 
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
       uniforms.uShear.value = pose.shear;
@@ -736,7 +781,10 @@ export default function Atmosphere() {
       uniforms.uInteract.value = interactCurrent + burstCurrent * 0.85 + holdProgress * 0.35;
       uniforms.uTipPulse.value = reduceMotion
         ? 0
-        : cur.oficio * 0.65 + Math.sin(elapsed * 2.8) * 0.18 * cur.oficio;
+        : cur.oficio * (0.72 + Math.sin(elapsed * 3.1) * 0.28);
+      uniforms.uGrupoPulse.value = reduceMotion ? 0 : Math.sin(elapsed * 1.35) * cur.grupo;
+      uniforms.uLineasFrac.value = lineasPanel.frac * cur.lineas;
+      uniforms.uLineasSnap.value = reduceMotion ? 0 : cur.lineas * (0.35 + Math.abs(Math.sin(elapsed * 5.5 + lineasPanel.index)) * 0.65);
 
       if (!reduceMotion) uniforms.uTime.value = elapsed;
 
