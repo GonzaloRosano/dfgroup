@@ -325,7 +325,7 @@ function buildGeometry(dots: GridDot[]) {
 
 function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
-  return THREE.MathUtils.smoothstep(1.15, 0.08, d);
+  return 1 - THREE.MathUtils.smoothstep(0.08, 1.15, d);
 }
 
 function sectionPresence(el: Element | null, vh: number) {
