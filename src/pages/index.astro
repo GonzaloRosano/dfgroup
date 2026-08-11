@@ -314,8 +314,9 @@ const crafts = [
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: var(--home-hero-min-h);
-    padding: calc(var(--nav-height) + clamp(1.5rem, 4vh, 2.5rem)) 0 clamp(2.5rem, 5vh, 4rem);
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    padding: var(--nav-height) 0 clamp(2.5rem, 5vh, 4rem);
     overflow: hidden;
   }
 
@@ -394,8 +395,10 @@ const crafts = [
   .about {
     display: flex;
     flex-direction: column;
-    min-height: var(--home-viewport-h);
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
     padding-block: 0;
+    padding-top: var(--nav-height);
   }
 
   .about__inner {
@@ -407,12 +410,23 @@ const crafts = [
     padding-block: clamp(2.5rem, 6vh, 4.5rem);
   }
 
-  .crafts {
-    padding-block: var(--home-section-pad-y);
+  .crafts,
+  .contact {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    padding-block: 0;
+    padding-top: var(--nav-height);
   }
 
-  .contact {
-    padding-block: var(--home-section-pad-y) var(--home-section-pad-bottom);
+  .crafts > .container,
+  .contact > .container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: clamp(2.5rem, 6vh, 4.5rem);
   }
 
   @media (max-width: 959px) {
@@ -445,9 +459,15 @@ const crafts = [
     }
 
     .hero {
-      min-height: auto;
-      padding-top: calc(var(--nav-height) + 1.25rem);
+      min-height: var(--home-section-min-h);
+      padding-top: var(--nav-height);
       padding-bottom: min(30svh, 260px);
+    }
+
+    .about,
+    .crafts,
+    .contact {
+      min-height: var(--home-section-min-h);
     }
 
     .hero__shield {
@@ -547,7 +567,7 @@ const crafts = [
   .lines-showcase__sticky {
     position: sticky;
     top: var(--nav-height);
-    height: calc(100svh - var(--nav-height));
+    height: var(--home-viewport-h);
     display: grid;
     grid-template-rows: auto 1fr auto;
     overflow: hidden;
