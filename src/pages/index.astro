@@ -1,0 +1,210 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Atmosphere from '../components/Atmosphere';
+import { lines } from '../data/lines';
+---
+
+<BaseLayout title="Dark Feather Group">
+  <div class="home-atmosphere" aria-hidden="true">
+    <Atmosphere client:load />
+  </div>
+
+  <section class="home-hero" data-atmosphere="hero">
+    <div class="container home-hero__content">
+      <h1 class="home-hero__title">De la idea a la obra, a contraluz.</h1>
+      <p class="home-hero__lead">
+        Dark Feather Group es un colectivo creativo: diseño, desarrollo, arte y
+        producción. Cuatro líneas. Una misma atmósfera.
+      </p>
+      <div class="btn-row">
+        <a class="btn btn--solid" href="/contacto">Empezar conversación</a>
+        <a class="btn btn--ghost" href="/atelier">Ver DF Atelier</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section lines-strip" data-atmosphere="lines" aria-label="Líneas del grupo">
+    <div class="container">
+      <ul class="lines-strip__list">
+        {
+          lines.map((line) => (
+            <li>
+              <a href={`/${line.slug}`}>{line.code}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="section preview" data-atmosphere="preview">
+    <div class="container">
+      <h2 class="section__title">Oficio con atmósfera.</h2>
+      <p class="section__lead">
+        No vendemos plantillas. Construimos mundos — visuales, técnicos y
+        sonoros — que se sostienen solos.
+      </p>
+      <div class="preview__frame">
+        <div class="preview__chrome">
+          <span>DF Group</span>
+          <span>Atelier</span>
+          <span>Series</span>
+          <span>Hosting</span>
+        </div>
+        <div class="preview__body">
+          <p class="preview__brand">Dark Feather</p>
+          <p class="preview__copy">
+            Identidad, producto y narrativa bajo una sola dirección de arte.
+            Pieza de demostración — reemplazar con captura real.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .home-atmosphere {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .home-atmosphere :global(.atmosphere),
+  .home-atmosphere :global(canvas) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Center well so the headline punches; grain stays visible at the edges. */
+  .home-atmosphere::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 48% 36% at 50% 42%, rgba(0, 0, 0, 0.42) 0%, transparent 68%),
+      radial-gradient(ellipse 100% 90% at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.38) 100%);
+    pointer-events: none;
+  }
+
+  .home-hero {
+    position: relative;
+    z-index: 1;
+    min-height: calc(100svh - 1rem);
+    display: grid;
+    place-items: center;
+    padding: 7rem 0 4rem;
+  }
+
+  .home-hero__content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    animation: rise 900ms var(--ease-out) both;
+  }
+
+  .section {
+    position: relative;
+    z-index: 1;
+  }
+
+  .home-hero__title {
+    font-size: clamp(3rem, 9vw, 5.75rem);
+    max-width: 12ch;
+    margin-inline: auto;
+    margin-bottom: 1.15rem;
+  }
+
+  .home-hero__lead {
+    color: var(--fog);
+    margin-inline: auto;
+    margin-bottom: 1.85rem;
+    font-size: 1.1rem;
+  }
+
+  .lines-strip {
+    padding-block: 4rem 2.5rem;
+  }
+
+  .lines-strip__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem 2rem;
+    opacity: 0.75;
+  }
+
+  .lines-strip__list a {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  .lines-strip__list a:hover {
+    color: var(--bone);
+  }
+
+  .preview__frame {
+    margin-inline: auto;
+    max-width: 860px;
+    border-radius: 1.35rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
+    overflow: hidden;
+    background: linear-gradient(180deg, #14161c, #0a0a0c);
+  }
+
+  .preview__chrome {
+    display: flex;
+    gap: 1rem;
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    color: var(--mute);
+    font-size: 0.85rem;
+  }
+
+  .preview__body {
+    min-height: 220px;
+    padding: 2.5rem 1.5rem;
+    background:
+      radial-gradient(ellipse 50% 60% at 70% 40%, rgba(154, 59, 59, 0.18), transparent 60%),
+      #0a0a0c;
+  }
+
+  .preview__brand {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .preview__copy {
+    color: var(--fog);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-hero__content {
+      animation: none;
+    }
+  }
+</style>

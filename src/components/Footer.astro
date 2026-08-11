@@ -1,0 +1,108 @@
+---
+import { lines } from '../data/lines';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__grid">
+    <div>
+      <p class="site-footer__brand">
+        <img class="site-footer__logo" src="/logo.svg" alt="" width="22" height="24" />
+        Dark Feather Group
+      </p>
+      <p class="site-footer__note">Colectivo creativo · noir moderno.</p>
+    </div>
+
+    <nav aria-label="Líneas DF">
+      <p class="site-footer__label">Productos</p>
+      <ul>
+        {lines.map((line) => (
+          <li>
+            <a href={`/${line.slug}`}>{line.code}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <nav aria-label="Grupo">
+      <p class="site-footer__label">Grupo</p>
+      <ul>
+        <li><a href="/grupo">Sobre DF</a></li>
+        <li><a href="/contacto">Contacto</a></li>
+        <li><a href="/derechos">Derechos</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <div class="container site-footer__meta">
+    <p>© {year} Dark Feather Group</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    padding-block: var(--space-lg) var(--space-md);
+    margin-top: auto;
+  }
+
+  .site-footer__grid {
+    display: grid;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .site-footer__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .site-footer__logo {
+    width: 1.35rem;
+    height: auto;
+    filter: invert(1);
+  }
+
+  .site-footer__note,
+  .site-footer__meta {
+    color: var(--mute);
+    font-size: 0.9rem;
+  }
+
+  .site-footer__label {
+    color: var(--mute);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .site-footer ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .site-footer a {
+    color: var(--fog);
+  }
+
+  .site-footer a:hover {
+    color: var(--bone);
+  }
+
+  @media (min-width: 720px) {
+    .site-footer__grid {
+      grid-template-columns: 1.4fr 1fr 1fr;
+    }
+  }
+</style>

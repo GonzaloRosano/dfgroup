@@ -1,0 +1,332 @@
+---
+import { lines } from '../data/lines';
+
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const topLinks = [
+  { href: '/grupo', label: 'Grupo' },
+  { href: '/contacto', label: 'Contacto' },
+];
+---
+
+<header class="site-header">
+  <div class="nav-pill">
+    <a class="brand" href="/" aria-label="Dark Feather Group — inicio">
+      <svg
+        class="brand__logo"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 122 135"
+        width="28"
+        height="31"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          fill="currentColor"
+          fill-rule="evenodd"
+          d="M 105.500 12.572 C 101.650 16.136, 91.750 24.155, 83.500 30.392 C 59.486 48.547, 39.599 67.920, 31.913 80.644 C 26.345 89.862, 21.189 100.776, 18.516 109 C 15.715 117.620, 14.266 119.849, 6.897 126.878 C 3.104 130.495, 0 133.803, 0 134.228 C 0 136.216, 4.186 134.531, 11.500 129.600 C 15.900 126.633, 24.900 121.461, 31.500 118.107 C 38.100 114.753, 45.814 110.094, 48.641 107.754 C 69.115 90.814, 80.854 78.771, 89.339 66 C 91.349 62.975, 93.339 60.050, 93.763 59.500 C 95.049 57.828, 101.915 44.930, 105.474 37.500 C 110.421 27.174, 115.681 5.896, 113.250 6.046 C 112.838 6.072, 109.350 9.008, 105.500 12.572"
+        ></path>
+      </svg>
+      <span class="brand__name">Dark Feather</span>
+    </a>
+
+    <nav class="nav" aria-label="Principal">
+      <div class="nav__dropdown">
+        <button
+          class="nav__trigger"
+          type="button"
+          aria-expanded="false"
+          aria-controls="productos-menu"
+          data-dropdown-trigger
+        >
+          Productos
+          <span class="nav__chev" aria-hidden="true"></span>
+        </button>
+        <div class="nav__menu" id="productos-menu" role="menu">
+          {
+            lines.map((line) => (
+              <a
+                role="menuitem"
+                href={`/${line.slug}`}
+                class:list={[{ 'is-active': pathname === `/${line.slug}` }]}
+              >
+                <span>{line.code}</span>
+                <small>{line.tagline}</small>
+              </a>
+            ))
+          }
+        </div>
+      </div>
+
+      {
+        topLinks.map((link) => (
+          <a
+            href={link.href}
+            class:list={['nav__link', { 'is-active': pathname === link.href }]}
+          >
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="nav__actions">
+      <a class="nav__text" href="/contacto">Hablar con el grupo</a>
+      <a class="btn btn--solid nav__cta" href="/contacto">Empezar</a>
+    </div>
+
+    <button class="nav__burger" type="button" aria-label="Abrir menú" data-mobile-toggle>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+
+  <div class="mobile-panel" data-mobile-panel hidden>
+    <a href="/">Inicio</a>
+    {lines.map((line) => <a href={`/${line.slug}`}>{line.code}</a>)}
+    <a href="/grupo">Grupo</a>
+    <a href="/contacto">Contacto</a>
+  </div>
+</header>
+
+<script>
+  const trigger = document.querySelector('[data-dropdown-trigger]');
+  const dropdown = trigger?.closest('.nav__dropdown');
+  const mobileToggle = document.querySelector('[data-mobile-toggle]');
+  const mobilePanel = document.querySelector('[data-mobile-panel]');
+
+  trigger?.addEventListener('click', () => {
+    const open = dropdown?.classList.toggle('is-open');
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!dropdown || !(event.target instanceof Node)) return;
+    if (!dropdown.contains(event.target)) {
+      dropdown.classList.remove('is-open');
+      trigger?.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  mobileToggle?.addEventListener('click', () => {
+    const hidden = mobilePanel?.hasAttribute('hidden');
+    if (hidden) mobilePanel?.removeAttribute('hidden');
+    else mobilePanel?.setAttribute('hidden', '');
+  });
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0.85rem;
+    z-index: 40;
+    width: min(1120px, calc(100% - 3.5rem));
+    margin-inline: auto;
+    padding-inline: 0.25rem;
+    pointer-events: none;
+  }
+
+  .site-header > * {
+    pointer-events: auto;
+  }
+
+  .nav-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 3.5rem;
+    padding: 0.5rem 1.15rem 0.5rem 1.25rem;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, #0c0d10 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-shrink: 0;
+  }
+
+  .brand__logo {
+    width: 1.55rem;
+    height: auto;
+    flex-shrink: 0;
+    color: var(--bone);
+  }
+
+  .brand:hover .brand__logo {
+    color: #fff;
+  }
+
+  .brand__name {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .nav {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .nav__link,
+  .nav__trigger {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--fog);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    padding: 0.45rem 0.7rem;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+  }
+
+  .nav__link:hover,
+  .nav__trigger:hover,
+  .nav__link.is-active {
+    color: var(--bone);
+  }
+
+  .nav__dropdown {
+    position: relative;
+  }
+
+  .nav__chev {
+    display: inline-block;
+    width: 0.35rem;
+    height: 0.35rem;
+    margin-left: 0.25rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-1px) rotate(45deg);
+  }
+
+  .nav__menu {
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    min-width: 16rem;
+    padding: 0.45rem;
+    border-radius: 1rem;
+    background: #0e1015;
+    border: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 160ms var(--ease-out),
+      transform 160ms var(--ease-out),
+      visibility 160ms;
+  }
+
+  .nav__dropdown.is-open .nav__menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .nav__menu a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.75rem;
+    color: var(--bone);
+  }
+
+  .nav__menu a:hover,
+  .nav__menu a.is-active {
+    background: color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+
+  .nav__menu small {
+    color: var(--mute);
+    font-size: 0.78rem;
+  }
+
+  .nav__actions {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .nav__text {
+    color: var(--fog);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .nav__text:hover {
+    color: var(--bone);
+  }
+
+  .nav__cta {
+    padding: 0.55rem 1rem;
+    font-size: 0.88rem;
+  }
+
+  .nav__burger {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .nav__burger span {
+    display: block;
+    height: 1.5px;
+    width: 1.1rem;
+    margin-inline: auto;
+    background: var(--bone);
+  }
+
+  .mobile-panel {
+    margin-top: 0.55rem;
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.75rem;
+    border-radius: 1.25rem;
+    background: #0e1015;
+    border: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
+  }
+
+  .mobile-panel[hidden] {
+    display: none;
+  }
+
+  .mobile-panel a {
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.75rem;
+    color: var(--bone);
+    font-weight: 500;
+  }
+
+  .mobile-panel a:hover {
+    background: color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+
+  @media (min-width: 960px) {
+    .nav,
+    .nav__actions {
+      display: flex;
+    }
+
+    .nav__burger,
+    .mobile-panel {
+      display: none !important;
+    }
+  }
+</style>

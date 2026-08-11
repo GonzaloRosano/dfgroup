@@ -1,0 +1,129 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Still from '../components/Still.astro';
+import type { DfLine } from '../data/lines';
+import { stillForPath } from '../data/stills';
+
+interface Props {
+  line: DfLine;
+}
+
+const { line } = Astro.props;
+const still = stillForPath(`/${line.slug}`);
+---
+
+<BaseLayout
+  title={`${line.code} · Dark Feather Group`}
+  description={line.summary}
+>
+  <section class="page-hero">
+    <div class="container">
+      <h1 class="page-hero__title">{line.code}</h1>
+      <p class="page-hero__full">{line.full}</p>
+      <p class="page-hero__lead">{line.summary}</p>
+      <div class="btn-row">
+        <a class="btn btn--solid" href="/contacto">Hablar de este producto</a>
+        <a class="btn btn--ghost" href="/">Volver al grupo</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section line-body">
+    <div class="container line-body__grid">
+      <div class="line-body__copy">
+        <h2 class="line-body__title">{line.tagline}</h2>
+        <p class="line-body__text">
+          {line.full} forma parte del universo Dark Feather Group. El nombre
+          corto <strong>{line.code}</strong> es el que usamos en producto y UI.
+        </p>
+      </div>
+      <div class="line-body__aside">
+        {still && <Still still={still} variant="inline" />}
+        <ul class="line-body__points">
+          {
+            line.points.map((point) => (
+              <li>
+                <span class="dot" aria-hidden="true"></span>
+                <span>{point}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <slot />
+</BaseLayout>
+
+<style>
+  .page-hero__full {
+    color: var(--mute);
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: -0.35rem auto 1.1rem;
+  }
+
+  .line-body__grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  .line-body__title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    margin-bottom: 1rem;
+  }
+
+  .line-body__text {
+    color: var(--fog);
+  }
+
+  .line-body__aside {
+    display: grid;
+    gap: 1.5rem;
+    align-content: start;
+  }
+
+  .line-body__points {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .line-body__points li {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    padding: 1rem 0;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    color: var(--fog);
+  }
+
+  .line-body__points li:last-child {
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+  }
+
+  .dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-top: 0.55rem;
+    border-radius: 50%;
+    background: var(--ember);
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 800px) {
+    .line-body__grid {
+      grid-template-columns: 1.15fr 0.85fr;
+      align-items: start;
+    }
+
+    .line-body__aside :global(.still--inline) {
+      justify-self: end;
+    }
+  }
+</style>
+

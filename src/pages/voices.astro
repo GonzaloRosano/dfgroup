@@ -1,0 +1,8 @@
+---
+import LineLayout from '../layouts/LineLayout.astro';
+import { getLine } from '../data/lines';
+
+const line = getLine('voices')!;
+---
+
+<LineLayout line={line} />

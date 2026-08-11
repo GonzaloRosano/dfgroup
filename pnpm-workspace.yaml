@@ -1,0 +1,7 @@
+# Single-package project; settings live here (pnpm 10+/11).
+packages:
+  - '.'
+
+allowBuilds:
+  esbuild: true
+  sharp: true

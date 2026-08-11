@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Dark Feather Group',
+  description = 'Colectivo creativo noir: DF Hosting, DF Series, DF Atelier, DF Voices.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0d0d0d" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <!--
+      THESIS: Multi-page noir studio — FinChat-clean structure with DF atmosphere, not a one-page brochure dump.
+      OWN-WORLD: Pure black ground, bone CTAs as pills, floating nav pill, fog copy, ember only as quiet core in WebGL.
+      STORY: Land → choose a DF line → go deep on its page → contact.
+      FIRST VIEWPORT: Centered brand headline, one supporting line, pill CTAs, soft Three.js nebula.
+      FORM: Reference-led multipage (FinChat composure × Pluma en la niebla).
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    -->
+    <div class="site-shell">
+      <Header />
+      <main>
+        <slot />
+      </main>
+      <Footer />
+    </div>
+  </body>
+</html>

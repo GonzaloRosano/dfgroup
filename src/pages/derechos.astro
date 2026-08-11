@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { generatedStills, thirdPartyStills } from '../data/stills';
+---
+
+<BaseLayout
+  title="Derechos e imágenes · Dark Feather Group"
+  description="Origen y licencia de las imágenes del sitio Dark Feather Group."
+>
+  <section class="page-hero">
+    <div class="container">
+      <h1 class="page-hero__title">Derechos e imágenes</h1>
+      <p class="page-hero__lead">
+        Este sitio usa atmósfera visual, no un archivo de producción. Las
+        imágenes no son fotografías de trabajo real de Dark Feather Group.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container rights">
+      <h2>Imágenes generadas</h2>
+      <p>
+        Los archivos de esta lista los creó un modelo de imagen para este sitio.
+        Son sintéticos: no documentan un taller, una sala de servidores, una
+        sala de proyección ni un estudio reales del grupo.
+      </p>
+      <ul class="rights-list">
+        {
+          generatedStills.map((still) => (
+            <li>
+              <img src={still.src} alt={still.alt} width="480" height="320" loading="lazy" />
+              <div>
+                <p class="rights-list__file">{still.src}</p>
+                <p>Generada con IA para este sitio.</p>
+                <p>
+                  {still.usedOn ? (
+                    <>
+                      En <a href={still.usedOn}>{still.usedOn}</a>
+                    </>
+                  ) : (
+                    'Archivo del sitio, sin página asignada.'
+                  )}
+                </p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container rights">
+      <h2>Imágenes de terceros</h2>
+      <p>
+        Fotografías reutilizables, descargadas al repositorio. No se enlazan
+        en caliente.
+      </p>
+      <ul class="rights-list">
+        {
+          thirdPartyStills.map((still) => (
+            <li>
+              <img src={still.src} alt={still.alt} width="480" height="320" loading="lazy" />
+              <div>
+                <p class="rights-list__file">{still.src}</p>
+                <p>
+                  {still.author}. Licencia{' '}
+                  <a href={still.licenseUrl}>{still.license}</a>.
+                </p>
+                <p>
+                  Fuente:{' '}
+                  <a href={still.source}>{still.source}</a>
+                </p>
+                <p>
+                  {still.usedOn ? (
+                    <>
+                      En <a href={still.usedOn}>{still.usedOn}</a>
+                    </>
+                  ) : (
+                    'Archivo del sitio, sin página asignada.'
+                  )}
+                </p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container rights">
+      <h2>Marca</h2>
+      <p>
+        El archivo <code>/logo.svg</code> (<code>public/logo.svg</code>) es la
+        marca de Dark Feather Group. No forma parte de las imágenes generadas
+        ni de las fotografías de terceros.
+      </p>
+      <img class="rights-logo" src="/logo.svg" alt="Marca Dark Feather Group" width="48" height="53" />
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container rights">
+      <h2>Obra real</h2>
+      <p>
+        Las páginas de producto describen líneas del grupo. Hasta que el
+        colectivo entregue trabajo propio, no hay estudios de caso
+        fotográficos: las imágenes son atmósfera, no evidencia de encargos.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .rights h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    margin-bottom: 1rem;
+  }
+
+  .rights > p {
+    color: var(--fog);
+    margin-bottom: 1.75rem;
+  }
+
+  .rights-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .rights-list li {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem 0;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    color: var(--fog);
+  }
+
+  .rights-list li:last-child {
+    border-bottom: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+  }
+
+  .rights-list img {
+    width: 100%;
+    height: 8.5rem;
+    object-fit: cover;
+    background: var(--asphalt);
+  }
+
+  .rights-list__file {
+    color: var(--bone);
+    margin-bottom: 0.35rem;
+    word-break: break-all;
+  }
+
+  .rights-list a {
+    color: var(--bone);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .rights-logo {
+    width: 2.75rem;
+    height: auto;
+    filter: invert(1);
+  }
+
+  code {
+    font-size: 0.92em;
+  }
+
+  @media (min-width: 720px) {
+    .rights-list li {
+      grid-template-columns: 12rem 1fr;
+      align-items: start;
+      gap: 1.5rem;
+    }
+
+    .rights-list img {
+      height: 7.5rem;
+    }
+  }
+</style>

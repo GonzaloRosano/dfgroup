@@ -1,0 +1,89 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { lines } from '../data/lines';
+---
+
+<BaseLayout
+  title="Contacto · Dark Feather Group"
+  description="Hablemos de tu proyecto con Dark Feather Group."
+>
+  <section class="page-hero">
+    <div class="container">
+      <h1 class="page-hero__title">En la sombra, a un mensaje.</h1>
+      <p class="page-hero__lead">
+        Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
+        foco, no con un formulario vacío de promesas.
+      </p>
+      <div class="btn-row">
+        <a class="btn btn--solid" href="mailto:hola@darkfeathergroup.com"
+          >hola@darkfeathergroup.com</a
+        >
+      </div>
+      <p class="contact-hint">
+        Correo de ejemplo — reemplazá con el canal real del grupo.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section__title">¿Sobre qué línea?</h2>
+      <ul class="contact-lines">
+        {
+          lines.map((line) => (
+            <li>
+              <a href={`/${line.slug}`}>
+                <span>{line.code}</span>
+                <span>{line.tagline}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .contact-hint {
+    margin-top: 1rem;
+    color: var(--mute);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .contact-lines {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 40rem;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .contact-lines a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1.15rem 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+    background: #0e1015;
+  }
+
+  .contact-lines a:hover {
+    border-color: color-mix(in srgb, var(--bone) 28%, transparent);
+  }
+
+  .contact-lines a span:first-child {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    text-transform: uppercase;
+  }
+
+  .contact-lines a span:last-child {
+    color: var(--fog);
+    font-size: 0.95rem;
+  }
+</style>
