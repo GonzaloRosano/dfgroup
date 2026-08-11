@@ -36,7 +36,8 @@ const stats = [
     <Atmosphere client:load />
   </div>
 
-  <section id="inicio" class="hero">
+  <div class="home-scroll" data-home-scroll>
+  <section id="inicio" class="home-snap hero">
     <div class="hero__shield" aria-hidden="true"></div>
     <div class="container hero__grid">
       <div class="hero__copy hero-enter">
@@ -69,11 +70,17 @@ const stats = [
     </div>
   </section>
 
-  <div class="tagline-strip reveal" data-reveal aria-hidden="true">
-    <p>Sombra·Oficio·Presencia</p>
-  </div>
+  <div
+    class="home-transition"
+    data-transition-from="inicio"
+    data-transition-to="grupo"
+    aria-hidden="true"
+  ></div>
 
-  <section id="grupo" class="section about">
+  <section id="grupo" class="home-snap home-snap--grupo section about">
+    <div class="tagline-strip reveal" data-reveal aria-hidden="true">
+      <p>Sombra·Oficio·Presencia</p>
+    </div>
     <div class="container about__inner">
       <p class="section-eyebrow reveal reveal--left" data-reveal>Grupo</p>
       <h2 class="about__title reveal" data-reveal>El colectivo detrás de la pluma.</h2>
@@ -95,22 +102,28 @@ const stats = [
         </p>
       </div>
     </div>
-  </section>
-
-  <section class="section facts" aria-label="Cifras del estudio">
-    <div class="container">
-      <div class="facts__grid" data-reveal-group>
-        {stats.map((stat) => (
-          <article class="fact reveal" data-reveal>
-            <span class="fact__value">{stat.value}</span>
-            <span class="fact__label">{stat.label}</span>
-          </article>
-        ))}
+    <div class="facts" aria-label="Cifras del estudio">
+      <div class="container">
+        <div class="facts__grid" data-reveal-group>
+          {stats.map((stat) => (
+            <article class="fact reveal" data-reveal>
+              <span class="fact__value">{stat.value}</span>
+              <span class="fact__label">{stat.label}</span>
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="lineas" class="lines-showcase" data-lines-showcase aria-label="Líneas del grupo">
+  <div
+    class="home-transition"
+    data-transition-from="grupo"
+    data-transition-to="lineas"
+    aria-hidden="true"
+  ></div>
+
+  <section id="lineas" class="home-snap home-snap--scroll lines-showcase" data-lines-showcase aria-label="Líneas del grupo">
     <div class="lines-showcase__sticky">
       <header class="lines-showcase__header container">
         <p class="section-eyebrow">Líneas</p>
@@ -155,7 +168,14 @@ const stats = [
     </div>
   </section>
 
-  <section id="oficio" class="section crafts">
+  <div
+    class="home-transition"
+    data-transition-from="lineas"
+    data-transition-to="oficio"
+    aria-hidden="true"
+  ></div>
+
+  <section id="oficio" class="home-snap section crafts">
     <div class="container">
       <p class="section-eyebrow reveal reveal--left" data-reveal>Oficio</p>
       <h2 class="crafts__title reveal" data-reveal>Oficio con atmósfera.</h2>
@@ -176,7 +196,14 @@ const stats = [
     </div>
   </section>
 
-  <section id="contacto" class="section contact">
+  <div
+    class="home-transition"
+    data-transition-from="oficio"
+    data-transition-to="contacto"
+    aria-hidden="true"
+  ></div>
+
+  <section id="contacto" class="home-snap section contact">
     <div class="container contact__inner" data-reveal-group>
       <p class="section-eyebrow reveal reveal--left" data-reveal>Contacto</p>
       <h2 class="contact__title reveal" data-reveal>Hablemos.</h2>
@@ -190,6 +217,7 @@ const stats = [
       <p class="contact__hint reveal" data-reveal>Correo de ejemplo · reemplazar con el canal real.</p>
     </div>
   </section>
+  </div>
 </BaseLayout>
 
 <script>
@@ -307,7 +335,7 @@ const stats = [
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -4% 0px' },
+      { threshold: 0.35, rootMargin: '0px 0px -8% 0px' },
     );
     items.forEach((el) => observer.observe(el));
   } else {
@@ -362,7 +390,10 @@ const stats = [
       panel.classList.toggle('is-active', i === index);
     });
 
-    document.documentElement.classList.toggle('is-lineas-active', rect.top < vh * 0.35 && rect.bottom > vh * 0.35);
+    document.documentElement.classList.toggle(
+      'is-lineas-active',
+      rect.top <= vh * 0.15 && rect.bottom >= vh * 0.85,
+    );
 
     window.dispatchEvent(
       new CustomEvent('df:lineas-panel', {
@@ -371,9 +402,39 @@ const stats = [
     );
   };
 
+  const updateSectionTransitions = () => {
+    const vh = window.innerHeight;
+    let active: { from: string; to: string; progress: number } | null = null;
+
+    document.querySelectorAll<HTMLElement>('[data-transition-from]').forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const range = rect.height + vh;
+      const progress = clamp((vh - rect.top) / range, 0, 1);
+      if (progress > 0.02 && progress < 0.98) {
+        active = {
+          from: el.dataset.transitionFrom ?? '',
+          to: el.dataset.transitionTo ?? '',
+          progress,
+        };
+      }
+    });
+
+    window.dispatchEvent(
+      new CustomEvent('df:section-transition', {
+        detail: active,
+      }),
+    );
+  };
+
+  const onScroll = () => {
+    updateLineasScroll();
+    updateSectionTransitions();
+  };
+
   updateLineasScroll();
-  window.addEventListener('scroll', updateLineasScroll, { passive: true });
-  window.addEventListener('resize', updateLineasScroll, { passive: true });
+  updateSectionTransitions();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
 </script>
 
 <style>
@@ -413,11 +474,10 @@ const stats = [
   .hero {
     position: relative;
     z-index: 1;
-    min-height: calc(100svh - var(--nav-height));
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: calc(var(--nav-height) + 1.75rem) 0 4rem;
+    padding: 1.75rem 0 1.25rem;
     overflow: hidden;
   }
 
@@ -558,7 +618,7 @@ const stats = [
 
   @media (max-width: 959px) {
     .lines-showcase {
-      height: 360svh;
+      height: calc(var(--home-viewport-h) + 260svh);
     }
 
     .lines-showcase__copy {
@@ -586,7 +646,7 @@ const stats = [
     }
 
     .hero {
-      padding-bottom: min(38svh, 320px);
+      padding-bottom: min(34svh, 280px);
     }
 
     .hero__shield {
@@ -636,6 +696,82 @@ const stats = [
       transform: none;
       filter: none;
     }
+  }
+
+  .home-snap--grupo {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding-block: 0;
+  }
+
+  .home-snap--grupo .tagline-strip {
+    padding: 0.75rem 0;
+  }
+
+  .home-snap--grupo .about__inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    padding-block: 0.5rem 0.25rem;
+  }
+
+  .home-snap--grupo .about__title {
+    font-size: clamp(1.85rem, 4.8vw, 3rem);
+    margin-bottom: 0.85rem;
+  }
+
+  .home-snap--grupo .about__body {
+    gap: 0.75rem;
+  }
+
+  .home-snap--grupo .about__body p {
+    font-size: clamp(0.92rem, 1.6vw, 1.02rem);
+    line-height: 1.62;
+  }
+
+  .home-snap--grupo .facts {
+    padding-bottom: 0.85rem;
+  }
+
+  .home-snap--grupo .facts__grid {
+    gap: 1rem;
+    padding-top: 0.85rem;
+  }
+
+  .home-snap--grupo .fact__value {
+    font-size: clamp(2rem, 7vw, 3.25rem);
+  }
+
+  .home-snap.section {
+    padding-block: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .home-snap.crafts .crafts__title,
+  .home-snap.contact .contact__title {
+    font-size: clamp(1.85rem, 4.8vw, 3rem);
+  }
+
+  .home-snap.crafts .crafts__lead,
+  .home-snap.contact .contact__lead {
+    font-size: 0.98rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .home-snap.crafts .crafts__grid {
+    gap: 1.25rem;
+    padding-top: 1rem;
+  }
+
+  .home-snap.crafts .craft-card__title {
+    font-size: 1.35rem;
+  }
+
+  .home-snap.crafts .craft-card__copy {
+    font-size: 0.92rem;
   }
 
   .tagline-strip {
@@ -703,7 +839,7 @@ const stats = [
 
   .lines-showcase {
     position: relative;
-    height: 400svh;
+    height: calc(var(--home-viewport-h) + 300svh);
     z-index: 1;
   }
 
