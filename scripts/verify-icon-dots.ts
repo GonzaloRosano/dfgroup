@@ -17,13 +17,14 @@ const {
   PAD_X,
   PAD_Y,
   buildGridDotsFromFilled,
+  iconDotsToPositions,
   shapeYSpread,
   shapeWithinFrustum,
   shapeBBox,
 } = await import('../src/lib/svgDots.ts');
 type SvgIconData = import('../src/lib/svgDots.ts').SvgIconData;
 
-const VIEW_H = 1.55;
+const VIEW_H = 1.0;
 const VIEW_MARGIN = 0.10;
 const CANVAS_ASPECT = 16 / 9;
 const viewHalfH = (VIEW_H + VIEW_MARGIN * 2) * 0.5;
@@ -61,6 +62,7 @@ async function rasterizeSvgFile(
   if (!/\bheight=/.test(svg)) {
     svg = svg.replace(/<svg\b/, `<svg height="${icon.viewH}"`);
   }
+
   const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   const img = await loadImage(dataUrl);
 
@@ -89,31 +91,17 @@ async function rasterizeSvgFile(
   return raw;
 }
 
-/** Feather logo grid via SVG rasterization (matches browser buildLogoGrid). */
-async function buildLogoDots(): Promise<import('../src/lib/svgDots.ts').GridDot[]> {
-  const logoSvgPath = join(root, 'public', 'logo.svg');
-  const icon = parseSvgFile(logoSvgPath);
-  const filled = await rasterizeSvgFile(logoSvgPath, icon);
-  const aspect = icon.viewH / icon.viewW;
-  return buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, aspect);
-}
-
-const dots = await buildLogoDots();
 let failed = false;
 
-console.log('Icon dot mapping verification (full icon grids)\n');
+console.log('Icon dot mapping verification\n');
 
 for (const [key, relPath] of Object.entries(ICON_SVGS)) {
   const filePath = join(root, 'public', relPath.replace(/^\//, ''));
   const icon = parseSvgFile(filePath);
   const filled = await rasterizeSvgFile(filePath, icon);
   const aspect = icon.viewH / icon.viewW;
-  const iconDots = buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, aspect);
-  const shape = new Float32Array(iconDots.length * 3);
-  for (let i = 0; i < iconDots.length; i++) {
-    shape[i * 3] = iconDots[i].x;
-    shape[i * 3 + 1] = iconDots[i].y;
-  }
+  const dots = buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, aspect);
+  const shape = iconDotsToPositions(dots);
   const ySpread = shapeYSpread(shape);
   const inFrustum = shapeWithinFrustum(shape, viewHalfW, viewHalfH, 0.1);
   const bbox = shapeBBox(shape);
@@ -122,7 +110,7 @@ for (const [key, relPath] of Object.entries(ICON_SVGS)) {
   const ok = yOk && inFrustum;
 
   console.log(`${key} (${relPath})`);
-  console.log(`  Dot count: ${iconDots.length}`);
+  console.log(`  dots: ${dots.length}`);
   console.log(`  Y spread: ${ySpread.toFixed(3)} ${yOk ? 'OK' : 'FAIL (need > 0.2)'}`);
   console.log(`  BBox: x[${bbox?.minX.toFixed(3)}, ${bbox?.maxX.toFixed(3)}] y[${bbox?.minY.toFixed(3)}, ${bbox?.maxY.toFixed(3)}]`);
   console.log(`  Frustum (${viewHalfW.toFixed(2)}×${viewHalfH.toFixed(2)} @10%): ${inFrustum ? 'OK' : 'FAIL'}`);
@@ -131,7 +119,7 @@ for (const [key, relPath] of Object.entries(ICON_SVGS)) {
   if (!ok) failed = true;
 }
 
-console.log(`Grid: ${GRID_COLS}×${GRID_ROWS}, feather dots: ${dots.length}`);
+console.log(`Grid: ${GRID_COLS}×${GRID_ROWS}`);
 
 if (failed) {
   process.exit(1);

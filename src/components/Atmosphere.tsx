@@ -20,10 +20,10 @@ export { GRID_COLS, GRID_ROWS };
  */
 
 const ASPECT = 135 / 122;
-/** Orthographic vertical half-extent — tuned so icons fill ~70% of panel without edge clip. */
-const VIEW_H = 1.55;
+/** Orthographic vertical half-extent — content ~1.0 ortho unit with padding. */
+const VIEW_H = 1.0;
 /** Extra frustum margin (world units) so point sprites aren't clipped at edges. */
-const VIEW_MARGIN = 0.08;
+const VIEW_MARGIN = 0.10;
 /** Disable wave/shear distortion once icon morph is underway. */
 const ICON_STABLE_MIX = 0.3;
 const DOT_PX = 2.4;
@@ -251,7 +251,7 @@ const DOT_VERT = /* glsl */ `
 
     vec3 lineasShape = aWave;
     float iconFocus = uLineasIconMix * uWLineas;
-    float iconLocked = step(0.5, iconFocus);
+    float iconLocked = step(0.3, iconFocus);
 
     vec3 p = position * (uWInicio + uWOficio)
            + aCircle * uWGrupo
@@ -396,7 +396,7 @@ const ICON_VERT = /* glsl */ `
 
     vec3 p = position * uWLineas;
 
-    float iconLocked = step(0.5, mixW);
+    float iconLocked = step(0.3, mixW);
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
 
     float snapWave = sin(uTime * 4.2 + aRow * 24.0);
