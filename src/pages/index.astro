@@ -81,22 +81,29 @@ const crafts = [
     </div>
   </section>
 
-  <section id="lineas" class="lines-showcase" data-lines-showcase aria-label="Líneas del grupo">
-    <div class="lines-showcase__sticky">
+  <section
+    id="lineas"
+    class="lines-showcase"
+    data-lines-showcase
+    data-lines-index="0"
+    aria-label="Líneas del grupo"
+  >
+    <div class="lines-showcase__stage">
       <header class="lines-showcase__header container">
         <p class="section-eyebrow">Líneas</p>
         <p class="lines-showcase__counter" data-lines-counter aria-live="polite">01 — DF Hosting</p>
       </header>
 
-      <div class="lines-showcase__viewport">
+      <div class="lines-showcase__viewport" data-lines-viewport>
         <div class="lines-showcase__track" data-lines-track>
           {
             lines.map((line, i) => (
               <article
-                class="lines-showcase__panel"
+                class:list={['lines-showcase__panel', i === 0 && 'is-active']}
                 id={line.slug}
                 data-panel={i}
                 aria-label={line.code}
+                aria-hidden={i === 0 ? 'false' : 'true'}
               >
                 <div class="lines-showcase__copy container">
                   <span class="lines-showcase__index">{String(i + 1).padStart(2, '0')}</span>
@@ -115,14 +122,27 @@ const crafts = [
         </div>
       </div>
 
-      <div class="lines-showcase__progress" aria-hidden="true">
-        {
-          lines.map((line, i) => (
-            <span class="lines-showcase__dot" data-lines-dot={i} />
-          ))
-        }
+      <div class="lines-showcase__controls container">
+        <button type="button" class="lines-showcase__arrow" data-lines-prev aria-label="Anterior">
+          <span aria-hidden="true">←</span>
+        </button>
+        <div class="lines-showcase__progress" role="tablist" aria-label="Líneas del grupo">
+          {
+            lines.map((line, i) => (
+              <button
+                type="button"
+                class:list={['lines-showcase__dot', i === 0 && 'is-active']}
+                data-lines-dot={i}
+                aria-label={`Ir a ${line.code}`}
+                aria-current={i === 0 ? 'true' : undefined}
+              />
+            ))
+          }
+        </div>
+        <button type="button" class="lines-showcase__arrow" data-lines-next aria-label="Siguiente">
+          <span aria-hidden="true">→</span>
+        </button>
       </div>
-      <p class="lines-showcase__hint">Scroll para recorrer las líneas</p>
     </div>
   </section>
 
@@ -168,7 +188,7 @@ const crafts = [
 
   document.querySelectorAll('[data-reveal-group]').forEach((group) => {
     group.querySelectorAll('[data-reveal]').forEach((el, i) => {
-      el.style.setProperty('--reveal-delay', `${i * 120}ms`);
+      (el as HTMLElement).style.setProperty('--reveal-delay', `${i * 120}ms`);
     });
   });
 
@@ -196,192 +216,126 @@ const crafts = [
   }
 
   const linesShowcase = document.querySelector('[data-lines-showcase]') as HTMLElement | null;
-  const linesSticky = document.querySelector('.lines-showcase__sticky') as HTMLElement | null;
-  const linesTrack = document.querySelector('[data-lines-track]') as HTMLElement | null;
+  const linesViewport = document.querySelector('[data-lines-viewport]') as HTMLElement | null;
   const linesCounter = document.querySelector('[data-lines-counter]');
   const linesDots = document.querySelectorAll('[data-lines-dot]');
   const linesPanels = document.querySelectorAll('.lines-showcase__panel');
   const lineLabels = ['DF Hosting', 'DF Series', 'DF Atelier', 'DF Voices'];
+  const lineSlugs = ['hosting', 'series', 'atelier', 'voices'];
   const PANEL_COUNT = linesPanels.length || 4;
-  const PANEL_STEPS = Math.max(PANEL_COUNT - 1, 1);
 
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-  const smoothstep = (edge0: number, edge1: number, x: number) => {
-    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-    return t * t * (3 - 2 * t);
-  };
+  let currentIndex = 0;
 
-  const navHeight = () =>
-    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 0;
-
-  const LINEAS_SCROLL_SETTLE_MS = 300;
-  const LINEAS_SNAP_THRESHOLD = 0.028;
-  const LINEAS_SNAP_DURATION_MS = 580;
-  const LINEAS_MORPH_SETTLE_DELAY_MS = 50;
-  let lineasScrollSettleTimer: ReturnType<typeof setTimeout> | null = null;
-  let lineasMorphSettleTimer: ReturnType<typeof setTimeout> | null = null;
-  let lineasSnapRaf: number | null = null;
-  let lineasProgrammaticSnap = false;
-  let lineasIsSettled = true;
-
-  const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
-
-  const cancelLineasSnap = () => {
-    if (lineasSnapRaf !== null) {
-      cancelAnimationFrame(lineasSnapRaf);
-      lineasSnapRaf = null;
-    }
-    if (lineasMorphSettleTimer) {
-      clearTimeout(lineasMorphSettleTimer);
-      lineasMorphSettleTimer = null;
-    }
-  };
-
-  const lineasMetrics = () => {
-    const stickyH = linesSticky?.offsetHeight ?? window.innerHeight;
-    const scrollable = Math.max((linesShowcase?.offsetHeight ?? 0) - stickyH, 1);
-    return { stickyH, scrollable };
-  };
-
-  const lineasInView = (rect: DOMRect, stickyH: number) =>
-    rect.top <= navHeight() + 8 && rect.bottom >= stickyH * 0.72;
-
-  const updateLineasScroll = (settled = lineasIsSettled) => {
-    if (!linesShowcase || !linesTrack) return;
-
-    const { stickyH, scrollable } = lineasMetrics();
+  const lineasInView = () => {
+    if (!linesShowcase) return false;
     const rect = linesShowcase.getBoundingClientRect();
-    const raw = clamp((navHeight() - rect.top) / scrollable, 0, 1);
-    const progress = raw * PANEL_STEPS;
-    const index = Math.min(PANEL_STEPS, Math.floor(progress + 0.001));
-    const frac = progress - index;
-    linesShowcase.style.setProperty('--lines-raw', String(raw));
-    linesShowcase.style.setProperty('--lines-progress', String(progress));
+    return rect.top < window.innerHeight * 0.62 && rect.bottom > window.innerHeight * 0.28;
+  };
+
+  const setLineasSlide = (nextIndex: number, announce = true) => {
+    if (!linesShowcase) return;
+
+    const index = clamp(((nextIndex % PANEL_COUNT) + PANEL_COUNT) % PANEL_COUNT, 0, PANEL_COUNT - 1);
+    currentIndex = index;
+    linesShowcase.dataset.linesIndex = String(index);
+    linesShowcase.style.setProperty('--lines-index', String(index));
 
     if (linesCounter) {
       linesCounter.textContent = `${String(index + 1).padStart(2, '0')} — ${lineLabels[index]}`;
     }
 
     linesDots.forEach((dot, i) => {
-      dot.classList.toggle('is-active', i === index);
-      dot.classList.toggle('is-near', Math.abs(i - progress) < 0.45);
+      const active = i === index;
+      dot.classList.toggle('is-active', active);
+      if (active) dot.setAttribute('aria-current', 'true');
+      else dot.removeAttribute('aria-current');
     });
 
     linesPanels.forEach((panel, i) => {
-      const dist = Math.abs(progress - i);
-      const panelOpacity = 1 - smoothstep(0.32, 0.88, dist);
-      (panel as HTMLElement).style.setProperty('--panel-opacity', String(panelOpacity));
-      panel.classList.toggle('is-active', i === index);
+      const active = i === index;
+      panel.classList.toggle('is-active', active);
+      panel.setAttribute('aria-hidden', active ? 'false' : 'true');
     });
 
-    document.documentElement.classList.toggle('is-lineas-active', lineasInView(rect, stickyH));
+    document.documentElement.classList.toggle('is-lineas-active', lineasInView());
 
-    window.dispatchEvent(
-      new CustomEvent('df:lineas-panel', {
-        detail: { index, frac, progress, raw, settled },
-      }),
-    );
-  };
-
-  const markLineasSettled = () => {
-    lineasIsSettled = true;
-    updateLineasScroll(true);
-  };
-
-  const snapLineasToNearestPanel = () => {
-    if (!linesShowcase || lineasProgrammaticSnap) return;
-
-    const { stickyH, scrollable } = lineasMetrics();
-    const rect = linesShowcase.getBoundingClientRect();
-    if (!lineasInView(rect, stickyH)) return;
-
-    const nh = navHeight();
-    const raw = clamp((nh - rect.top) / scrollable, 0, 1);
-    const nearestIndex = clamp(Math.round(raw * PANEL_STEPS), 0, PANEL_STEPS);
-    const targetRaw = nearestIndex / PANEL_STEPS;
-
-    if (Math.abs(raw - targetRaw) < LINEAS_SNAP_THRESHOLD) {
-      if (!lineasIsSettled) markLineasSettled();
-      return;
+    if (announce) {
+      window.dispatchEvent(
+        new CustomEvent('df:lineas-panel', {
+          detail: { index, frac: 0, progress: index, raw: index / Math.max(PANEL_COUNT - 1, 1), settled: true },
+        }),
+      );
     }
+  };
 
-    const targetRectTop = nh - targetRaw * scrollable;
-    const targetScrollY = window.scrollY + rect.top - targetRectTop;
+  const goLineas = (delta: number) => setLineasSlide(currentIndex + delta);
 
-    cancelLineasSnap();
-    lineasIsSettled = false;
-    lineasProgrammaticSnap = true;
-    updateLineasScroll(false);
+  document.querySelector('[data-lines-prev]')?.addEventListener('click', () => goLineas(-1));
+  document.querySelector('[data-lines-next]')?.addEventListener('click', () => goLineas(1));
 
-    if (reduceMotion) {
-      window.scrollTo(0, targetScrollY);
-      lineasProgrammaticSnap = false;
-      markLineasSettled();
-      return;
+  linesDots.forEach((dot, i) => {
+    dot.addEventListener('click', () => setLineasSlide(i));
+  });
+
+  window.addEventListener('keydown', (event) => {
+    if (!lineasInView()) return;
+    const target = event.target as HTMLElement | null;
+    if (target && (target.closest('input, textarea, select, [contenteditable="true"]'))) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      goLineas(-1);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      goLineas(1);
     }
+  });
 
-    const startY = window.scrollY;
-    const distance = targetScrollY - startY;
-    const startTime = performance.now();
+  let swipeX = 0;
+  let swipeY = 0;
+  let swipeActive = false;
 
-    lineasMorphSettleTimer = setTimeout(() => {
-      lineasMorphSettleTimer = null;
-      markLineasSettled();
-    }, LINEAS_MORPH_SETTLE_DELAY_MS);
+  linesViewport?.addEventListener('pointerdown', (event) => {
+    swipeActive = true;
+    swipeX = event.clientX;
+    swipeY = event.clientY;
+  });
 
-    const step = (now: number) => {
-      const t = Math.min((now - startTime) / LINEAS_SNAP_DURATION_MS, 1);
-      window.scrollTo(0, startY + distance * easeOutCubic(t));
-      updateLineasScroll(false);
-
-      if (t < 1) {
-        lineasSnapRaf = requestAnimationFrame(step);
-      } else {
-        lineasSnapRaf = null;
-        lineasProgrammaticSnap = false;
-        if (!lineasIsSettled) markLineasSettled();
-      }
-    };
-
-    lineasSnapRaf = requestAnimationFrame(step);
+  const endSwipe = (event: PointerEvent) => {
+    if (!swipeActive) return;
+    swipeActive = false;
+    const dx = event.clientX - swipeX;
+    const dy = event.clientY - swipeY;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+    goLineas(dx < 0 ? 1 : -1);
   };
 
-  const onLineasScrollIdle = () => {
-    lineasScrollSettleTimer = null;
-    snapLineasToNearestPanel();
+  linesViewport?.addEventListener('pointerup', endSwipe);
+  linesViewport?.addEventListener('pointercancel', () => {
+    swipeActive = false;
+  });
+
+  const slugToIndex = (slug: string) => lineSlugs.indexOf(slug);
+
+  const applyLineasHash = (hash = window.location.hash) => {
+    const id = hash.replace('#', '');
+    const idx = slugToIndex(id);
+    if (idx >= 0) setLineasSlide(idx);
   };
 
-  const scheduleLineasSnap = () => {
-    if (lineasScrollSettleTimer) clearTimeout(lineasScrollSettleTimer);
-    lineasScrollSettleTimer = setTimeout(onLineasScrollIdle, LINEAS_SCROLL_SETTLE_MS);
-  };
+  window.addEventListener('df:lineas-go', (event) => {
+    const slug = (event as CustomEvent<{ slug?: string }>).detail?.slug;
+    if (typeof slug === 'string') applyLineasHash(`#${slug}`);
+  });
 
-  const onScroll = () => {
-    if (lineasProgrammaticSnap) {
-      updateLineasScroll(false);
-      return;
-    }
-
-    if (lineasIsSettled) {
-      lineasIsSettled = false;
-    }
-    cancelLineasSnap();
-    updateLineasScroll(false);
-    scheduleLineasSnap();
-  };
-
-  updateLineasScroll(true);
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', () => {
-    updateLineasScroll(false);
-    snapLineasToNearestPanel();
+  window.addEventListener('hashchange', () => applyLineasHash());
+  window.addEventListener('scroll', () => {
+    document.documentElement.classList.toggle('is-lineas-active', lineasInView());
   }, { passive: true });
-  if ('onscrollend' in window) {
-    window.addEventListener('scrollend', () => {
-      if (!lineasProgrammaticSnap) scheduleLineasSnap();
-    }, { passive: true });
-  }
+
+  setLineasSlide(0, true);
+  applyLineasHash();
 </script>
 
 <style>
@@ -553,24 +507,14 @@ const crafts = [
   }
 
   @media (max-width: 959px) {
-    .lines-showcase {
-      height: calc(var(--home-viewport-h) + var(--lineas-scroll-track-mobile));
-    }
-
     .lines-showcase__copy {
       max-width: none;
       padding-right: 0;
     }
 
-    .lines-showcase__hint {
-      right: 1.25rem;
-      bottom: 1.25rem;
-    }
-
-    .lines-showcase__progress {
-      bottom: 1.25rem;
-      left: 1.25rem;
-      transform: none;
+    .lines-showcase__controls {
+      justify-content: flex-start;
+      padding-bottom: 1.25rem;
     }
 
     .home-atmosphere {
@@ -683,16 +627,15 @@ const crafts = [
 
   .lines-showcase {
     position: relative;
-    height: calc(var(--home-viewport-h) + var(--lineas-scroll-track));
     z-index: 1;
-    --lines-raw: 0;
-    --lines-progress: 0;
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
+    --lines-index: 0;
   }
 
-  .lines-showcase__sticky {
-    position: sticky;
-    top: 0;
-    height: var(--home-viewport-h);
+  .lines-showcase__stage {
+    height: 100%;
     box-sizing: border-box;
     padding-top: var(--nav-height);
     display: grid;
@@ -722,18 +665,15 @@ const crafts = [
     position: relative;
     overflow: hidden;
     min-height: 0;
+    touch-action: pan-y;
   }
 
   .lines-showcase__track {
     display: flex;
     height: 100%;
     width: calc(var(--lineas-panel-count) * 100%);
-    will-change: transform;
-    transform: translate3d(
-      calc(-1 * var(--lines-raw) * (var(--lineas-panel-count) - 1) / var(--lineas-panel-count) * 100%),
-      0,
-      0
-    );
+    transform: translate3d(calc(var(--lines-index) * -100% / var(--lineas-panel-count)), 0, 0);
+    transition: transform 520ms var(--ease-out);
   }
 
   .lines-showcase__panel {
@@ -742,13 +682,16 @@ const crafts = [
     height: 100%;
     display: flex;
     align-items: center;
-    padding-block: 1rem 3rem;
-    opacity: var(--panel-opacity, 1);
-    transition: opacity 220ms var(--ease-out);
+    padding-block: 1rem 1.5rem;
+    opacity: 0.38;
+    pointer-events: none;
+    transition: opacity 280ms var(--ease-out);
   }
 
   .lines-showcase__panel.is-active {
     z-index: 1;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .lines-showcase__copy {
@@ -815,46 +758,72 @@ const crafts = [
     background: var(--ember);
   }
 
-  .lines-showcase__progress {
-    position: absolute;
-    left: 50%;
-    bottom: 2rem;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 0.55rem;
+  .lines-showcase__controls {
+    position: relative;
     z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding-block: 0.5rem 1.5rem;
+  }
+
+  .lines-showcase__arrow {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 16%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--void) 55%, transparent);
+    color: var(--bone);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    transition:
+      border-color 220ms var(--ease-out),
+      background 220ms var(--ease-out),
+      color 220ms var(--ease-out);
+  }
+
+  .lines-showcase__arrow:focus-visible {
+    outline-offset: 3px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lines-showcase__arrow:hover {
+      border-color: color-mix(in srgb, var(--bone) 42%, transparent);
+      background: color-mix(in srgb, var(--bone) 8%, transparent);
+    }
+  }
+
+  .lines-showcase__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
   }
 
   .lines-showcase__dot {
-    width: 0.42rem;
-    height: 0.42rem;
+    appearance: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    padding: 0;
+    border: 0;
     border-radius: 50%;
     background: color-mix(in srgb, var(--bone) 18%, transparent);
+    cursor: pointer;
     transition:
       transform 220ms var(--ease-out),
       background 220ms var(--ease-out);
   }
 
-  .lines-showcase__dot.is-near {
-    background: color-mix(in srgb, var(--bone) 42%, transparent);
-  }
-
   .lines-showcase__dot.is-active {
-    transform: scale(1.35);
+    transform: scale(1.2);
     background: var(--ember-hot);
   }
 
-  .lines-showcase__hint {
-    position: absolute;
-    right: max(1.25rem, calc(25% + 1rem));
-    bottom: 2rem;
-    z-index: 2;
-    color: var(--mute);
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    max-width: 12ch;
-    text-align: right;
+  .lines-showcase__dot:focus-visible {
+    outline-offset: 3px;
   }
 
   .crafts__title,
@@ -913,7 +882,8 @@ const crafts = [
     .crafts > .container,
     .contact__inner.container,
     .lines-showcase__header.container,
-    .lines-showcase__copy.container {
+    .lines-showcase__copy.container,
+    .lines-showcase__controls.container {
       width: var(--home-content-max);
       max-width: calc(50vw - 0.5rem);
       margin-inline: unset;
@@ -963,11 +933,10 @@ const crafts = [
 
   @media (prefers-reduced-motion: reduce) {
     .lines-showcase__track {
-      transform: none !important;
+      transition: none;
     }
 
     .lines-showcase__panel {
-      opacity: 1;
       transition: none;
     }
 

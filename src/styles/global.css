@@ -23,13 +23,14 @@
   --space-3xl: 12rem;
 
   --measure: 62ch;
-  --page: min(1120px, calc(100% - 2rem));
-  --page-wide: min(1280px, calc(100% - 2.5rem));
+  --page: min(1120px, calc(100% - clamp(2.75rem, 8vw, 5.5rem)));
+  --page-wide: min(1280px, calc(100% - clamp(2.75rem, 8vw, 5.5rem)));
   --radius-soft: 0.75rem;
   --radius-pill: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
   --header-inset-y: 0.85rem;
+  --header-inset-x: clamp(1.35rem, 4.5vw, 2.75rem);
   --header-bar-min: 2.75rem;
   --header-bar-pad-y: 0.45rem;
   --nav-height: calc(
@@ -41,18 +42,10 @@
   --home-section-pad-y: clamp(6rem, 10vw, 8rem);
   --home-section-pad-bottom: clamp(7rem, 11vw, 9rem);
   --lineas-panel-count: 4;
-  --lineas-scroll-per-panel: 120svh;
-  --lineas-scroll-per-panel-mobile: 120svh;
-  --lineas-scroll-track: calc(
-    (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel)
-  );
-  --lineas-scroll-track-mobile: calc(
-    (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel-mobile)
-  );
 
   /* Home sections: keep copy in the left half (WebGL atmosphere uses right 50%). */
-  --home-content-max: min(640px, calc(50vw - 1rem));
-  --home-content-inset: max(1rem, calc((100vw - var(--page)) / 2));
+  --home-content-max: min(640px, calc(50vw - 2rem));
+  --home-content-inset: max(1.5rem, calc((100vw - var(--page)) / 2));
 
   --header-bg: color-mix(in srgb, var(--void) 72%, transparent);
   --header-bg-scrolled: color-mix(in srgb, var(--void) 90%, transparent);

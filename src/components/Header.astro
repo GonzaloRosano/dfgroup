@@ -146,9 +146,6 @@ const lineSlugs = lines.map((line) => line.slug);
     });
   };
 
-  const getLineasPanelId = () =>
-    document.querySelector('.lines-showcase__panel.is-active')?.id ?? null;
-
   const updateActiveFromScroll = () => {
     const offset = getScrollOffset();
     let current = 'inicio';
@@ -162,7 +159,7 @@ const lineSlugs = lines.map((line) => line.slug);
     }
 
     if (current === 'lineas' || document.documentElement.classList.contains('is-lineas-active')) {
-      setActive(getLineasPanelId() ?? 'lineas');
+      setActive('lineas');
       return;
     }
 
@@ -188,7 +185,6 @@ const lineSlugs = lines.map((line) => line.slug);
   updateActiveFromScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', updateActiveFromScroll, { passive: true });
-  window.addEventListener('df:lineas-panel', updateActiveFromScroll);
 
   const getFocusable = (root) =>
     Array.from(
@@ -272,14 +268,20 @@ const lineSlugs = lines.map((line) => line.slug);
       const hash = anchor.getAttribute('href');
       if (!hash || hash === '#') return;
 
-      const target = document.querySelector(hash);
+      const sectionId = hash.slice(1);
+      const isLine = lineSectionIds.has(sectionId);
+      const target = isLine
+        ? document.getElementById('lineas')
+        : document.querySelector(hash);
       if (!target) return;
 
       event.preventDefault();
       scrollToSection(target);
 
-      const sectionId = hash.slice(1);
-      if (navSectionMap[sectionId] || lineSectionIds.has(sectionId)) {
+      if (isLine) {
+        window.dispatchEvent(new CustomEvent('df:lineas-go', { detail: { slug: sectionId } }));
+        setActive('lineas');
+      } else if (navSectionMap[sectionId]) {
         setActive(sectionId);
       }
 
@@ -308,7 +310,7 @@ const lineSlugs = lines.map((line) => line.slug);
     left: 0;
     right: 0;
     z-index: 60;
-    padding: var(--header-inset-y) 1.25rem;
+    padding: var(--header-inset-y) var(--header-inset-x);
     pointer-events: none;
     transition: padding 320ms var(--ease-out);
   }
@@ -327,7 +329,7 @@ const lineSlugs = lines.map((line) => line.slug);
     justify-content: space-between;
     gap: 1rem;
     min-height: var(--header-bar-min);
-    padding: var(--header-bar-pad-y) 0.5rem var(--header-bar-pad-y) 1rem;
+    padding: var(--header-bar-pad-y) 0.7rem var(--header-bar-pad-y) 1.15rem;
     max-width: var(--page-wide);
     margin-inline: auto;
     border-radius: var(--radius-pill);
@@ -629,7 +631,7 @@ const lineSlugs = lines.map((line) => line.slug);
   .menu-overlay__close {
     position: absolute;
     top: calc(var(--header-inset-y) + 0.35rem);
-    right: 1.35rem;
+    right: var(--header-inset-x);
     appearance: none;
     border: 0;
     background: color-mix(in srgb, var(--bone) 6%, transparent);
@@ -853,7 +855,7 @@ const lineSlugs = lines.map((line) => line.slug);
 
   @media (min-width: 960px) {
     .nav-bar {
-      padding-inline: 0.55rem 0.45rem;
+      padding-inline: 0.85rem 0.65rem;
     }
 
     .nav,
@@ -873,7 +875,7 @@ const lineSlugs = lines.map((line) => line.slug);
 
     .nav-bar {
       gap: 1.75rem;
-      padding-inline: 0.65rem 0.5rem;
+      padding-inline: 1rem 0.75rem;
     }
 
     .brand__lockup {

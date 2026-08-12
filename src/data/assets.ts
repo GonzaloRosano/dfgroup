@@ -41,7 +41,7 @@ export const siteAssets: SiteAsset[] = [
     label: 'public/icons/*.svg',
     path: '/icons/server.svg',
     description:
-      'Siluetas SVG (server, series, paint, atelier-code, microphone) rasterizadas en la misma grilla que logo.svg para los iconos de #lineas.',
+      'Siluetas SVG (server, series, paint, microphone) rasterizadas en la misma grilla que logo.svg para los iconos de #lineas.',
     usedOn: '/#lineas',
   },
 ];

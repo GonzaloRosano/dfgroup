@@ -229,6 +229,47 @@ export function centerShapeBuffer(positions: Float32Array): void {
   }
 }
 
+/** Multi-source BFS: every cell maps to its nearest filled cell (packed index), or -1. */
+function closestFilledMap(filled: Uint8Array, cols: number, rows: number): Int32Array {
+  const nearest = new Int32Array(cols * rows);
+  nearest.fill(-1);
+  const queue = new Int32Array(cols * rows);
+  let head = 0;
+  let tail = 0;
+
+  for (let i = 0; i < filled.length; i++) {
+    if (!filled[i]) continue;
+    nearest[i] = i;
+    queue[tail++] = i;
+  }
+
+  while (head < tail) {
+    const i = queue[head++];
+    const col = i % cols;
+    const row = (i / cols) | 0;
+    const next = nearest[i];
+
+    if (col > 0 && nearest[i - 1] < 0) {
+      nearest[i - 1] = next;
+      queue[tail++] = i - 1;
+    }
+    if (col < cols - 1 && nearest[i + 1] < 0) {
+      nearest[i + 1] = next;
+      queue[tail++] = i + 1;
+    }
+    if (row > 0 && nearest[i - cols] < 0) {
+      nearest[i - cols] = next;
+      queue[tail++] = i - cols;
+    }
+    if (row < rows - 1 && nearest[i + cols] < 0) {
+      nearest[i + cols] = next;
+      queue[tail++] = i + cols;
+    }
+  }
+
+  return nearest;
+}
+
 function nearestFilledManhattan(
   col: number,
   row: number,
@@ -539,39 +580,68 @@ function iconUnionCells(filledGrids: Uint8Array[]): { col: number; row: number }
   return cells;
 }
 
+/** Ortho positions for a filled silhouette, aligned to shared union cells. */
+function positionsForFilled(
+  filled: Uint8Array,
+  cells: { col: number; row: number }[],
+  aspect: number,
+): Float32Array {
+  const out = new Float32Array(cells.length * 3);
+  const nearest = closestFilledMap(filled, GRID_COLS, GRID_ROWS);
+
+  for (let i = 0; i < cells.length; i++) {
+    const { col, row } = cells[i];
+    const idx = row * GRID_COLS + col;
+    let target = filled[idx] ? idx : nearest[idx];
+    if (target < 0) continue;
+
+    const targetCol = target % GRID_COLS;
+    const targetRow = (target / GRID_COLS) | 0;
+    const u = targetCol / (GRID_COLS - 1);
+    const v = targetRow / (GRID_ROWS - 1);
+    const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
+    out[i * 3] = x;
+    out[i * 3 + 1] = y;
+  }
+
+  centerShapeBuffer(out);
+  return out;
+}
+
 /** Per-icon ortho positions aligned to shared grid cells (for GPU morph). */
 function iconPositionsForUnion(
   icon: SvgIconData,
   filled: Uint8Array,
   cells: { col: number; row: number }[],
 ): Float32Array {
-  const aspect = icon.viewH / icon.viewW;
+  return positionsForFilled(filled, cells, icon.viewH / icon.viewW);
+}
+
+function buildCircleFromCells(cells: { col: number; row: number }[]): Float32Array {
+  const out = new Float32Array(cells.length * 3);
+  const n = cells.length || 1;
+
+  for (let i = 0; i < cells.length; i++) {
+    const t = i / n;
+    const angle = t * Math.PI * 2 - Math.PI * 0.5;
+    const row = cells[i].row / (GRID_ROWS - 1);
+    const r = Math.sqrt(row * 0.85 + 0.08) * 0.4;
+    out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
+    out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
+  }
+
+  centerShapeBuffer(out);
+  return out;
+}
+
+function buildLineFromCells(cells: { col: number; row: number }[]): Float32Array {
   const out = new Float32Array(cells.length * 3);
 
   for (let i = 0; i < cells.length; i++) {
-    const { col, row } = cells[i];
-    let targetCol = col;
-    let targetRow = row;
-
-    if (!filled[row * GRID_COLS + col]) {
-      const nearest = nearestFilledManhattan(
-        col,
-        row,
-        filled,
-        GRID_COLS,
-        GRID_ROWS,
-        ICON_NEAREST_MANHATTAN,
-      );
-      if (!nearest) continue;
-      targetCol = nearest.col;
-      targetRow = nearest.row;
-    }
-
-    const u = targetCol / (GRID_COLS - 1);
-    const v = targetRow / (GRID_ROWS - 1);
-    const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
-    out[i * 3] = x;
-    out[i * 3 + 1] = y;
+    const col = cells[i].col / (GRID_COLS - 1);
+    const row = cells[i].row / (GRID_ROWS - 1);
+    out[i * 3] = (col - 0.5) * 1.12 * SHAPE_SCALE;
+    out[i * 3 + 1] = (row - 0.5) * 0.06 * LOGO_ASPECT * SHAPE_SCALE;
   }
 
   centerShapeBuffer(out);
@@ -608,6 +678,80 @@ export function buildLineasIconMorph(
   }
 
   return { count, positions, iconPositions, tips, cols, rows };
+}
+
+export type PageMorphData = {
+  count: number;
+  inicio: Float32Array;
+  grupo: Float32Array;
+  oficio: Float32Array;
+  contacto: Float32Array;
+  iconPositions: [Float32Array, Float32Array, Float32Array, Float32Array];
+  tips: Float32Array;
+  cols: Float32Array;
+  rows: Float32Array;
+};
+
+const EMPTY_PAGE_MORPH: PageMorphData = {
+  count: 0,
+  inicio: new Float32Array(0),
+  grupo: new Float32Array(0),
+  oficio: new Float32Array(0),
+  contacto: new Float32Array(0),
+  iconPositions: [
+    new Float32Array(0),
+    new Float32Array(0),
+    new Float32Array(0),
+    new Float32Array(0),
+  ],
+  tips: new Float32Array(0),
+  cols: new Float32Array(0),
+  rows: new Float32Array(0),
+};
+
+function rasterizeLogoFilled(): Uint8Array {
+  return rasterizePaths([LOGO_PATH], LOGO_VIEW_W, LOGO_VIEW_H);
+}
+
+/**
+ * Shared union of logo + line icons so one Points mesh can morph
+ * inicio → grupo → lineas icons → oficio → contacto.
+ */
+export function buildPageMorph(
+  icons: Record<keyof typeof ICON_SVGS, SvgIconData>,
+  targetWidth = ICON_TARGET_WIDTH,
+  maxHeight = ICON_MAX_HEIGHT,
+): PageMorphData {
+  const logoFilled = rasterizeLogoFilled();
+  const iconFilled = ICON_PANEL_KEYS.map((key) => rasterizeIconFilled(icons[key]));
+  const cells = iconUnionCells([logoFilled, ...iconFilled]);
+  if (cells.length === 0) return EMPTY_PAGE_MORPH;
+
+  const inicio = positionsForFilled(logoFilled, cells, LOGO_ASPECT);
+  const grupo = buildCircleFromCells(cells);
+  const oficio = inicio.slice();
+  const contacto = buildLineFromCells(cells);
+  const iconPositions = ICON_PANEL_KEYS.map((key, idx) => {
+    const icon = icons[key];
+    if (!icon.paths.length || iconFilled[idx].indexOf(1) < 0) return inicio.slice();
+    const positions = iconPositionsForUnion(icon, iconFilled[idx], cells);
+    normalizeIconShapeBuffer(positions, targetWidth, maxHeight);
+    return positions;
+  }) as PageMorphData['iconPositions'];
+
+  const count = cells.length;
+  const tips = new Float32Array(count);
+  const cols = new Float32Array(count);
+  const rows = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const { col, row } = cells[i];
+    cols[i] = col / (GRID_COLS - 1);
+    rows[i] = row / (GRID_ROWS - 1);
+    tips[i] = 1 - rows[i];
+  }
+
+  return { count, inicio, grupo, oficio, contacto, iconPositions, tips, cols, rows };
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
