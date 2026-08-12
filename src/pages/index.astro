@@ -216,13 +216,23 @@ const crafts = [
     parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 0;
 
   const LINEAS_SCROLL_SETTLE_MS = 200;
+  const LINEAS_SNAP_THRESHOLD = 0.015;
   let lineasScrollSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  let lineasProgrammaticSnap = false;
 
-  const updateLineasScroll = (settled = false) => {
+  const lineasMetrics = () => {
+    const stickyH = linesSticky?.offsetHeight ?? window.innerHeight;
+    const scrollable = Math.max((linesShowcase?.offsetHeight ?? 0) - stickyH, 1);
+    return { stickyH, scrollable };
+  };
+
+  const lineasInView = (rect: DOMRect, stickyH: number) =>
+    rect.top <= navHeight() + 8 && rect.bottom >= stickyH * 0.72;
+
+  const updateLineasScroll = () => {
     if (!linesShowcase || !linesTrack) return;
 
-    const stickyH = linesSticky?.offsetHeight ?? window.innerHeight;
-    const scrollable = Math.max(linesShowcase.offsetHeight - stickyH, 1);
+    const { stickyH, scrollable } = lineasMetrics();
     const rect = linesShowcase.getBoundingClientRect();
     const raw = clamp((navHeight() - rect.top) / scrollable, 0, 1);
     const progress = raw * PANEL_STEPS;
@@ -247,37 +257,77 @@ const crafts = [
       panel.classList.toggle('is-active', i === index);
     });
 
-    document.documentElement.classList.toggle(
-      'is-lineas-active',
-      rect.top <= navHeight() + 8 && rect.bottom >= stickyH * 0.72,
-    );
+    document.documentElement.classList.toggle('is-lineas-active', lineasInView(rect, stickyH));
 
     window.dispatchEvent(
       new CustomEvent('df:lineas-panel', {
-        detail: { index, frac, progress, raw, settled },
+        detail: { index, frac, progress, raw },
       }),
     );
   };
 
-  const settleLineasScroll = () => {
-    if (lineasScrollSettleTimer) {
-      clearTimeout(lineasScrollSettleTimer);
-      lineasScrollSettleTimer = null;
+  const snapLineasToNearestPanel = () => {
+    if (!linesShowcase || lineasProgrammaticSnap) return;
+
+    const { stickyH, scrollable } = lineasMetrics();
+    const rect = linesShowcase.getBoundingClientRect();
+    if (!lineasInView(rect, stickyH)) return;
+
+    const nh = navHeight();
+    const raw = clamp((nh - rect.top) / scrollable, 0, 1);
+    const nearestIndex = clamp(Math.round(raw * PANEL_STEPS), 0, PANEL_STEPS);
+    const targetRaw = nearestIndex / PANEL_STEPS;
+
+    if (Math.abs(raw - targetRaw) < LINEAS_SNAP_THRESHOLD) return;
+
+    const targetRectTop = nh - targetRaw * scrollable;
+    const targetScrollY = window.scrollY + rect.top - targetRectTop;
+
+    lineasProgrammaticSnap = true;
+    window.scrollTo({
+      top: targetScrollY,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+
+    const finishSnap = () => {
+      lineasProgrammaticSnap = false;
+      updateLineasScroll();
+    };
+
+    if (reduceMotion) {
+      finishSnap();
+    } else if ('onscrollend' in window) {
+      window.addEventListener('scrollend', finishSnap, { passive: true, once: true });
+    } else {
+      setTimeout(finishSnap, 600);
     }
-    updateLineasScroll(true);
+  };
+
+  const onLineasScrollIdle = () => {
+    lineasScrollSettleTimer = null;
+    snapLineasToNearestPanel();
+  };
+
+  const scheduleLineasSnap = () => {
+    if (lineasScrollSettleTimer) clearTimeout(lineasScrollSettleTimer);
+    lineasScrollSettleTimer = setTimeout(onLineasScrollIdle, LINEAS_SCROLL_SETTLE_MS);
   };
 
   const onScroll = () => {
-    updateLineasScroll(false);
-    if (lineasScrollSettleTimer) clearTimeout(lineasScrollSettleTimer);
-    lineasScrollSettleTimer = setTimeout(settleLineasScroll, LINEAS_SCROLL_SETTLE_MS);
+    updateLineasScroll();
+    if (!lineasProgrammaticSnap) scheduleLineasSnap();
   };
 
-  updateLineasScroll(true);
+  updateLineasScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', settleLineasScroll, { passive: true });
+  window.addEventListener('resize', () => {
+    updateLineasScroll();
+    snapLineasToNearestPanel();
+  }, { passive: true });
   if ('onscrollend' in window) {
-    window.addEventListener('scrollend', settleLineasScroll, { passive: true });
+    window.addEventListener('scrollend', () => {
+      if (!lineasProgrammaticSnap) scheduleLineasSnap();
+    }, { passive: true });
   }
 </script>
 
