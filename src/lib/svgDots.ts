@@ -119,6 +119,41 @@ function dilateFilled(filled: Uint8Array, cw: number, ch: number, radius: number
   return out;
 }
 
+/** A cell survives only if every neighbor within radius is also filled. */
+function erodeFilled(filled: Uint8Array, cw: number, ch: number, radius: number): Uint8Array {
+  if (radius <= 0) return filled;
+
+  const out = new Uint8Array(cw * ch);
+  for (let row = 0; row < ch; row++) {
+    for (let col = 0; col < cw; col++) {
+      const idx = row * cw + col;
+      if (!filled[idx]) continue;
+
+      let keep = true;
+      for (let dy = -radius; dy <= radius && keep; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const c = col + dx;
+          const g = row + dy;
+          if (c < 0 || c >= cw || g < 0 || g >= ch || !filled[g * cw + c]) {
+            keep = false;
+            break;
+          }
+        }
+      }
+      out[idx] = keep ? 1 : 0;
+    }
+  }
+
+  return out;
+}
+
+/** Morphological opening (erode then dilate) — drops thin spurs/stray teeth
+ *  along a silhouette's edge without shrinking the main body. */
+function openFilled(filled: Uint8Array, cw: number, ch: number, radius: number): Uint8Array {
+  if (radius <= 0) return filled;
+  return dilateFilled(erodeFilled(filled, cw, ch, radius), cw, ch, radius);
+}
+
 /** Axis-aligned bbox of filled pixels (for verification / debugging). */
 export function filledPixelBBox(
   filled: Uint8Array,
@@ -157,6 +192,7 @@ export function rasterizePaths(
   padX = PAD_X,
   padY = PAD_Y,
   fillRule: CanvasFillRule = 'evenodd',
+  smooth = 0,
 ): Uint8Array {
   const canvas = document.createElement('canvas');
   canvas.width = cols;
@@ -198,7 +234,8 @@ export function rasterizePaths(
     }
   }
 
-  return dilate > 0 ? dilateFilled(raw, cols, rows, dilate) : raw;
+  const opened = smooth > 0 ? openFilled(raw, cols, rows, smooth) : raw;
+  return dilate > 0 ? dilateFilled(opened, cols, rows, dilate) : opened;
 }
 
 /** Shift shape positions so axis-aligned bounding-box center sits at origin (optical center). */
@@ -719,7 +756,11 @@ const EMPTY_PAGE_MORPH: PageMorphData = {
 };
 
 function rasterizeLogoFilled(): Uint8Array {
-  return rasterizePaths([LOGO_PATH], LOGO_VIEW_W, LOGO_VIEW_H);
+  // smooth=1: the raw rasterization at grid resolution leaves thin stray
+  // spurs off the blade's edge — an opening pass drops them, keeps the body.
+  return rasterizePaths(
+    [LOGO_PATH], LOGO_VIEW_W, LOGO_VIEW_H, GRID_COLS, GRID_ROWS, 0, 0, 0, PAD_X, PAD_Y, 'evenodd', 1,
+  );
 }
 
 /**

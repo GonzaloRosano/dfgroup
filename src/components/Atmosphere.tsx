@@ -38,8 +38,11 @@ const ICON_MORPH_DURATION_REDUCED = 0.12;
 const DOT_PX = 2.4;
 const WHITE = new Color(0xe8e6e1);
 const EMBER = new Color(0xc45a4a);
-const DAMP = 3.1;
-const SECTION_DAMP = 2.4;
+// Section/pose damping settle to ~95% in about 3/lambda seconds — derive
+// both from ICON_MORPH_DURATION so every morph on the page (section shape
+// swaps, pose blends, and the lineas icon crossfade) reads as the same speed.
+const DAMP = 3 / ICON_MORPH_DURATION;
+const SECTION_DAMP = 3 / ICON_MORPH_DURATION;
 const LINEAS_INDEX_MAX = 3;
 /** Original feather used PerspectiveCamera + rotation.y; oscillate instead of spin. */
 const YAW_AMP = MathUtils.degToRad(18);
@@ -219,7 +222,14 @@ const DOT_VERT = /* glsl */ `
 
     vec3 p = mix(s0, s1, clamp(uShapeT, 0.0, 1.0));
 
-    float seed = fract(aCol * 12.9898 + aRow * 78.233);
+    // Seeded from the dot's resolved position, not its raw grid cell: the
+    // shared-union mapping snaps "borrowed" dots (from icon shapes with no
+    // matching cell in this silhouette) onto their nearest edge point, so
+    // many dots can land exactly coincident here. A seed from aCol/aRow
+    // would give each of those piled-up dots a different phase and fan
+    // them out into a visible burst; seeding from p keeps coincident dots
+    // moving in lockstep instead.
+    float seed = fract(sin(p.x * 78.233 + p.y * 12.9898) * 43758.5453);
     vec2 radial = normalize(p.xy + vec2(0.0001));
 
     // Icon-to-icon crossfade: puff outward + lift toward camera at the
@@ -230,9 +240,9 @@ const DOT_VERT = /* glsl */ `
     // Inicio: organic per-dot breathe sway, so the hero feather feels alive
     // instead of just rigidly rocking as one rigid cloud.
     vec2 inicioOff = vec2(
-      sin(uTime * 0.62 + aCol * 11.0 + aRow * 5.0),
-      cos(uTime * 0.48 + aRow * 13.0 + aCol * 4.0) * 0.35
-    ) * 0.018 * uWInicio * uMotion;
+      sin(uTime * 0.62 + p.x * 22.0 + p.y * 10.0),
+      cos(uTime * 0.48 + p.y * 26.0 + p.x * 8.0) * 0.35
+    ) * 0.008 * uWInicio * uMotion;
 
     float tipMask = smoothstep(0.7, 0.97, aTip);
     vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
