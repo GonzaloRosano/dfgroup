@@ -654,44 +654,43 @@ function iconPositionsForUnion(
   return positionsForFilled(filled, cells, icon.viewH / icon.viewW);
 }
 
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+/** Regular polygon's boundary radius at a given angle (varies between the
+ *  apothem and the circumradius as the angle sweeps past each vertex). */
+function polygonRadiusAtAngle(angle: number, sides: number, circumradius: number): number {
+  const segAngle = (Math.PI * 2) / sides;
+  const a = (((angle % segAngle) + segAngle) % segAngle) - segAngle / 2;
+  return (circumradius * Math.cos(segAngle / 2)) / Math.cos(a);
+}
+
 /**
- * A single hexagon outline — angular, like the feather's straight edges,
+ * A single *filled* hexagon — angular like the feather's straight edges,
  * reading as cells/nodes forming one whole rather than a soft circle.
- * Angle/position come from the dot's own index, never cells[i].col/row:
- * that carried the original silhouette's raster order, which is what made
- * the earlier four-cluster version look like four ghost copies of the same
- * shape stamped at different spots instead of four distinct blobs.
+ * Filled (not an outline) so dots spread across the whole interior at the
+ * same density as the feather/icons, instead of all cramming into a thin
+ * perimeter band.
+ *
+ * Built as a phyllotaxis (sunflower-seed) spiral, clipped to the hexagon's
+ * boundary at each point's own angle — fills the area evenly using only the
+ * dot's own index. An earlier attempt piggybacked on the feather/icons'
+ * rasterize+nearest-snap pipeline, but that only works for shapes that are
+ * themselves part of the shared union (feather, icons); for an unrelated
+ * shape planted elsewhere, distant union cells snap unevenly around it and
+ * the result comes out lumpy/distorted, not a clean hexagon.
  */
 function buildGrupoFromCells(cells: { col: number; row: number }[]): Float32Array {
   const out = new Float32Array(cells.length * 3);
   const n = cells.length || 1;
   const sides = 6;
-  const radius = 0.36;
-  const bandWidth = 0.045;
-
-  const verts: [number, number][] = [];
-  for (let s = 0; s <= sides; s++) {
-    const a = (s / sides) * Math.PI * 2 - Math.PI * 0.5;
-    verts.push([Math.cos(a) * radius, Math.sin(a) * radius]);
-  }
+  const circumradius = 0.42;
 
   for (let i = 0; i < n; i++) {
-    const perim = (i / n) * sides;
-    const seg = Math.floor(perim) % sides;
-    const localT = perim - Math.floor(perim);
-    const [x0, y0] = verts[seg];
-    const [x1, y1] = verts[seg + 1];
-    const x = x0 + (x1 - x0) * localT;
-    const y = y0 + (y1 - y0) * localT;
-
-    const hash = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-    const jitter = (hash - 0.5) * bandWidth;
-    const len = Math.hypot(x, y) || 1;
-    const jx = x + (x / len) * jitter;
-    const jy = y + (y / len) * jitter;
-
-    out[i * 3] = jx * SHAPE_SCALE;
-    out[i * 3 + 1] = jy * LOGO_ASPECT * SHAPE_SCALE;
+    const angle = i * GOLDEN_ANGLE;
+    const t = Math.sqrt(i / n);
+    const r = t * polygonRadiusAtAngle(angle, sides, circumradius);
+    out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
+    out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
   }
 
   centerShapeBuffer(out);
