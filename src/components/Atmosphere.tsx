@@ -214,12 +214,19 @@ const DOT_VERT = /* glsl */ `
     p.xy += radial * morphPulse * 0.045;
     p.z += morphPulse * 0.16;
 
+    // Inicio: organic per-dot breathe sway, so the hero feather feels alive
+    // instead of just rigidly rocking as one rigid cloud.
+    vec2 inicioOff = vec2(
+      sin(uTime * 0.62 + aCol * 11.0 + aRow * 5.0),
+      cos(uTime * 0.48 + aRow * 13.0 + aCol * 4.0) * 0.35
+    ) * 0.018 * uWInicio * uMotion;
+
     float tipMask = smoothstep(0.7, 0.97, aTip);
     vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
     vec2 contactOff = radial * (0.03 + seed * 0.05) * (0.7 + 0.3 * sin(uTime * 0.55 + seed * 10.0))
                     * uWContacto * uMotion;
     p.xy += radial * uDissolve * sin(uTime * 0.7 + seed * 14.0) * 0.06 * uWContacto;
-    p.xy += oficioOff + contactOff;
+    p.xy += inicioOff + oficioOff + contactOff;
     p.xy += radial * uScatter * (0.55 + seed * 0.65);
 
     vec2 shaft = vec2(0.0, -0.14);
@@ -371,7 +378,7 @@ export default function Atmosphere() {
 
       const poses = {
         inicio: {
-          scale: 1, offsetX: 0, offsetY: 0,
+          scale: 1, offsetX: 0, offsetY: 0, breathe: 0.055,
           scatter: 0, gather: 0, ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
         },
         grupo: {
@@ -568,7 +575,10 @@ export default function Atmosphere() {
         uniforms.uTo.value = pair.to;
         uniforms.uShapeT.value = pair.t;
 
-        sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale, k, delta);
+        const breatheScale = reduceMotion
+          ? 1
+          : 1 + Math.sin(elapsed * 0.75) * pose.breathe * cur.inicio;
+        sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
         sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
         const targetOffsetY = isDesktop ? 0 : pose.offsetY;
         sm.offsetY = THREE.MathUtils.damp(sm.offsetY, targetOffsetY, k, delta);

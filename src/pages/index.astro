@@ -446,6 +446,7 @@ const crafts = [
     display: flex;
     flex-direction: column;
     justify-content: center;
+    justify-content: safe center;
     box-sizing: border-box;
     min-height: var(--home-section-min-h);
     height: var(--home-section-min-h);
@@ -526,6 +527,8 @@ const crafts = [
   }
 
   .about {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
@@ -541,12 +544,18 @@ const crafts = [
     min-height: 0;
     display: flex;
     flex-direction: column;
+    /* When content is taller than the available space, plain `center`
+       overflows both ways — pushing the top past the tagline strip above
+       it. `safe center` falls back to start-alignment instead. */
     justify-content: center;
+    justify-content: safe center;
     padding-block: clamp(1.5rem, 4vh, 3rem);
   }
 
   .crafts,
   .contact {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
@@ -564,6 +573,7 @@ const crafts = [
     display: flex;
     flex-direction: column;
     justify-content: center;
+    justify-content: safe center;
     padding-block: clamp(1.5rem, 4vh, 3rem);
   }
 
@@ -599,17 +609,17 @@ const crafts = [
 
     .home-atmosphere {
       width: 100%;
-      height: min(32vh, 280px);
+      height: min(16vh, 140px);
       top: auto;
       bottom: 0;
-      opacity: 0.88;
+      opacity: 0.6;
     }
 
     .hero {
       min-height: var(--home-section-min-h);
       height: var(--home-section-min-h);
       padding-top: var(--nav-height);
-      padding-bottom: min(30vh, 260px);
+      padding-bottom: min(18vh, 160px);
     }
 
     .about,
@@ -617,11 +627,15 @@ const crafts = [
     .contact {
       min-height: var(--home-section-min-h);
       height: var(--home-section-min-h);
-      padding-bottom: min(30vh, 260px);
+      padding-bottom: min(18vh, 160px);
+      /* Content length varies (about's 3 paragraphs vs crafts' 4 cards) —
+         when it doesn't fit, scroll inside the section instead of a fixed
+         overflow:hidden silently hiding whatever ran past the fold. */
+      overflow-y: auto;
     }
 
     .lines-showcase__stage {
-      padding-bottom: min(30vh, 260px);
+      padding-bottom: min(18vh, 160px);
     }
 
     .hero__shield {
