@@ -1,0 +1,122 @@
+---
+const crafts = [
+  { title: 'Diseño', copy: 'Identidad, interfaces y sistemas con jerarquía cinematográfica.' },
+  { title: 'Desarrollo', copy: 'Webs y experiencias: Astro, React, WebGL cuando la idea lo pide.' },
+  { title: 'Arte', copy: 'Dirección de arte y motion que sostienen el mundo de la marca.' },
+  { title: 'Producción', copy: 'De concepto a entrega, con ritmo de estudio.' },
+];
+---
+
+<section id="oficio" class="section crafts" tabindex="0" role="region" aria-label="Oficio">
+  <div class="container">
+    <p class="section-eyebrow reveal reveal--left" data-reveal>Oficio</p>
+    <h2 class="crafts__title reveal" data-reveal>Oficio con atmósfera.</h2>
+    <p class="crafts__lead reveal" data-reveal>
+      Lo que hacemos cuando la pluma baja al papel — o al código.
+    </p>
+    <div class="crafts__grid" data-reveal-group>
+      {
+        crafts.map((item) => (
+          <article class="craft-card card-interactive reveal" data-reveal>
+            <h3 class="craft-card__title">{item.title}</h3>
+            <p class="craft-card__copy">{item.copy}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .crafts {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
+    padding-block: 0;
+    padding-top: var(--nav-height);
+    overflow: hidden;
+  }
+
+  .crafts > .container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: safe center;
+    padding-block: clamp(1.5rem, 4vh, 3rem);
+  }
+
+  .crafts__title {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    max-width: 16ch;
+    margin-bottom: 1rem;
+  }
+
+  .crafts__lead {
+    color: var(--fog);
+    font-size: 1.08rem;
+    max-width: 48ch;
+    margin-bottom: var(--space-lg);
+  }
+
+  .crafts__grid {
+    display: grid;
+    gap: 2rem;
+    border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
+    padding-top: var(--space-md);
+  }
+
+  .craft-card__title {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .craft-card__copy {
+    color: var(--fog);
+    max-width: 40ch;
+  }
+
+  /* Short viewports (landscape phones, small browser windows): a forced
+     100dvh section clips real content there — fall back to natural height
+     and plain scroll instead of fighting the layout to fit one screen. */
+  @media (max-height: 500px) {
+    .crafts {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 959px) {
+    .crafts {
+      min-height: var(--home-section-min-h);
+      height: var(--home-section-min-h);
+      padding-bottom: min(18vh, 160px);
+      overflow-y: auto;
+    }
+  }
+
+  @media (min-width: 960px) {
+    .crafts > .container {
+      width: var(--home-content-max);
+      max-width: calc(50vw - 0.5rem);
+      margin-inline: unset;
+      margin-left: var(--home-content-inset);
+      margin-right: auto;
+      padding-right: 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .crafts__grid {
+      grid-template-columns: repeat(2, 1fr);
+      column-gap: 4rem;
+    }
+  }
+</style>

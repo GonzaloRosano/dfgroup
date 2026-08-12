@@ -1,0 +1,103 @@
+---
+---
+
+<section id="contacto" class="section contact" tabindex="0" role="region" aria-label="Contacto">
+  <div class="container contact__inner" data-reveal-group>
+    <p class="section-eyebrow reveal reveal--left" data-reveal>Contacto</p>
+    <h2 class="contact__title reveal" data-reveal>Hablemos.</h2>
+    <p class="contact__lead reveal" data-reveal>
+      Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
+      criterio, no con un bot.
+    </p>
+    <a
+      class="btn btn--solid contact__cta reveal"
+      data-reveal
+      href="mailto:darkfeathergroup@gmail.com"
+    >
+      darkfeathergroup@gmail.com
+    </a>
+  </div>
+</section>
+
+<style>
+  .contact {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
+    padding-block: 0;
+    padding-top: var(--nav-height);
+    overflow: hidden;
+  }
+
+  .contact > .container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: safe center;
+    padding-block: clamp(1.5rem, 4vh, 3rem);
+  }
+
+  .contact__title {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    max-width: 16ch;
+    margin-bottom: 1rem;
+  }
+
+  .contact__lead {
+    color: var(--fog);
+    font-size: 1.08rem;
+    max-width: 48ch;
+    margin-inline: auto;
+    margin-bottom: 2rem;
+  }
+
+  .contact__inner {
+    text-align: center;
+  }
+
+  /* Short viewports (landscape phones, small browser windows): a forced
+     100dvh section clips real content there — fall back to natural height
+     and plain scroll instead of fighting the layout to fit one screen. */
+  @media (max-height: 500px) {
+    .contact {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 959px) {
+    .contact {
+      min-height: var(--home-section-min-h);
+      height: var(--home-section-min-h);
+      padding-bottom: min(18vh, 160px);
+      overflow-y: auto;
+    }
+  }
+
+  @media (min-width: 960px) {
+    .contact__inner.container {
+      width: var(--home-content-max);
+      max-width: calc(50vw - 0.5rem);
+      margin-inline: unset;
+      margin-left: var(--home-content-inset);
+      margin-right: auto;
+      padding-right: 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .contact__inner {
+      text-align: left;
+    }
+
+    .contact__lead {
+      margin-inline: 0;
+    }
+  }
+</style>

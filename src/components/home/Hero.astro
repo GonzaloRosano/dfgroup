@@ -1,0 +1,212 @@
+<section id="inicio" class="hero">
+  <div class="hero__shield" aria-hidden="true"></div>
+  <div class="container hero__grid">
+    <div class="hero__copy hero-enter">
+      <p class="hero__eyebrow hero-enter__item" style="--enter-i: 0">Dark Feather Group</p>
+      <h1 class="hero__title">
+        <span class="hero-enter__item" style="--enter-i: 1">Diseñado para</span>
+        <span class="hero-enter__item" style="--enter-i: 2">significar algo.</span>
+      </h1>
+      <p class="hero__lead hero-enter__item" style="--enter-i: 3">
+        Cuatro líneas, un mismo oficio. Estudio creativo noir — hosting, series,
+        taller y voces bajo una sola pluma.
+      </p>
+      <div class="hero__actions hero-enter__item" style="--enter-i: 4">
+        <a class="btn btn--solid" href="#contacto">Empezar proyecto</a>
+      </div>
+    </div>
+
+    <div class="hero__visual" aria-hidden="true"></div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: safe center;
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
+    padding: var(--nav-height) 0 clamp(2.5rem, 5vh, 4rem);
+    overflow: hidden;
+  }
+
+  .hero__shield {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      var(--void) 0%,
+      var(--void) 78%,
+      color-mix(in srgb, var(--void) 92%, transparent) 92%,
+      transparent 100%
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .hero__grid {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  .hero__copy {
+    max-width: 32rem;
+  }
+
+  .hero__eyebrow {
+    color: var(--mute);
+    font-size: 0.92rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero__title {
+    font-size: clamp(3rem, 9vw, 6.5rem);
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero__title span {
+    display: block;
+  }
+
+  .hero__lead {
+    color: var(--fog);
+    font-size: clamp(1.05rem, 2vw, 1.2rem);
+    max-width: 42ch;
+    margin-bottom: 2.25rem;
+    line-height: 1.7;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem 1.75rem;
+  }
+
+  .hero__visual {
+    position: relative;
+    min-height: clamp(16rem, 38vh, 26rem);
+    align-self: center;
+    justify-self: end;
+    width: 100%;
+    max-width: 28rem;
+    pointer-events: none;
+  }
+
+  .hero-enter__item {
+    opacity: 0;
+    transform: translateY(32px);
+    filter: blur(8px);
+  }
+
+  .hero-enter.is-loaded .hero-enter__item {
+    animation: hero-enter 820ms var(--ease-out) both;
+    animation-delay: calc(var(--enter-i, 0) * 110ms);
+  }
+
+  @keyframes hero-enter {
+    from {
+      opacity: 0;
+      transform: translateY(32px);
+      filter: blur(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  /* Short viewports (landscape phones, small browser windows): a forced
+     100dvh section clips real content there — fall back to natural height
+     and plain scroll instead of fighting the layout to fit one screen. */
+  @media (max-height: 500px) {
+    .hero {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 959px) {
+    .hero {
+      min-height: var(--home-section-min-h);
+      height: var(--home-section-min-h);
+      padding-top: var(--nav-height);
+      padding-bottom: min(30vh, 260px);
+    }
+
+    .hero__shield {
+      width: 100%;
+      height: 58%;
+      background: linear-gradient(
+        180deg,
+        var(--void) 0%,
+        var(--void) 70%,
+        color-mix(in srgb, var(--void) 92%, transparent) 86%,
+        transparent 100%
+      );
+    }
+
+    .hero__visual {
+      min-height: 2.75rem;
+      max-width: none;
+      order: 2;
+      pointer-events: none;
+    }
+
+    .hero__copy {
+      order: 1;
+    }
+  }
+
+  @media (min-width: 960px) {
+    .hero__grid.container {
+      width: var(--home-content-max);
+      max-width: calc(50vw - 0.5rem);
+      margin-inline: unset;
+      margin-left: var(--home-content-inset);
+      margin-right: auto;
+      padding-right: 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .hero__grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .hero__copy {
+      width: 100%;
+      max-width: none;
+    }
+
+    .hero__visual {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-enter__item {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,510 @@
+---
+import { lines } from '../../data/lines';
+---
+
+<section
+  id="lineas"
+  class="lines-showcase"
+  data-lines-showcase
+  data-lines-index="0"
+  aria-label="Líneas del grupo"
+>
+  <div class="lines-showcase__stage">
+    <header class="lines-showcase__header container">
+      <p class="section-eyebrow">Líneas</p>
+      <p class="lines-showcase__counter" data-lines-counter aria-live="polite">Hosting</p>
+    </header>
+
+    <div class="lines-showcase__viewport" data-lines-viewport>
+      <div class="lines-showcase__track" data-lines-track>
+        {
+          lines.map((line, i) => (
+            <article
+              class:list={['lines-showcase__panel', i === 0 && 'is-active']}
+              id={line.slug}
+              data-panel={i}
+              aria-label={line.code}
+              aria-hidden={i === 0 ? 'false' : 'true'}
+            >
+              <div class="lines-showcase__copy container">
+                <span class="lines-showcase__index">{String(i + 1).padStart(2, '0')}</span>
+                <h2 class="lines-showcase__code">{line.code}</h2>
+                <p class="lines-showcase__tag">{line.tagline}</p>
+                <p class="lines-showcase__summary">{line.summary}</p>
+                <ul class="lines-showcase__points">
+                  {line.points.map((point) => (
+                    <li>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="lines-showcase__controls container">
+      <button type="button" class="lines-showcase__arrow" data-lines-prev aria-label="Anterior">
+        <span aria-hidden="true">←</span>
+      </button>
+      <div class="lines-showcase__progress" role="tablist" aria-label="Líneas del grupo">
+        {
+          lines.map((line, i) => (
+            <button
+              type="button"
+              role="tab"
+              class:list={['lines-showcase__dot', i === 0 && 'is-active']}
+              data-lines-dot={i}
+              aria-label={`Ir a ${line.code}`}
+              aria-selected={i === 0 ? 'true' : 'false'}
+            />
+          ))
+        }
+      </div>
+      <button type="button" class="lines-showcase__arrow" data-lines-next aria-label="Siguiente">
+        <span aria-hidden="true">→</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<script>
+  const linesShowcase = document.querySelector('[data-lines-showcase]') as HTMLElement | null;
+  const linesViewport = document.querySelector('[data-lines-viewport]') as HTMLElement | null;
+  const linesCounter = document.querySelector('[data-lines-counter]');
+  const linesDots = document.querySelectorAll('[data-lines-dot]');
+  const linesPanels = document.querySelectorAll('.lines-showcase__panel');
+  const lineLabels = ['Hosting', 'Series', 'Atelier', 'Voices'];
+  const lineSlugs = ['hosting', 'series', 'atelier', 'voices'];
+  const PANEL_COUNT = linesPanels.length || 4;
+
+  const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+  let currentIndex = 0;
+
+  const lineasInView = () => {
+    if (!linesShowcase) return false;
+    const rect = linesShowcase.getBoundingClientRect();
+    return rect.top < window.innerHeight * 0.62 && rect.bottom > window.innerHeight * 0.28;
+  };
+
+  const setLineasSlide = (nextIndex: number, announce = true) => {
+    if (!linesShowcase) return;
+
+    const index = clamp(((nextIndex % PANEL_COUNT) + PANEL_COUNT) % PANEL_COUNT, 0, PANEL_COUNT - 1);
+    currentIndex = index;
+    linesShowcase.dataset.linesIndex = String(index);
+    linesShowcase.style.setProperty('--lines-index', String(index));
+
+    if (linesCounter) {
+      linesCounter.textContent = `${String(index + 1).padStart(2, '0')} — ${lineLabels[index]}`;
+    }
+
+    linesDots.forEach((dot, i) => {
+      const active = i === index;
+      dot.classList.toggle('is-active', active);
+      dot.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    linesPanels.forEach((panel, i) => {
+      const active = i === index;
+      panel.classList.toggle('is-active', active);
+      panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
+
+    document.documentElement.classList.toggle('is-lineas-active', lineasInView());
+
+    if (announce) {
+      window.dispatchEvent(
+        new CustomEvent('df:lineas-panel', {
+          detail: { index, frac: 0, progress: index, raw: index / Math.max(PANEL_COUNT - 1, 1), settled: true },
+        }),
+      );
+    }
+  };
+
+  const goLineas = (delta: number) => setLineasSlide(currentIndex + delta);
+
+  document.querySelector('[data-lines-prev]')?.addEventListener('click', () => goLineas(-1));
+  document.querySelector('[data-lines-next]')?.addEventListener('click', () => goLineas(1));
+
+  linesDots.forEach((dot, i) => {
+    dot.addEventListener('click', () => setLineasSlide(i));
+  });
+
+  window.addEventListener('keydown', (event) => {
+    if (!lineasInView()) return;
+    const target = event.target as HTMLElement | null;
+    if (target && (target.closest('input, textarea, select, [contenteditable="true"]'))) return;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      goLineas(-1);
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      goLineas(1);
+    }
+  });
+
+  // Section is pinned (filling the viewport) once its top lines up with the
+  // page top — that's the moment scroll should drive panels instead of the page.
+  const isLineasPinned = () => {
+    if (!linesShowcase) return false;
+    const rect = linesShowcase.getBoundingClientRect();
+    return Math.abs(rect.top) < 2 && rect.height > 0;
+  };
+
+  const atFirstPanel = () => currentIndex === 0;
+  const atLastPanel = () => currentIndex === PANEL_COUNT - 1;
+
+  // Custom stepped scroll: while pinned, wheel input advances one panel at a
+  // time (with a resistance threshold + lock) instead of scrolling the page.
+  // At the first/last panel, scroll passes through untouched to the next section.
+  const WHEEL_STEP_PX = 42;
+  const WHEEL_LOCK_MS = 640;
+  let wheelAccum = 0;
+  let wheelLocked = false;
+
+  const onLineasWheel = (event: WheelEvent) => {
+    if (!isLineasPinned()) {
+      wheelAccum = 0;
+      return;
+    }
+
+    const dy = event.deltaY;
+    if (Math.abs(dy) < 1) return;
+
+    if (dy < 0 && atFirstPanel()) {
+      wheelAccum = 0;
+      return;
+    }
+    if (dy > 0 && atLastPanel()) {
+      wheelAccum = 0;
+      return;
+    }
+
+    event.preventDefault();
+    if (wheelLocked) return;
+
+    wheelAccum += dy;
+    if (Math.abs(wheelAccum) < WHEEL_STEP_PX) return;
+
+    const dir = wheelAccum > 0 ? 1 : -1;
+    wheelAccum = 0;
+    wheelLocked = true;
+    goLineas(dir);
+    window.setTimeout(() => {
+      wheelLocked = false;
+    }, WHEEL_LOCK_MS);
+  };
+
+  window.addEventListener('wheel', onLineasWheel, { passive: false });
+
+  let swipeX = 0;
+  let swipeY = 0;
+  let swipeActive = false;
+
+  linesViewport?.addEventListener('pointerdown', (event) => {
+    swipeActive = true;
+    swipeX = event.clientX;
+    swipeY = event.clientY;
+  });
+
+  const endSwipe = (event: PointerEvent) => {
+    if (!swipeActive) return;
+    swipeActive = false;
+    if (!isLineasPinned()) return;
+
+    const dy = event.clientY - swipeY;
+    const dx = event.clientX - swipeX;
+    if (Math.abs(dy) < 48 || Math.abs(dy) < Math.abs(dx) * 1.15) return;
+
+    const dir = dy < 0 ? 1 : -1;
+    if ((dir === 1 && atLastPanel()) || (dir === -1 && atFirstPanel())) return;
+    goLineas(dir);
+  };
+
+  linesViewport?.addEventListener('pointerup', endSwipe);
+  linesViewport?.addEventListener('pointercancel', () => {
+    swipeActive = false;
+  });
+
+  const slugToIndex = (slug: string) => lineSlugs.indexOf(slug);
+
+  const applyLineasHash = (hash = window.location.hash) => {
+    const id = hash.replace('#', '');
+    const idx = slugToIndex(id);
+    if (idx >= 0) setLineasSlide(idx);
+  };
+
+  window.addEventListener('df:lineas-go', (event) => {
+    const slug = (event as CustomEvent<{ slug?: string }>).detail?.slug;
+    if (typeof slug === 'string') applyLineasHash(`#${slug}`);
+  });
+
+  window.addEventListener('hashchange', () => applyLineasHash());
+  window.addEventListener('scroll', () => {
+    document.documentElement.classList.toggle('is-lineas-active', lineasInView());
+  }, { passive: true });
+
+  setLineasSlide(0, true);
+  applyLineasHash();
+</script>
+
+<style>
+  .lines-showcase {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    min-height: var(--home-section-min-h);
+    height: var(--home-section-min-h);
+    overflow: hidden;
+    --lines-index: 0;
+  }
+
+  .lines-showcase__stage {
+    height: 100%;
+    box-sizing: border-box;
+    padding-top: var(--nav-height);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+  }
+
+  .lines-showcase__header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1.25rem 0.65rem;
+  }
+
+  .lines-showcase__counter {
+    font-family: var(--font-display);
+    font-size: 0.76rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  .lines-showcase__viewport {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    touch-action: pan-y;
+  }
+
+  .lines-showcase__track {
+    display: flex;
+    height: 100%;
+    width: calc(var(--lineas-panel-count) * 100%);
+    transform: translate3d(calc(var(--lines-index) * -100% / var(--lineas-panel-count)), 0, 0);
+    transition: transform 520ms var(--ease-out);
+  }
+
+  .lines-showcase__panel {
+    flex: 0 0 calc(100% / var(--lineas-panel-count));
+    width: calc(100% / var(--lineas-panel-count));
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding-block: 1rem 1.5rem;
+    opacity: 0.38;
+    pointer-events: none;
+    transition: opacity 280ms var(--ease-out);
+  }
+
+  .lines-showcase__panel.is-active {
+    z-index: 1;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .lines-showcase__copy {
+    max-width: 36rem;
+    padding-right: 1.5rem;
+  }
+
+  .lines-showcase__index {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    color: var(--mute);
+    margin-bottom: 0.9rem;
+  }
+
+  .lines-showcase__code {
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 6vw, 4.2rem);
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    margin-bottom: 0.65rem;
+  }
+
+  .lines-showcase__tag {
+    color: var(--ember-hot);
+    font-size: clamp(0.92rem, 1.7vw, 1.02rem);
+    font-weight: 500;
+    margin-bottom: 1.1rem;
+  }
+
+  .lines-showcase__summary {
+    color: var(--fog);
+    font-size: clamp(0.92rem, 1.7vw, 1rem);
+    line-height: 1.68;
+    max-width: 46ch;
+    margin-bottom: 1.35rem;
+  }
+
+  .lines-showcase__points {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .lines-showcase__points li {
+    color: var(--mute);
+    font-size: 0.86rem;
+    padding-left: 1rem;
+    position: relative;
+    max-width: 44ch;
+  }
+
+  .lines-showcase__points li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.25rem;
+    height: 0.25rem;
+    border-radius: 50%;
+    background: var(--ember);
+  }
+
+  .lines-showcase__controls {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding-block: 0.5rem 1.5rem;
+  }
+
+  .lines-showcase__arrow {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid color-mix(in srgb, var(--bone) 16%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--void) 55%, transparent);
+    color: var(--bone);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    transition:
+      border-color 220ms var(--ease-out),
+      background 220ms var(--ease-out),
+      color 220ms var(--ease-out);
+  }
+
+  .lines-showcase__arrow:focus-visible {
+    outline-offset: 3px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lines-showcase__arrow:hover {
+      border-color: color-mix(in srgb, var(--bone) 42%, transparent);
+      background: color-mix(in srgb, var(--bone) 8%, transparent);
+    }
+  }
+
+  .lines-showcase__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .lines-showcase__dot {
+    appearance: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bone) 18%, transparent);
+    cursor: pointer;
+    transition:
+      transform 220ms var(--ease-out),
+      background 220ms var(--ease-out);
+  }
+
+  .lines-showcase__dot.is-active {
+    transform: scale(1.2);
+    background: var(--ember-hot);
+  }
+
+  .lines-showcase__dot:focus-visible {
+    outline-offset: 3px;
+  }
+
+  /* Short viewports (landscape phones, small browser windows): a forced
+     100dvh section clips real content there — fall back to natural height
+     and plain scroll instead of fighting the layout to fit one screen. */
+  @media (max-height: 500px) {
+    .lines-showcase {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    .lines-showcase__stage {
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 959px) {
+    .lines-showcase__copy {
+      max-width: none;
+      padding-right: 0;
+    }
+
+    .lines-showcase__controls {
+      justify-content: flex-start;
+      padding-bottom: 1.25rem;
+    }
+
+    .lines-showcase__stage {
+      padding-bottom: min(18vh, 160px);
+    }
+  }
+
+  @media (min-width: 960px) {
+    .lines-showcase__header.container,
+    .lines-showcase__copy.container,
+    .lines-showcase__controls.container {
+      width: var(--home-content-max);
+      max-width: calc(50vw - 0.5rem);
+      margin-inline: unset;
+      margin-left: var(--home-content-inset);
+      margin-right: auto;
+      padding-right: 1.5rem;
+      box-sizing: border-box;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lines-showcase__track {
+      transition: none;
+    }
+
+    .lines-showcase__panel {
+      transition: none;
+    }
+  }
+</style>
