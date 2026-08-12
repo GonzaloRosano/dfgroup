@@ -5,7 +5,7 @@ import react from '@astrojs/react';
 export default defineConfig({
   integrations: [react()],
   i18n: {
-    locales: ['es', 'en', 'pt'],
+    locales: ['es', 'en'],
     defaultLocale: 'es',
     routing: {
       prefixDefaultLocale: true,

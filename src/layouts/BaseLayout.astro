@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { locales, localizedPath, type Locale } from '../i18n/translations';
@@ -32,6 +33,7 @@ const {
     ))}
     <link rel="alternate" hreflang="x-default" href={localizedPath('es', slug)} />
     <title>{title}</title>
+    <ClientRouter />
   </head>
   <body>
     <!-- Editorial noir landing: Trionn-inspired flow, logo dot-art feather WebGL. -->

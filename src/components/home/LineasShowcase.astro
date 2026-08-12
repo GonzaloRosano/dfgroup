@@ -82,185 +82,219 @@ const lineSlugs = lines.map((line) => line.slug);
 </section>
 
 <script>
-  const linesShowcase = document.querySelector('[data-lines-showcase]') as HTMLElement | null;
-  const linesViewport = document.querySelector('[data-lines-viewport]') as HTMLElement | null;
-  const linesCounter = document.querySelector('[data-lines-counter]');
-  const linesDots = document.querySelectorAll('[data-lines-dot]');
-  const linesPanels = document.querySelectorAll('.lines-showcase__panel');
-  const lineLabels: string[] = JSON.parse(linesShowcase?.dataset.lineLabels ?? '[]');
-  const lineSlugs: string[] = JSON.parse(linesShowcase?.dataset.lineSlugs ?? '[]');
-  const PANEL_COUNT = linesPanels.length || 4;
+  // <ClientRouter /> swaps the whole <body> on every navigation (e.g. the
+  // language switcher), so initLineas() re-queries and re-binds everything
+  // against the *current* DOM on every astro:page-load instead of only
+  // once on first load. Window-level listeners (wheel/keydown/scroll/hash)
+  // are registered exactly once (guarded via window) and always delegate
+  // through window.__lineasCurrent so they never close over a stale init.
+  function initLineas() {
+    const linesShowcase = document.querySelector('[data-lines-showcase]') as HTMLElement | null;
+    const linesViewport = document.querySelector('[data-lines-viewport]') as HTMLElement | null;
+    const linesCounter = document.querySelector('[data-lines-counter]');
+    const linesDots = document.querySelectorAll('[data-lines-dot]');
+    const linesPanels = document.querySelectorAll('.lines-showcase__panel');
+    const lineLabels: string[] = JSON.parse(linesShowcase?.dataset.lineLabels ?? '[]');
+    const lineSlugs: string[] = JSON.parse(linesShowcase?.dataset.lineSlugs ?? '[]');
+    const PANEL_COUNT = linesPanels.length || 4;
 
-  const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-  let currentIndex = 0;
+    let currentIndex = 0;
 
-  const lineasInView = () => {
-    if (!linesShowcase) return false;
-    const rect = linesShowcase.getBoundingClientRect();
-    return rect.top < window.innerHeight * 0.62 && rect.bottom > window.innerHeight * 0.28;
-  };
+    const lineasInView = () => {
+      if (!linesShowcase) return false;
+      const rect = linesShowcase.getBoundingClientRect();
+      return rect.top < window.innerHeight * 0.62 && rect.bottom > window.innerHeight * 0.28;
+    };
 
-  const setLineasSlide = (nextIndex: number, announce = true) => {
-    if (!linesShowcase) return;
+    const setLineasSlide = (nextIndex: number, announce = true) => {
+      if (!linesShowcase) return;
 
-    const index = clamp(((nextIndex % PANEL_COUNT) + PANEL_COUNT) % PANEL_COUNT, 0, PANEL_COUNT - 1);
-    currentIndex = index;
-    linesShowcase.dataset.linesIndex = String(index);
-    linesShowcase.style.setProperty('--lines-index', String(index));
+      const index = clamp(((nextIndex % PANEL_COUNT) + PANEL_COUNT) % PANEL_COUNT, 0, PANEL_COUNT - 1);
+      currentIndex = index;
+      linesShowcase.dataset.linesIndex = String(index);
+      linesShowcase.style.setProperty('--lines-index', String(index));
 
-    if (linesCounter) {
-      linesCounter.textContent = `${String(index + 1).padStart(2, '0')} — ${lineLabels[index]}`;
-    }
+      if (linesCounter) {
+        linesCounter.textContent = `${String(index + 1).padStart(2, '0')} — ${lineLabels[index]}`;
+      }
+
+      linesDots.forEach((dot, i) => {
+        const active = i === index;
+        dot.classList.toggle('is-active', active);
+        dot.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+
+      linesPanels.forEach((panel, i) => {
+        const active = i === index;
+        panel.classList.toggle('is-active', active);
+        panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+      });
+
+      document.documentElement.classList.toggle('is-lineas-active', lineasInView());
+
+      if (announce) {
+        window.dispatchEvent(
+          new CustomEvent('df:lineas-panel', {
+            detail: { index, frac: 0, progress: index, raw: index / Math.max(PANEL_COUNT - 1, 1), settled: true },
+          }),
+        );
+      }
+    };
+
+    const goLineas = (delta: number) => setLineasSlide(currentIndex + delta);
+
+    document.querySelector('[data-lines-prev]')?.addEventListener('click', () => goLineas(-1));
+    document.querySelector('[data-lines-next]')?.addEventListener('click', () => goLineas(1));
 
     linesDots.forEach((dot, i) => {
-      const active = i === index;
-      dot.classList.toggle('is-active', active);
-      dot.setAttribute('aria-selected', active ? 'true' : 'false');
+      dot.addEventListener('click', () => setLineasSlide(i));
     });
 
-    linesPanels.forEach((panel, i) => {
-      const active = i === index;
-      panel.classList.toggle('is-active', active);
-      panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+    // Section is pinned (filling the viewport) once its top lines up with the
+    // page top — that's the moment scroll should drive panels instead of the page.
+    const isLineasPinned = () => {
+      if (!linesShowcase) return false;
+      const rect = linesShowcase.getBoundingClientRect();
+      return Math.abs(rect.top) < 2 && rect.height > 0;
+    };
+
+    const atFirstPanel = () => currentIndex === 0;
+    const atLastPanel = () => currentIndex === PANEL_COUNT - 1;
+
+    // Custom stepped scroll: while pinned, wheel input advances one panel at a
+    // time (with a resistance threshold + lock) instead of scrolling the page.
+    // At the first/last panel, scroll passes through untouched to the next section.
+    const WHEEL_STEP_PX = 42;
+    const WHEEL_LOCK_MS = 640;
+    let wheelAccum = 0;
+    let wheelLocked = false;
+
+    const onLineasWheel = (event: WheelEvent) => {
+      if (!isLineasPinned()) {
+        wheelAccum = 0;
+        return;
+      }
+
+      const dy = event.deltaY;
+      if (Math.abs(dy) < 1) return;
+
+      if (dy < 0 && atFirstPanel()) {
+        wheelAccum = 0;
+        return;
+      }
+      if (dy > 0 && atLastPanel()) {
+        wheelAccum = 0;
+        return;
+      }
+
+      event.preventDefault();
+      if (wheelLocked) return;
+
+      wheelAccum += dy;
+      if (Math.abs(wheelAccum) < WHEEL_STEP_PX) return;
+
+      const dir = wheelAccum > 0 ? 1 : -1;
+      wheelAccum = 0;
+      wheelLocked = true;
+      goLineas(dir);
+      window.setTimeout(() => {
+        wheelLocked = false;
+      }, WHEEL_LOCK_MS);
+    };
+
+    let swipeX = 0;
+    let swipeY = 0;
+    let swipeActive = false;
+
+    linesViewport?.addEventListener('pointerdown', (event) => {
+      swipeActive = true;
+      swipeX = event.clientX;
+      swipeY = event.clientY;
     });
 
-    document.documentElement.classList.toggle('is-lineas-active', lineasInView());
+    const endSwipe = (event: PointerEvent) => {
+      if (!swipeActive) return;
+      swipeActive = false;
+      if (!isLineasPinned()) return;
 
-    if (announce) {
-      window.dispatchEvent(
-        new CustomEvent('df:lineas-panel', {
-          detail: { index, frac: 0, progress: index, raw: index / Math.max(PANEL_COUNT - 1, 1), settled: true },
-        }),
-      );
-    }
-  };
+      const dy = event.clientY - swipeY;
+      const dx = event.clientX - swipeX;
+      if (Math.abs(dy) < 48 || Math.abs(dy) < Math.abs(dx) * 1.15) return;
 
-  const goLineas = (delta: number) => setLineasSlide(currentIndex + delta);
+      const dir = dy < 0 ? 1 : -1;
+      if ((dir === 1 && atLastPanel()) || (dir === -1 && atFirstPanel())) return;
+      goLineas(dir);
+    };
 
-  document.querySelector('[data-lines-prev]')?.addEventListener('click', () => goLineas(-1));
-  document.querySelector('[data-lines-next]')?.addEventListener('click', () => goLineas(1));
+    linesViewport?.addEventListener('pointerup', endSwipe);
+    linesViewport?.addEventListener('pointercancel', () => {
+      swipeActive = false;
+    });
 
-  linesDots.forEach((dot, i) => {
-    dot.addEventListener('click', () => setLineasSlide(i));
-  });
+    const slugToIndex = (slug: string) => lineSlugs.indexOf(slug);
 
-  window.addEventListener('keydown', (event) => {
-    if (!lineasInView()) return;
-    const target = event.target as HTMLElement | null;
-    if (target && (target.closest('input, textarea, select, [contenteditable="true"]'))) return;
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      goLineas(-1);
-    } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault();
-      goLineas(1);
-    }
-  });
+    const applyLineasHash = (hash = window.location.hash) => {
+      const id = hash.replace('#', '');
+      const idx = slugToIndex(id);
+      if (idx >= 0) setLineasSlide(idx);
+    };
 
-  // Section is pinned (filling the viewport) once its top lines up with the
-  // page top — that's the moment scroll should drive panels instead of the page.
-  const isLineasPinned = () => {
-    if (!linesShowcase) return false;
-    const rect = linesShowcase.getBoundingClientRect();
-    return Math.abs(rect.top) < 2 && rect.height > 0;
-  };
+    setLineasSlide(0, true);
+    applyLineasHash();
 
-  const atFirstPanel = () => currentIndex === 0;
-  const atLastPanel = () => currentIndex === PANEL_COUNT - 1;
+    return { lineasInView, goLineas, onLineasWheel, applyLineasHash };
+  }
 
-  // Custom stepped scroll: while pinned, wheel input advances one panel at a
-  // time (with a resistance threshold + lock) instead of scrolling the page.
-  // At the first/last panel, scroll passes through untouched to the next section.
-  const WHEEL_STEP_PX = 42;
-  const WHEEL_LOCK_MS = 640;
-  let wheelAccum = 0;
-  let wheelLocked = false;
+  if (!(window as any).__lineasGlobalBound) {
+    (window as any).__lineasGlobalBound = true;
 
-  const onLineasWheel = (event: WheelEvent) => {
-    if (!isLineasPinned()) {
-      wheelAccum = 0;
-      return;
-    }
+    // astro:page-load fires on the *initial* load too (not just later
+    // transitions) — this is the only place initLineas() should run, or it
+    // runs twice on first load and double-binds every listener below.
+    document.addEventListener('astro:page-load', () => {
+      (window as any).__lineasCurrent = initLineas();
+    });
 
-    const dy = event.deltaY;
-    if (Math.abs(dy) < 1) return;
+    window.addEventListener('keydown', (event) => {
+      const current = (window as any).__lineasCurrent;
+      if (!current?.lineasInView()) return;
+      const target = event.target as HTMLElement | null;
+      if (target && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        current.goLineas(-1);
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        current.goLineas(1);
+      }
+    });
 
-    if (dy < 0 && atFirstPanel()) {
-      wheelAccum = 0;
-      return;
-    }
-    if (dy > 0 && atLastPanel()) {
-      wheelAccum = 0;
-      return;
-    }
+    window.addEventListener(
+      'wheel',
+      (event) => (window as any).__lineasCurrent?.onLineasWheel(event),
+      { passive: false },
+    );
 
-    event.preventDefault();
-    if (wheelLocked) return;
+    window.addEventListener('df:lineas-go', (event) => {
+      const slug = (event as CustomEvent<{ slug?: string }>).detail?.slug;
+      if (typeof slug === 'string') (window as any).__lineasCurrent?.applyLineasHash(`#${slug}`);
+    });
 
-    wheelAccum += dy;
-    if (Math.abs(wheelAccum) < WHEEL_STEP_PX) return;
+    window.addEventListener('hashchange', () => (window as any).__lineasCurrent?.applyLineasHash());
 
-    const dir = wheelAccum > 0 ? 1 : -1;
-    wheelAccum = 0;
-    wheelLocked = true;
-    goLineas(dir);
-    window.setTimeout(() => {
-      wheelLocked = false;
-    }, WHEEL_LOCK_MS);
-  };
-
-  window.addEventListener('wheel', onLineasWheel, { passive: false });
-
-  let swipeX = 0;
-  let swipeY = 0;
-  let swipeActive = false;
-
-  linesViewport?.addEventListener('pointerdown', (event) => {
-    swipeActive = true;
-    swipeX = event.clientX;
-    swipeY = event.clientY;
-  });
-
-  const endSwipe = (event: PointerEvent) => {
-    if (!swipeActive) return;
-    swipeActive = false;
-    if (!isLineasPinned()) return;
-
-    const dy = event.clientY - swipeY;
-    const dx = event.clientX - swipeX;
-    if (Math.abs(dy) < 48 || Math.abs(dy) < Math.abs(dx) * 1.15) return;
-
-    const dir = dy < 0 ? 1 : -1;
-    if ((dir === 1 && atLastPanel()) || (dir === -1 && atFirstPanel())) return;
-    goLineas(dir);
-  };
-
-  linesViewport?.addEventListener('pointerup', endSwipe);
-  linesViewport?.addEventListener('pointercancel', () => {
-    swipeActive = false;
-  });
-
-  const slugToIndex = (slug: string) => lineSlugs.indexOf(slug);
-
-  const applyLineasHash = (hash = window.location.hash) => {
-    const id = hash.replace('#', '');
-    const idx = slugToIndex(id);
-    if (idx >= 0) setLineasSlide(idx);
-  };
-
-  window.addEventListener('df:lineas-go', (event) => {
-    const slug = (event as CustomEvent<{ slug?: string }>).detail?.slug;
-    if (typeof slug === 'string') applyLineasHash(`#${slug}`);
-  });
-
-  window.addEventListener('hashchange', () => applyLineasHash());
-  window.addEventListener('scroll', () => {
-    document.documentElement.classList.toggle('is-lineas-active', lineasInView());
-  }, { passive: true });
-
-  setLineasSlide(0, true);
-  applyLineasHash();
+    window.addEventListener(
+      'scroll',
+      () => {
+        document.documentElement.classList.toggle(
+          'is-lineas-active',
+          Boolean((window as any).__lineasCurrent?.lineasInView()),
+        );
+      },
+      { passive: true },
+    );
+  }
 </script>
 
 <style>

@@ -1,11 +1,13 @@
-export const locales = ['es', 'en', 'pt'] as const;
+// pt (Português) translations are drafted below but not wired into routing
+// yet — re-add 'pt' here (and to astro.config.mjs's i18n.locales) to bring
+// the /pt/ routes back once that's ready to ship.
+export const locales = ['es', 'en'] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'es';
 
 export const localeLabels: Record<Locale, string> = {
-  es: 'ES',
-  en: 'EN',
-  pt: 'PT',
+  es: 'Español',
+  en: 'English',
 };
 
 type LineContent = {
@@ -32,6 +34,7 @@ type Translation = {
     fullMenuAriaLabel: string;
     linesAriaLabel: string;
     consultas: string;
+    language: string;
   };
   hero: {
     eyebrow: string;
@@ -109,6 +112,7 @@ export const translations: Record<Locale, Translation> = {
       fullMenuAriaLabel: 'Menú completo',
       linesAriaLabel: 'Líneas del grupo',
       consultas: 'Consultas',
+      language: 'Idioma',
     },
     hero: {
       eyebrow: 'Dark Feather Group',
@@ -237,6 +241,7 @@ export const translations: Record<Locale, Translation> = {
       fullMenuAriaLabel: 'Full menu',
       linesAriaLabel: 'Group lines',
       consultas: 'Inquiries',
+      language: 'Language',
     },
     hero: {
       eyebrow: 'Dark Feather Group',
@@ -345,134 +350,6 @@ export const translations: Record<Locale, Translation> = {
       section3Body: 'Questions about this? Write to us at',
       updated: (date) => `Last updated: ${date}.`,
       updatedDate: 'August 2026',
-    },
-  },
-  pt: {
-    meta: {
-      description: 'DF Hosting, DF Series, DF Atelier, DF Voices.',
-    },
-    nav: {
-      grupo: 'Grupo',
-      lineas: 'Linhas',
-      oficio: 'Ofício',
-      contacto: 'Contato',
-      inicio: 'Início',
-      cta: 'Começar projeto',
-      openMenu: 'Abrir menu',
-      closeMenu: 'Fechar menu',
-      menuLabel: 'Menu',
-      menuAriaLabel: 'Menu de navegação',
-      fullMenuAriaLabel: 'Menu completo',
-      linesAriaLabel: 'Linhas do grupo',
-      consultas: 'Consultas',
-    },
-    hero: {
-      eyebrow: 'Dark Feather Group',
-      titleLine1: 'Feito para',
-      titleLine2: 'significar algo.',
-      lead: 'Quatro linhas, um só ofício. Estúdio criativo noir — hosting, séries, ateliê e vozes sob uma única pena.',
-      cta: 'Começar projeto',
-    },
-    grupo: {
-      tagline: 'Sombra·Ofício·Presença',
-      eyebrow: 'Grupo',
-      title: 'O coletivo por trás da pena.',
-      body: [
-        'Trabalhamos a contraluz: menos ruído, mais atmosfera. Identidade, desenvolvimento web, arte e som — sob uma única direção, não como quatro fornecedores soltos com o mesmo logo.',
-        'Não somos uma fábrica de templates nem um pitch deck com métricas infladas. Somos quatro linhas — hosting, séries, ateliê e vozes — com o mesmo idioma visual e o mesmo critério editorial.',
-        'Um projeto Dark Feather se nota antes de ler o nome: uma marca que parece habitada, uma série que respira em capítulos, um site que não tem cara de template. Esse é o ofício completo.',
-      ],
-    },
-    lineasSection: {
-      eyebrow: 'Linhas',
-      ariaLabel: 'Linhas do grupo',
-      prev: 'Anterior',
-      next: 'Próximo',
-      dotAriaLabel: (code) => `Ir para ${code}`,
-    },
-    lineas: {
-      hosting: {
-        tagline: 'Infraestrutura com caráter.',
-        summary:
-          'Ambientes prontos para lançar sem diluir a identidade. Hosting pensado para estúdios, produtos e experiências que precisam de presença estável.',
-        points: [
-          'Deploys limpos para sites e apps do universo DF',
-          'Ambientes de preview para revisar antes de publicar',
-          'Suporte próximo, sem suporte de call center genérico',
-        ],
-      },
-      series: {
-        tagline: 'Narrativas em capítulos.',
-        summary:
-          'Formatos seriados para marcas e universos próprios: capítulos, temporadas e peças que se leem como uma história, não como um feed.',
-        points: [
-          'Arcos editoriais e ritmos de publicação',
-          'Identidade visual consistente entre episódios',
-          'Web, motion e peças associadas à narrativa',
-        ],
-      },
-      atelier: {
-        tagline: 'O ateliê criativo do grupo.',
-        summary:
-          'Design, desenvolvimento, arte e produção sob uma só luz. O núcleo onde se fabrica a atmosfera Dark Feather.',
-        points: [
-          'Identidade, interfaces e sistemas visuais',
-          'Desenvolvimento web com Astro, React e WebGL quando é preciso',
-          'Direção de arte e produção de ponta a ponta',
-        ],
-      },
-      voices: {
-        tagline: 'A atmosfera também se escuta.',
-        summary:
-          'Vozes, som e presença falada para marcas, séries e experiências: locução, sound design e tom verbal.',
-        points: [
-          'Direção de voz e tom de marca',
-          'Peças sonoras para web, séries e campanhas',
-          'Integração com DF Series e DF Atelier',
-        ],
-      },
-    },
-    oficio: {
-      eyebrow: 'Ofício',
-      title: 'Ofício com atmosfera.',
-      lead: 'O que fazemos quando a pena desce ao papel — ou ao código.',
-      crafts: [
-        { title: 'Design', copy: 'Identidade, interfaces e sistemas com hierarquia cinematográfica.' },
-        { title: 'Desenvolvimento', copy: 'Sites e experiências: Astro, React, WebGL quando a ideia pede.' },
-        { title: 'Arte', copy: 'Direção de arte e motion que sustentam o mundo da marca.' },
-        { title: 'Produção', copy: 'Do conceito à entrega, no ritmo de estúdio.' },
-      ],
-    },
-    contacto: {
-      eyebrow: 'Contato',
-      title: 'Vamos falar.',
-      lead: 'Conta pra gente qual linha te interessa e como está o projeto. Respondemos com critério, não com um bot.',
-    },
-    footer: {
-      productos: 'Produtos',
-      grupo: 'Grupo',
-      sobreNosotros: 'Sobre Nós',
-      contacto: 'Contato',
-      privacidad: 'Privacidade',
-      copyright: (year) => `© ${year} Dark Feather Group`,
-    },
-    privacidad: {
-      title: 'Privacidade',
-      lead: 'Sem formulários, sem cookies, sem analytics. A única coisa que sai daqui é uma fonte tipográfica.',
-      scrollCue: 'Rolar para o conteúdo',
-      section1Title: 'O que guardamos',
-      section1Body:
-        'Nada da sua visita. O botão de contato abre o seu próprio cliente de e-mail, e é aí que a nossa parte termina — a mensagem vai direto para o seu provedor de e-mail, nunca passa por um servidor nosso.',
-      section2Title: 'Google Fonts',
-      section2Body1:
-        'Bricolage Grotesque e IBM Plex Sans vêm do Google Fonts. Para servi-las, seu navegador pede a tipografia a',
-      section2Body2:
-        ', e nesse pedido vai o seu IP. É o único dado que sai deste site para terceiros, e é administrado pelo Google — não por nós. Está tudo na',
-      section2LinkText: 'política de privacidade',
-      section3Title: 'Contato',
-      section3Body: 'Dúvidas sobre isso? Escreva para',
-      updated: (date) => `Última atualização: ${date}.`,
-      updatedDate: 'agosto de 2026',
     },
   },
 };

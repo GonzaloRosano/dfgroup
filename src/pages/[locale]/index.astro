@@ -32,36 +32,49 @@ const t = getTranslations(locale);
 </BaseLayout>
 
 <script>
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // <ClientRouter /> swaps the whole <body> on every navigation (e.g. the
+  // language switcher), so this has to re-run and re-observe the *new*
+  // page's [data-reveal] nodes each time instead of only once on first load
+  // — otherwise they're left stuck at their initial opacity: 0.
+  let observer: IntersectionObserver | null = null;
 
-  document.querySelectorAll('[data-reveal-group]').forEach((group) => {
-    group.querySelectorAll('[data-reveal]').forEach((el, i) => {
-      (el as HTMLElement).style.setProperty('--reveal-delay', `${i * 120}ms`);
+  const initReveal = () => {
+    observer?.disconnect();
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    document.querySelectorAll('[data-reveal-group]').forEach((group) => {
+      group.querySelectorAll('[data-reveal]').forEach((el, i) => {
+        (el as HTMLElement).style.setProperty('--reveal-delay', `${i * 120}ms`);
+      });
     });
-  });
 
-  if (!reduceMotion) {
     document.querySelector('.hero-enter')?.classList.add('is-loaded');
 
-    const items = document.querySelectorAll('[data-reveal]');
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.35, rootMargin: '0px 0px -8% 0px' },
-    );
-    items.forEach((el) => observer.observe(el));
-  } else {
-    document.querySelector('.hero-enter')?.classList.add('is-loaded');
-    document.querySelectorAll('[data-reveal]').forEach((el) => {
-      el.classList.add('is-visible');
-    });
-  }
+    if (!reduceMotion) {
+      const items = document.querySelectorAll('[data-reveal]');
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer?.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.35, rootMargin: '0px 0px -8% 0px' },
+      );
+      items.forEach((el) => observer?.observe(el));
+    } else {
+      document.querySelectorAll('[data-reveal]').forEach((el) => {
+        el.classList.add('is-visible');
+      });
+    }
+  };
+
+  // astro:page-load fires on the *initial* load too, not just later
+  // transitions — no separate direct call needed here.
+  document.addEventListener('astro:page-load', initReveal);
 </script>
 
 <style>
