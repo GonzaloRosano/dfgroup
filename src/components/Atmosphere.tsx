@@ -1,5 +1,18 @@
 import { useEffect, useRef } from 'react';
-import * as THREE from 'three';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Clock,
+  Color,
+  MathUtils,
+  NormalBlending,
+  PerspectiveCamera,
+  Points,
+  Scene,
+  ShaderMaterial,
+  Vector2,
+  WebGLRenderer,
+} from 'three';
 import {
   buildPageMorph,
   EMPTY_ICON_PATHS,
@@ -23,30 +36,30 @@ const CAM_FOV = 36;
 const ICON_MORPH_DURATION = 0.5;
 const ICON_MORPH_DURATION_REDUCED = 0.12;
 const DOT_PX = 2.4;
-const WHITE = new THREE.Color(0xe8e6e1);
-const EMBER = new THREE.Color(0xc45a4a);
+const WHITE = new Color(0xe8e6e1);
+const EMBER = new Color(0xc45a4a);
 const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
 const LINEAS_INDEX_MAX = 3;
 /** Original feather used PerspectiveCamera + rotation.y; oscillate instead of spin. */
-const YAW_AMP = THREE.MathUtils.degToRad(18);
-const PITCH_AMP = THREE.MathUtils.degToRad(7);
+const YAW_AMP = MathUtils.degToRad(18);
+const PITCH_AMP = MathUtils.degToRad(7);
 const ROCK_PERIOD = 8;
 
 function buildPageGeometry(morph: PageMorphData) {
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(morph.inicio.slice(), 3));
-  geo.setAttribute('aInicio', new THREE.BufferAttribute(morph.inicio, 3));
-  geo.setAttribute('aGrupo', new THREE.BufferAttribute(morph.grupo, 3));
-  geo.setAttribute('aOficio', new THREE.BufferAttribute(morph.oficio, 3));
-  geo.setAttribute('aContacto', new THREE.BufferAttribute(morph.contacto, 3));
-  geo.setAttribute('aIcon0', new THREE.BufferAttribute(morph.iconPositions[0], 3));
-  geo.setAttribute('aIcon1', new THREE.BufferAttribute(morph.iconPositions[1], 3));
-  geo.setAttribute('aIcon2', new THREE.BufferAttribute(morph.iconPositions[2], 3));
-  geo.setAttribute('aIcon3', new THREE.BufferAttribute(morph.iconPositions[3], 3));
-  geo.setAttribute('aTip', new THREE.BufferAttribute(morph.tips, 1));
-  geo.setAttribute('aCol', new THREE.BufferAttribute(morph.cols, 1));
-  geo.setAttribute('aRow', new THREE.BufferAttribute(morph.rows, 1));
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new BufferAttribute(morph.inicio.slice(), 3));
+  geo.setAttribute('aInicio', new BufferAttribute(morph.inicio, 3));
+  geo.setAttribute('aGrupo', new BufferAttribute(morph.grupo, 3));
+  geo.setAttribute('aOficio', new BufferAttribute(morph.oficio, 3));
+  geo.setAttribute('aContacto', new BufferAttribute(morph.contacto, 3));
+  geo.setAttribute('aIcon0', new BufferAttribute(morph.iconPositions[0], 3));
+  geo.setAttribute('aIcon1', new BufferAttribute(morph.iconPositions[1], 3));
+  geo.setAttribute('aIcon2', new BufferAttribute(morph.iconPositions[2], 3));
+  geo.setAttribute('aIcon3', new BufferAttribute(morph.iconPositions[3], 3));
+  geo.setAttribute('aTip', new BufferAttribute(morph.tips, 1));
+  geo.setAttribute('aCol', new BufferAttribute(morph.cols, 1));
+  geo.setAttribute('aRow', new BufferAttribute(morph.rows, 1));
   return geo;
 }
 
@@ -65,10 +78,10 @@ function lerpPanelWeights(
   t: number,
 ) {
   return {
-    w0: THREE.MathUtils.lerp(a.w0, b.w0, t),
-    w1: THREE.MathUtils.lerp(a.w1, b.w1, t),
-    w2: THREE.MathUtils.lerp(a.w2, b.w2, t),
-    w3: THREE.MathUtils.lerp(a.w3, b.w3, t),
+    w0: MathUtils.lerp(a.w0, b.w0, t),
+    w1: MathUtils.lerp(a.w1, b.w1, t),
+    w2: MathUtils.lerp(a.w2, b.w2, t),
+    w3: MathUtils.lerp(a.w3, b.w3, t),
   };
 }
 
@@ -83,7 +96,7 @@ function sectionPresence(el: Element | null, vh: number) {
   const bandBottom = vh * 0.92;
   const overlap = Math.min(r.bottom, bandBottom) - Math.max(r.top, bandTop);
   const denom = Math.max(r.height * 0.42, vh * 0.48);
-  const raw = THREE.MathUtils.clamp(overlap / denom, 0, 1);
+  const raw = MathUtils.clamp(overlap / denom, 0, 1);
   return raw * raw * (3 - 2 * raw);
 }
 
@@ -103,7 +116,7 @@ function readLineasIndex(root: Element | null) {
   const raw = root?.getAttribute('data-lines-index');
   const n = raw == null || raw === '' ? 0 : Number(raw);
   if (!Number.isFinite(n)) return 0;
-  return THREE.MathUtils.clamp(Math.round(n), 0, LINEAS_INDEX_MAX);
+  return MathUtils.clamp(Math.round(n), 0, LINEAS_INDEX_MAX);
 }
 
 /** Page shape chain: inicio 0 → grupo 1 → icons 2–5 → oficio 6 → contacto 7. */
@@ -128,8 +141,8 @@ function pageShapePair(
     : (iconW.w1 + iconW.w2 * 2 + iconW.w3 * 3) / iconSum;
 
   const pos = n.grupo * 1 + n.lineas * (2 + iconIdx) + n.oficio * 6 + n.contacto * 7;
-  const from = THREE.MathUtils.clamp(Math.floor(pos + 1e-6), 0, 7);
-  const t = THREE.MathUtils.clamp(pos - from, 0, 1);
+  const from = MathUtils.clamp(Math.floor(pos + 1e-6), 0, 7);
+  const t = MathUtils.clamp(pos - from, 0, 1);
   const to = Math.min(from + (t > 0.0001 ? 1 : 0), 7);
   return { from, to, t: from === to ? 0 : t };
 }
@@ -298,16 +311,16 @@ export default function Atmosphere() {
     try {
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      let renderer: THREE.WebGLRenderer;
+      let renderer: WebGLRenderer;
       try {
-        renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
+        renderer = new WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
       } catch (err) {
         console.error('[Atmosphere] WebGL unavailable', err);
         return () => {};
       }
 
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.1, 40);
+      const scene = new Scene();
+      const camera = new PerspectiveCamera(CAM_FOV, 1, 0.1, 40);
       camera.position.set(0, 0, 2);
 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -350,22 +363,22 @@ export default function Atmosphere() {
         uFrom: { value: 0 },
         uTo: { value: 0 },
         uShapeT: { value: 0 },
-        uMouse: { value: new THREE.Vector2(0, 0) },
+        uMouse: { value: new Vector2(0, 0) },
         uHoverStrength: { value: 0 },
         uHoverRadius: { value: 0.14 },
       };
 
-      const material = new THREE.ShaderMaterial({
+      const material = new ShaderMaterial({
         uniforms,
         vertexShader: DOT_VERT,
         fragmentShader: DOT_FRAG,
         transparent: true,
         depthWrite: false,
         depthTest: false,
-        blending: THREE.NormalBlending,
+        blending: NormalBlending,
       });
 
-      const points = new THREE.Points(geometry, material);
+      const points = new Points(geometry, material);
       scene.add(points);
 
       const sections = {
@@ -399,7 +412,7 @@ export default function Atmosphere() {
         },
       };
 
-      const clock = new THREE.Clock();
+      const clock = new Clock();
       let frame = 0;
       let viewW = 1;
       let viewH = VIEW_H;
@@ -444,7 +457,7 @@ export default function Atmosphere() {
       let panelIconMorph = { active: false, from: 0, to: 0, t: 0 };
 
       const requestIconMorph = (nextIndex: number) => {
-        const idx = THREE.MathUtils.clamp(nextIndex, 0, LINEAS_INDEX_MAX);
+        const idx = MathUtils.clamp(nextIndex, 0, LINEAS_INDEX_MAX);
         if (idx === settledIconIndex && !panelIconMorph.active) return;
 
         if (reduceMotion) {
@@ -507,7 +520,7 @@ export default function Atmosphere() {
         camera.fov = CAM_FOV;
         camera.near = 0.1;
         camera.far = 40;
-        const dist = (viewH * 0.5) / Math.tan(THREE.MathUtils.degToRad(CAM_FOV * 0.5));
+        const dist = (viewH * 0.5) / Math.tan(MathUtils.degToRad(CAM_FOV * 0.5));
         camera.position.set(0, 0, dist);
         camera.updateProjectionMatrix();
 
@@ -524,11 +537,11 @@ export default function Atmosphere() {
         const k = reduceMotion ? 0 : DAMP;
         const beats = sampleSections();
 
-        cur.inicio = THREE.MathUtils.damp(cur.inicio, beats.inicio, SECTION_DAMP, delta);
-        cur.grupo = THREE.MathUtils.damp(cur.grupo, beats.grupo, SECTION_DAMP, delta);
-        cur.lineas = THREE.MathUtils.damp(cur.lineas, beats.lineas, SECTION_DAMP, delta);
-        cur.oficio = THREE.MathUtils.damp(cur.oficio, beats.oficio, SECTION_DAMP, delta);
-        cur.contacto = THREE.MathUtils.damp(cur.contacto, beats.contacto, SECTION_DAMP, delta);
+        cur.inicio = MathUtils.damp(cur.inicio, beats.inicio, SECTION_DAMP, delta);
+        cur.grupo = MathUtils.damp(cur.grupo, beats.grupo, SECTION_DAMP, delta);
+        cur.lineas = MathUtils.damp(cur.lineas, beats.lineas, SECTION_DAMP, delta);
+        cur.oficio = MathUtils.damp(cur.oficio, beats.oficio, SECTION_DAMP, delta);
+        cur.contacto = MathUtils.damp(cur.contacto, beats.contacto, SECTION_DAMP, delta);
 
         const pose = blendPose(cur, poses);
 
@@ -556,10 +569,10 @@ export default function Atmosphere() {
         if (panelIconMorph.active || reduceMotion) {
           iconW = { ...targetIconW };
         } else {
-          iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 6, delta);
-          iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 6, delta);
-          iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 6, delta);
-          iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 6, delta);
+          iconW.w0 = MathUtils.damp(iconW.w0, targetIconW.w0, k * 6, delta);
+          iconW.w1 = MathUtils.damp(iconW.w1, targetIconW.w1, k * 6, delta);
+          iconW.w2 = MathUtils.damp(iconW.w2, targetIconW.w2, k * 6, delta);
+          iconW.w3 = MathUtils.damp(iconW.w3, targetIconW.w3, k * 6, delta);
         }
         uniforms.uIconMorphT.value = iconMorphT;
 
@@ -578,10 +591,10 @@ export default function Atmosphere() {
         const breatheScale = reduceMotion
           ? 1
           : 1 + Math.sin(elapsed * 0.75) * pose.breathe * cur.inicio;
-        sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
-        sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
+        sm.scale = MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
+        sm.offsetX = MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
         const targetOffsetY = isDesktop ? 0 : pose.offsetY;
-        sm.offsetY = THREE.MathUtils.damp(sm.offsetY, targetOffsetY, k, delta);
+        sm.offsetY = MathUtils.damp(sm.offsetY, targetOffsetY, k, delta);
 
         points.scale.setScalar(sm.scale);
         points.position.set(sm.offsetX, sm.offsetY, 0);
@@ -611,7 +624,7 @@ export default function Atmosphere() {
         const hoverTarget = hovering ? 1 : 0;
         hoverStrength = reduceMotion
           ? 0
-          : THREE.MathUtils.damp(hoverStrength, hoverTarget, 7.5, delta);
+          : MathUtils.damp(hoverStrength, hoverTarget, 7.5, delta);
         uniforms.uHoverStrength.value = hoverStrength;
 
         renderer.render(scene, camera);
