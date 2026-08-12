@@ -1,0 +1,119 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Atmosphere from '../../components/Atmosphere';
+import ScrollProgress from '../../components/ScrollProgress.astro';
+import Hero from '../../components/home/Hero.astro';
+import Grupo from '../../components/home/Grupo.astro';
+import LineasShowcase from '../../components/home/LineasShowcase.astro';
+import Oficio from '../../components/home/Oficio.astro';
+import Contacto from '../../components/home/Contacto.astro';
+import { locales, getTranslations, type Locale } from '../../i18n/translations';
+
+export function getStaticPaths() {
+  return locales.map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params as { locale: Locale };
+const t = getTranslations(locale);
+---
+
+<BaseLayout lang={locale} slug="" title="Dark Feather Group" description={t.meta.description}>
+  <ScrollProgress />
+
+  <div class="home-atmosphere" aria-hidden="true">
+    <Atmosphere client:idle />
+  </div>
+
+  <Hero lang={locale} />
+  <Grupo lang={locale} />
+  <LineasShowcase lang={locale} />
+  <Oficio lang={locale} />
+  <Contacto lang={locale} />
+</BaseLayout>
+
+<script>
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll('[data-reveal-group]').forEach((group) => {
+    group.querySelectorAll('[data-reveal]').forEach((el, i) => {
+      (el as HTMLElement).style.setProperty('--reveal-delay', `${i * 120}ms`);
+    });
+  });
+
+  if (!reduceMotion) {
+    document.querySelector('.hero-enter')?.classList.add('is-loaded');
+
+    const items = document.querySelectorAll('[data-reveal]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.35, rootMargin: '0px 0px -8% 0px' },
+    );
+    items.forEach((el) => observer.observe(el));
+  } else {
+    document.querySelector('.hero-enter')?.classList.add('is-loaded');
+    document.querySelectorAll('[data-reveal]').forEach((el) => {
+      el.classList.add('is-visible');
+    });
+  }
+</script>
+
+<style>
+  .home-atmosphere {
+    position: fixed;
+    top: var(--nav-height);
+    right: 0;
+    width: 50%;
+    height: calc(100vh - var(--nav-height));
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .home-atmosphere :global(.atmosphere) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .home-atmosphere :global(canvas) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+    cursor: default;
+  }
+
+  .home-atmosphere::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      var(--void) 0%,
+      color-mix(in srgb, var(--void) 88%, transparent) 18%,
+      transparent 42%
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  @media (max-width: 959px) {
+    .home-atmosphere {
+      width: 100%;
+      height: min(16vh, 140px);
+      top: auto;
+      bottom: 0;
+      opacity: 0.6;
+    }
+  }
+</style>

@@ -1,6 +1,15 @@
 ---
-import { lines } from '../data/lines';
+import { getLines } from '../data/lines';
+import { getTranslations, localizedPath, type Locale } from '../i18n/translations';
 
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang);
+const lines = getLines(lang);
+const base = localizedPath(lang, '');
 const year = new Date().getFullYear();
 ---
 
@@ -13,29 +22,29 @@ const year = new Date().getFullYear();
       </p>
     </div>
 
-    <nav aria-label="Líneas DF">
-      <p class="site-footer__label">Productos</p>
+    <nav aria-label={t.nav.linesAriaLabel}>
+      <p class="site-footer__label">{t.footer.productos}</p>
       <ul>
         {lines.map((line) => (
           <li>
-            <a href={`/#${line.slug}`}>{line.code}</a>
+            <a href={`${base}#${line.slug}`}>{line.code}</a>
           </li>
         ))}
       </ul>
     </nav>
 
-    <nav aria-label="Grupo">
-      <p class="site-footer__label">Grupo</p>
+    <nav aria-label={t.footer.grupo}>
+      <p class="site-footer__label">{t.footer.grupo}</p>
       <ul>
-        <li><a href="/#grupo">Sobre Nosotros</a></li>
-        <li><a href="/#contacto">Contacto</a></li>
-        <li><a href="/privacidad">Privacidad</a></li>
+        <li><a href={`${base}#grupo`}>{t.footer.sobreNosotros}</a></li>
+        <li><a href={`${base}#contacto`}>{t.footer.contacto}</a></li>
+        <li><a href={localizedPath(lang, 'privacidad')}>{t.footer.privacidad}</a></li>
       </ul>
     </nav>
   </div>
 
   <div class="container site-footer__meta">
-    <p>© {year} Dark Feather Group</p>
+    <p>{t.footer.copyright(year)}</p>
   </div>
 </footer>
 

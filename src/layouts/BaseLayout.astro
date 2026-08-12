@@ -2,36 +2,45 @@
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { locales, localizedPath, type Locale } from '../i18n/translations';
 
 interface Props {
+  lang: Locale;
+  slug?: string;
   title?: string;
   description?: string;
 }
 
 const {
+  lang,
+  slug = '',
   title = 'Dark Feather Group',
   description = 'DF Hosting, DF Series, DF Atelier, DF Voices.',
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#0d0d0d" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {locales.map((locale) => (
+      <link rel="alternate" hreflang={locale} href={localizedPath(locale, slug)} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={localizedPath('es', slug)} />
     <title>{title}</title>
   </head>
   <body>
     <!-- Editorial noir landing: Trionn-inspired flow, logo dot-art feather WebGL. -->
     <div class="site-shell">
-      <Header />
+      <Header lang={lang} slug={slug} />
       <main>
         <slot />
       </main>
-      <Footer />
+      <Footer lang={lang} />
     </div>
   </body>
 </html>

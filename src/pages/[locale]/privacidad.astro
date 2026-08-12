@@ -1,0 +1,85 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { locales, getTranslations, type Locale } from '../../i18n/translations';
+
+export function getStaticPaths() {
+  return locales.map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params as { locale: Locale };
+const t = getTranslations(locale);
+const p = t.privacidad;
+---
+
+<BaseLayout lang={locale} slug="privacidad" title={`${p.title} · Dark Feather Group`} description={p.lead}>
+  <section class="page-hero">
+    <div class="container">
+      <h1 class="page-hero__title">{p.title}</h1>
+      <p class="page-hero__lead">{p.lead}</p>
+    </div>
+    <a href="#contenido" class="scroll-cue" aria-label={p.scrollCue}>
+      <span class="scroll-cue__arrow" aria-hidden="true"></span>
+    </a>
+  </section>
+
+  <section id="contenido" class="section">
+    <div class="container privacy">
+      <h2>{p.section1Title}</h2>
+      <p>{p.section1Body}</p>
+
+      <h2>{p.section2Title}</h2>
+      <p>
+        {p.section2Body1}{' '}
+        <code>fonts.googleapis.com</code>{p.section2Body2}{' '}
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
+          {p.section2LinkText}
+        </a>.
+      </p>
+
+      <h2>{p.section3Title}</h2>
+      <p>
+        {p.section3Body}{' '}
+        <a href="mailto:darkfeathergroup@gmail.com">darkfeathergroup@gmail.com</a>.
+      </p>
+
+      <p class="privacy__updated">{p.updated(p.updatedDate)}</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .privacy h2 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .privacy h2:first-child {
+    margin-top: 0;
+  }
+
+  .privacy p {
+    color: var(--fog);
+    max-width: 60ch;
+    line-height: 1.72;
+  }
+
+  .privacy code {
+    font-family: var(--font-body);
+    background: color-mix(in srgb, var(--bone) 8%, transparent);
+    padding: 0.1em 0.4em;
+    border-radius: 0.3em;
+  }
+
+  .privacy a {
+    color: var(--bone);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .privacy__updated {
+    margin-top: 2rem;
+    color: var(--mute);
+    font-size: 0.88rem;
+  }
+</style>

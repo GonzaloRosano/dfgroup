@@ -1,5 +1,16 @@
 ---
-import { lines } from '../../data/lines';
+import { getLines } from '../../data/lines';
+import { getTranslations, type Locale } from '../../i18n/translations';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang).lineasSection;
+const lines = getLines(lang);
+const lineLabels = lines.map((line) => line.code.replace(/^DF\s+/, ''));
+const lineSlugs = lines.map((line) => line.slug);
 ---
 
 <section
@@ -7,12 +18,14 @@ import { lines } from '../../data/lines';
   class="lines-showcase"
   data-lines-showcase
   data-lines-index="0"
-  aria-label="Líneas del grupo"
+  data-line-labels={JSON.stringify(lineLabels)}
+  data-line-slugs={JSON.stringify(lineSlugs)}
+  aria-label={t.ariaLabel}
 >
   <div class="lines-showcase__stage">
     <header class="lines-showcase__header container">
-      <p class="section-eyebrow">Líneas</p>
-      <p class="lines-showcase__counter" data-lines-counter aria-live="polite">Hosting</p>
+      <p class="section-eyebrow">{t.eyebrow}</p>
+      <p class="lines-showcase__counter" data-lines-counter aria-live="polite">{lineLabels[0]}</p>
     </header>
 
     <div class="lines-showcase__viewport" data-lines-viewport>
@@ -44,10 +57,10 @@ import { lines } from '../../data/lines';
     </div>
 
     <div class="lines-showcase__controls container">
-      <button type="button" class="lines-showcase__arrow" data-lines-prev aria-label="Anterior">
+      <button type="button" class="lines-showcase__arrow" data-lines-prev aria-label={t.prev}>
         <span aria-hidden="true">←</span>
       </button>
-      <div class="lines-showcase__progress" role="tablist" aria-label="Líneas del grupo">
+      <div class="lines-showcase__progress" role="tablist" aria-label={t.ariaLabel}>
         {
           lines.map((line, i) => (
             <button
@@ -55,13 +68,13 @@ import { lines } from '../../data/lines';
               role="tab"
               class:list={['lines-showcase__dot', i === 0 && 'is-active']}
               data-lines-dot={i}
-              aria-label={`Ir a ${line.code}`}
+              aria-label={t.dotAriaLabel(line.code)}
               aria-selected={i === 0 ? 'true' : 'false'}
             />
           ))
         }
       </div>
-      <button type="button" class="lines-showcase__arrow" data-lines-next aria-label="Siguiente">
+      <button type="button" class="lines-showcase__arrow" data-lines-next aria-label={t.next}>
         <span aria-hidden="true">→</span>
       </button>
     </div>
@@ -74,8 +87,8 @@ import { lines } from '../../data/lines';
   const linesCounter = document.querySelector('[data-lines-counter]');
   const linesDots = document.querySelectorAll('[data-lines-dot]');
   const linesPanels = document.querySelectorAll('.lines-showcase__panel');
-  const lineLabels = ['Hosting', 'Series', 'Atelier', 'Voices'];
-  const lineSlugs = ['hosting', 'series', 'atelier', 'voices'];
+  const lineLabels: string[] = JSON.parse(linesShowcase?.dataset.lineLabels ?? '[]');
+  const lineSlugs: string[] = JSON.parse(linesShowcase?.dataset.lineSlugs ?? '[]');
   const PANEL_COUNT = linesPanels.length || 4;
 
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));

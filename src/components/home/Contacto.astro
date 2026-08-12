@@ -1,13 +1,20 @@
 ---
+import { getTranslations, type Locale } from '../../i18n/translations';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang).contacto;
 ---
 
-<section id="contacto" class="section contact" tabindex="0" role="region" aria-label="Contacto">
+<section id="contacto" class="section contact" tabindex="0" role="region" aria-label={t.eyebrow}>
   <div class="container contact__inner" data-reveal-group>
-    <p class="section-eyebrow reveal reveal--left" data-reveal>Contacto</p>
-    <h2 class="contact__title reveal" data-reveal>Hablemos.</h2>
+    <p class="section-eyebrow reveal reveal--left" data-reveal>{t.eyebrow}</p>
+    <h2 class="contact__title reveal" data-reveal>{t.title}</h2>
     <p class="contact__lead reveal" data-reveal>
-      Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
-      criterio, no con un bot.
+      {t.lead}
     </p>
     <a
       class="btn btn--solid contact__cta reveal"

@@ -4,6 +4,13 @@ import react from '@astrojs/react';
 // Build sin optimizaciones agresivas: HTML/JS/CSS legibles, sourcemaps on.
 export default defineConfig({
   integrations: [react()],
+  i18n: {
+    locales: ['es', 'en', 'pt'],
+    defaultLocale: 'es',
+    routing: {
+      prefixDefaultLocale: true,
+    },
+  },
   compressHTML: false,
   build: {
     inlineStylesheets: 'never',

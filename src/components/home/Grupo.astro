@@ -1,26 +1,25 @@
-<section id="grupo" class="section about" tabindex="0" role="region" aria-label="Grupo">
+---
+import { getTranslations, type Locale } from '../../i18n/translations';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang).grupo;
+---
+
+<section id="grupo" class="section about" tabindex="0" role="region" aria-label={t.eyebrow}>
   <div class="tagline-strip reveal" data-reveal aria-hidden="true">
-    <p>Sombra·Oficio·Presencia</p>
+    <p>{t.tagline}</p>
   </div>
   <div class="container about__inner">
-    <p class="section-eyebrow reveal reveal--left" data-reveal>Grupo</p>
-    <h2 class="about__title reveal" data-reveal>El colectivo detrás de la pluma.</h2>
+    <p class="section-eyebrow reveal reveal--left" data-reveal>{t.eyebrow}</p>
+    <h2 class="about__title reveal" data-reveal>{t.title}</h2>
     <div class="about__body" data-reveal-group>
-      <p class="reveal" data-reveal>
-        Trabajamos a contraluz: menos ruido, más atmósfera. Identidad,
-        desarrollo web, arte y sonido — bajo una sola dirección, no como
-        cuatro proveedores sueltos con el mismo logo.
-      </p>
-      <p class="reveal" data-reveal>
-        No somos una fábrica de plantillas ni un pitch deck con métricas
-        infladas. Somos cuatro líneas — hosting, series, taller y voces —
-        con el mismo idioma visual y el mismo criterio editorial.
-      </p>
-      <p class="reveal" data-reveal>
-        Un proyecto de Dark Feather se nota antes de leer el nombre: una
-        marca que parece habitada, una serie que respira en capítulos, un
-        sitio que no huele a plantilla. Ese es el oficio completo.
-      </p>
+      {t.body.map((paragraph) => (
+        <p class="reveal" data-reveal>{paragraph}</p>
+      ))}
     </div>
   </div>
 </section>

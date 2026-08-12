@@ -1,22 +1,24 @@
 ---
-const crafts = [
-  { title: 'Diseño', copy: 'Identidad, interfaces y sistemas con jerarquía cinematográfica.' },
-  { title: 'Desarrollo', copy: 'Webs y experiencias: Astro, React, WebGL cuando la idea lo pide.' },
-  { title: 'Arte', copy: 'Dirección de arte y motion que sostienen el mundo de la marca.' },
-  { title: 'Producción', copy: 'De concepto a entrega, con ritmo de estudio.' },
-];
+import { getTranslations, type Locale } from '../../i18n/translations';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang).oficio;
 ---
 
-<section id="oficio" class="section crafts" tabindex="0" role="region" aria-label="Oficio">
+<section id="oficio" class="section crafts" tabindex="0" role="region" aria-label={t.eyebrow}>
   <div class="container">
-    <p class="section-eyebrow reveal reveal--left" data-reveal>Oficio</p>
-    <h2 class="crafts__title reveal" data-reveal>Oficio con atmósfera.</h2>
+    <p class="section-eyebrow reveal reveal--left" data-reveal>{t.eyebrow}</p>
+    <h2 class="crafts__title reveal" data-reveal>{t.title}</h2>
     <p class="crafts__lead reveal" data-reveal>
-      Lo que hacemos cuando la pluma baja al papel — o al código.
+      {t.lead}
     </p>
     <div class="crafts__grid" data-reveal-group>
       {
-        crafts.map((item) => (
+        t.crafts.map((item) => (
           <article class="craft-card card-interactive reveal" data-reveal>
             <h3 class="craft-card__title">{item.title}</h3>
             <p class="craft-card__copy">{item.copy}</p>

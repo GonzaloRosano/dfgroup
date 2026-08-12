@@ -1,19 +1,31 @@
 ---
-import { lines } from '../data/lines';
+import { getLines } from '../data/lines';
+import { getTranslations, locales, localeLabels, localizedPath, type Locale } from '../i18n/translations';
+
+interface Props {
+  lang: Locale;
+  slug?: string;
+}
+
+const { lang, slug = '' } = Astro.props;
+const t = getTranslations(lang);
+const lines = getLines(lang);
+const base = localizedPath(lang, slug);
 
 const navLinks = [
-  { href: '/#grupo', label: 'Grupo' },
-  { href: '/#lineas', label: 'Líneas' },
-  { href: '/#oficio', label: 'Oficio' },
-  { href: '/#contacto', label: 'Contacto' },
+  { href: `${base}#grupo`, label: t.nav.grupo },
+  { href: `${base}#lineas`, label: t.nav.lineas },
+  { href: `${base}#oficio`, label: t.nav.oficio },
+  { href: `${base}#contacto`, label: t.nav.contacto },
 ];
 
 const lineSlugs = lines.map((line) => line.slug);
+const otherLocales = locales.filter((locale) => locale !== lang);
 ---
 
 <header class="site-header" data-site-header>
   <div class="nav-bar" data-nav-bar>
-    <a class="brand" href="/#inicio" aria-label="Dark Feather Group — inicio">
+    <a class="brand" href={`${base}#inicio`} aria-label={`Dark Feather Group — ${t.nav.inicio}`}>
       <span class="brand__mark" aria-hidden="true">
         <img class="brand__logo" src="/logo.svg" alt="" width="20" height="22" />
       </span>
@@ -30,15 +42,21 @@ const lineSlugs = lines.map((line) => line.slug);
       ))}
     </nav>
 
-    <a class="nav__cta" href="/#contacto" data-nav-link>
-      <span class="nav__cta-text">Empezar proyecto</span>
+    <div class="lang-switch" aria-label="Idioma">
+      {otherLocales.map((locale) => (
+        <a class="lang-switch__link" href={localizedPath(locale, slug)}>{localeLabels[locale]}</a>
+      ))}
+    </div>
+
+    <a class="nav__cta" href={`${base}#contacto`} data-nav-link>
+      <span class="nav__cta-text">{t.nav.cta}</span>
       <span class="nav__cta-arrow" aria-hidden="true">→</span>
     </a>
 
     <button
       class="nav__menu-btn"
       type="button"
-      aria-label="Abrir menú"
+      aria-label={t.nav.openMenu}
       aria-expanded="false"
       aria-controls="menu-overlay"
       data-menu-toggle
@@ -47,7 +65,7 @@ const lineSlugs = lines.map((line) => line.slug);
         <span class="nav__menu-line"></span>
         <span class="nav__menu-line"></span>
       </span>
-      <span class="nav__menu-label">Menú</span>
+      <span class="nav__menu-label">{t.nav.menuLabel}</span>
     </button>
   </div>
 
@@ -58,10 +76,10 @@ const lineSlugs = lines.map((line) => line.slug);
     data-open="false"
     role="dialog"
     aria-modal="true"
-    aria-label="Menú de navegación"
+    aria-label={t.nav.menuAriaLabel}
     hidden
   >
-    <button class="menu-overlay__close" type="button" aria-label="Cerrar menú" data-menu-close>
+    <button class="menu-overlay__close" type="button" aria-label={t.nav.closeMenu} data-menu-close>
       <span class="nav__menu-icon nav__menu-icon--close" aria-hidden="true">
         <span class="nav__menu-line"></span>
         <span class="nav__menu-line"></span>
@@ -69,18 +87,18 @@ const lineSlugs = lines.map((line) => line.slug);
     </button>
 
     <div class="menu-overlay__inner">
-      <nav class="menu-overlay__nav" aria-label="Menú completo">
-        <a href="/#inicio" data-menu-link data-nav-link>
-          <span>Inicio</span>
+      <nav class="menu-overlay__nav" aria-label={t.nav.fullMenuAriaLabel}>
+        <a href={`${base}#inicio`} data-menu-link data-nav-link>
+          <span>{t.nav.inicio}</span>
         </a>
         {navLinks.map((link, i) => (
           <a href={link.href} data-menu-link data-nav-link style={`--menu-i: ${i + 1}`}>
             <span>{link.label}</span>
           </a>
         ))}
-        <div class="menu-overlay__lines" aria-label="Líneas del grupo">
+        <div class="menu-overlay__lines" aria-label={t.nav.linesAriaLabel}>
           {lines.map((line, i) => (
-            <a href={`/#${line.slug}`} data-menu-link data-nav-link style={`--menu-i: ${i + navLinks.length + 1}`}>
+            <a href={`${base}#${line.slug}`} data-menu-link data-nav-link style={`--menu-i: ${i + navLinks.length + 1}`}>
               <span class="menu-overlay__line-code">{line.code}</span>
             </a>
           ))}
@@ -88,11 +106,16 @@ const lineSlugs = lines.map((line) => line.slug);
       </nav>
 
       <div class="menu-overlay__contact">
-        <p class="menu-overlay__label">Consultas</p>
+        <p class="menu-overlay__label">{t.nav.consultas}</p>
         <a class="menu-overlay__email" href="mailto:darkfeathergroup@gmail.com">
           darkfeathergroup@gmail.com
         </a>
-        <a class="menu-overlay__talk" href="/#contacto" data-menu-link>Empezar proyecto</a>
+        <a class="menu-overlay__talk" href={`${base}#contacto`} data-menu-link>{t.nav.cta}</a>
+        <div class="menu-overlay__langs" aria-label="Idioma">
+          {otherLocales.map((locale) => (
+            <a href={localizedPath(locale, slug)} data-menu-link>{localeLabels[locale]}</a>
+          ))}
+        </div>
       </div>
     </div>
   </div>
@@ -264,7 +287,7 @@ const lineSlugs = lines.map((line) => line.slug);
     target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   };
 
-  document.querySelectorAll('a[href^="#"], a[href^="/#"]').forEach((anchor) => {
+  document.querySelectorAll('a[href*="#"]').forEach((anchor) => {
     anchor.addEventListener('click', (event) => {
       // anchor.hash resolves the fragment regardless of whether href is
       // "#grupo" or "/#grupo" — needed since links must work from any page.
@@ -467,6 +490,59 @@ const lineSlugs = lines.map((line) => line.slug);
     outline-offset: 2px;
     background: color-mix(in srgb, var(--bone) 10%, transparent);
     color: var(--bone);
+  }
+
+  .lang-switch {
+    display: none;
+    align-items: center;
+    gap: 0.15rem;
+  }
+
+  .lang-switch__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-pill);
+    color: var(--mute);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition:
+      color 220ms var(--ease-out),
+      background 220ms var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lang-switch__link:hover {
+      color: var(--bone);
+      background: color-mix(in srgb, var(--bone) 6%, transparent);
+    }
+  }
+
+  .lang-switch__link:focus-visible {
+    outline-offset: 2px;
+  }
+
+  .menu-overlay__langs {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .menu-overlay__langs a {
+    color: var(--mute);
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .menu-overlay__langs a:hover {
+      color: var(--bone);
+    }
   }
 
   .nav__cta {
@@ -850,6 +926,10 @@ const lineSlugs = lines.map((line) => line.slug);
 
     .nav,
     .nav__cta {
+      display: inline-flex;
+    }
+
+    .lang-switch {
       display: inline-flex;
     }
 

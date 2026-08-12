@@ -1,18 +1,28 @@
+---
+import { getTranslations, type Locale } from '../../i18n/translations';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getTranslations(lang).hero;
+---
+
 <section id="inicio" class="hero">
   <div class="hero__shield" aria-hidden="true"></div>
   <div class="container hero__grid">
     <div class="hero__copy hero-enter">
-      <p class="hero__eyebrow hero-enter__item" style="--enter-i: 0">Dark Feather Group</p>
+      <p class="hero__eyebrow hero-enter__item" style="--enter-i: 0">{t.eyebrow}</p>
       <h1 class="hero__title">
-        <span class="hero-enter__item" style="--enter-i: 1">Diseñado para</span>
-        <span class="hero-enter__item" style="--enter-i: 2">significar algo.</span>
+        <span class="hero-enter__item" style="--enter-i: 1">{t.titleLine1}</span>
+        <span class="hero-enter__item" style="--enter-i: 2">{t.titleLine2}</span>
       </h1>
       <p class="hero__lead hero-enter__item" style="--enter-i: 3">
-        Cuatro líneas, un mismo oficio. Estudio creativo noir — hosting, series,
-        taller y voces bajo una sola pluma.
+        {t.lead}
       </p>
       <div class="hero__actions hero-enter__item" style="--enter-i: 4">
-        <a class="btn btn--solid" href="#contacto">Empezar proyecto</a>
+        <a class="btn btn--solid" href="#contacto">{t.cta}</a>
       </div>
     </div>
 
