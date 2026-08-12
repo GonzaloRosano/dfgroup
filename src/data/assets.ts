@@ -39,9 +39,9 @@ export const siteAssets: SiteAsset[] = [
     id: 'line-icons',
     kind: 'brand',
     label: 'public/icons/*.svg',
-    path: '/icons/hosting.svg',
+    path: '/icons/server.svg',
     description:
-      'Siluetas SVG (hosting, series, atelier, atelier-code, voices) rasterizadas en la misma grilla que logo.svg para los iconos de #lineas.',
+      'Siluetas SVG (server, series, atelier, atelier-code, microphone) rasterizadas en la misma grilla que logo.svg para los iconos de #lineas.',
     usedOn: '/#lineas',
   },
 ];

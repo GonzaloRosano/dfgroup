@@ -29,12 +29,32 @@ const PAD_Y = 0.12;
 const ICON_DILATE_PX = 1;
 
 export const ICON_SVGS = {
-  hosting: '/icons/hosting.svg',
+  hosting: '/icons/server.svg',
   series: '/icons/series.svg',
   atelier: '/icons/atelier.svg',
   atelierCode: '/icons/atelier-code.svg',
-  voices: '/icons/voices.svg',
+  voices: '/icons/microphone.svg',
 } as const;
+
+export type SvgIconData = {
+  paths: string[];
+  viewW: number;
+  viewH: number;
+};
+
+const EMPTY_ICON: SvgIconData = { paths: [], viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
+
+function parseViewBox(svg: Element | null): { viewW: number; viewH: number } {
+  const raw = svg?.getAttribute('viewBox');
+  if (!raw) return { viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
+
+  const parts = raw.trim().split(/[\s,]+/).map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    return { viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
+  }
+
+  return { viewW: parts[2], viewH: parts[3] };
+}
 
 function cellToOrtho(
   u: number,
@@ -248,21 +268,22 @@ export function buildLogoGrid(): GridDot[] {
   return dots;
 }
 
-export function buildIconShapeFromPaths(paths: string[], dots: GridDot[]): Float32Array {
-  const filled = rasterizePaths(paths, ICON_VIEW_W, ICON_VIEW_H, GRID_COLS, GRID_ROWS, ICON_DILATE_PX);
+export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Float32Array {
+  const filled = rasterizePaths(icon.paths, icon.viewW, icon.viewH, GRID_COLS, GRID_ROWS, ICON_DILATE_PX);
   const targets = filledToTargets(filled, GRID_COLS, GRID_ROWS, ICON_ASPECT);
   const out = assignDotsToTargets(dots, targets);
   centerShapeBuffer(out);
   return out;
 }
 
-export async function fetchSvgPaths(url: string): Promise<string[]> {
+export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load SVG: ${url}`);
 
   const svg = await res.text();
   const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
   const paths: string[] = [];
+  const { viewW, viewH } = parseViewBox(doc.documentElement);
 
   doc.querySelectorAll('path').forEach((el) => {
     const d = el.getAttribute('d');
@@ -273,15 +294,15 @@ export async function fetchSvgPaths(url: string): Promise<string[]> {
     console.warn(`[svgDots] no paths parsed from SVG (check XML validity): ${url}`);
   }
 
-  return paths;
+  return { paths, viewW, viewH };
 }
 
 export const EMPTY_ICON_PATHS = Object.fromEntries(
-  Object.keys(ICON_SVGS).map((key) => [key, [] as string[]]),
-) as Record<keyof typeof ICON_SVGS, string[]>;
+  Object.keys(ICON_SVGS).map((key) => [key, { ...EMPTY_ICON }]),
+) as Record<keyof typeof ICON_SVGS, SvgIconData>;
 
-/** Loads line icon SVG paths; failed icons resolve to [] so the feather grid still renders. */
-export async function loadIconPaths(): Promise<Record<keyof typeof ICON_SVGS, string[]>> {
+/** Loads line icon SVG paths; failed icons resolve to empty data so the feather grid still renders. */
+export async function loadIconPaths(): Promise<Record<keyof typeof ICON_SVGS, SvgIconData>> {
   const result = { ...EMPTY_ICON_PATHS };
 
   await Promise.all(
