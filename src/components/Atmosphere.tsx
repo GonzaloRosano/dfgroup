@@ -6,6 +6,7 @@ import {
   centerShapeBuffer,
   EMPTY_ICON_PATHS,
   loadIconPaths,
+  SHAPE_SCALE,
   type GridDot,
   GRID_COLS,
   GRID_ROWS,
@@ -18,6 +19,8 @@ export { GRID_COLS, GRID_ROWS };
  */
 
 const ASPECT = 135 / 122;
+/** Orthographic vertical half-extent — wider frustum prevents top/bottom dot clipping. */
+const VIEW_H = 1.45;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -37,8 +40,8 @@ function buildShapeCircle(dots: GridDot[]): Float32Array {
     const t = i / n;
     const angle = t * Math.PI * 2 - Math.PI * 0.5;
     const r = Math.sqrt(dots[i].row * 0.85 + 0.08) * 0.4;
-    out[i * 3] = Math.cos(angle) * r + SHAPE_OFFSET_X;
-    out[i * 3 + 1] = Math.sin(angle) * r * ASPECT;
+    out[i * 3] = (Math.cos(angle) * r + SHAPE_OFFSET_X) * SHAPE_SCALE;
+    out[i * 3 + 1] = Math.sin(angle) * r * ASPECT * SHAPE_SCALE;
     out[i * 3 + 2] = 0;
   }
 
@@ -51,8 +54,8 @@ function buildShapeWave(dots: GridDot[]): Float32Array {
   const out = new Float32Array(dots.length * 3);
 
   for (let i = 0; i < dots.length; i++) {
-    const x = (dots[i].col - 0.5) * 1.05;
-    const y = Math.sin(dots[i].col * Math.PI * 2.8 + dots[i].row * 1.2) * 0.3 * ASPECT;
+    const x = (dots[i].col - 0.5) * 1.05 * SHAPE_SCALE;
+    const y = Math.sin(dots[i].col * Math.PI * 2.8 + dots[i].row * 1.2) * 0.3 * ASPECT * SHAPE_SCALE;
     out[i * 3] = x + SHAPE_OFFSET_X;
     out[i * 3 + 1] = y;
     out[i * 3 + 2] = 0;
@@ -77,8 +80,8 @@ function buildShapeClusters(dots: GridDot[]): Float32Array {
     const [cx, cy] = centers[cluster];
     const jitter = (dots[i].col - 0.5) * 0.14;
     const jitterY = (dots[i].row - 0.5) * 0.12 * ASPECT;
-    out[i * 3] = cx + jitter + SHAPE_OFFSET_X;
-    out[i * 3 + 1] = cy + jitterY;
+    out[i * 3] = (cx + jitter + SHAPE_OFFSET_X) * SHAPE_SCALE;
+    out[i * 3 + 1] = (cy + jitterY) * SHAPE_SCALE;
     out[i * 3 + 2] = 0;
   }
 
@@ -91,8 +94,8 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
   const out = new Float32Array(dots.length * 3);
 
   for (let i = 0; i < dots.length; i++) {
-    out[i * 3] = (dots[i].col - 0.5) * 1.12 + SHAPE_OFFSET_X;
-    out[i * 3 + 1] = (dots[i].row - 0.5) * 0.06 * ASPECT;
+    out[i * 3] = ((dots[i].col - 0.5) * 1.12 + SHAPE_OFFSET_X) * SHAPE_SCALE;
+    out[i * 3 + 1] = (dots[i].row - 0.5) * 0.06 * ASPECT * SHAPE_SCALE;
     out[i * 3 + 2] = 0;
   }
 
@@ -460,12 +463,12 @@ export default function Atmosphere() {
         ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
       },
       grupo: {
-        scale: 1.04, breathe: 0, offsetX: 0, offsetY: 0,
+        scale: 0.98, breathe: 0, offsetX: 0, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0,
         ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
       },
       lineas: {
-        scale: 1.05, breathe: 0, offsetX: 0, offsetY: 0,
+        scale: 0.96, breathe: 0, offsetX: 0, offsetY: 0,
         scatter: 0, gather: 0, stretchX: 1.06, shear: 0.14, wave: 0.008,
         ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
       },
@@ -484,7 +487,7 @@ export default function Atmosphere() {
     const clock = new THREE.Clock();
     let frame = 0;
     let viewW = 1;
-    let viewH = 1.18;
+    let viewH = VIEW_H;
     let hovering = false;
     let hoverStrength = 0;
     const desktopMq = window.matchMedia('(min-width: 960px)');
@@ -595,7 +598,7 @@ export default function Atmosphere() {
       if (!w || !h) return false;
 
       const aspect = w / h;
-      viewH = 1.18;
+      viewH = VIEW_H;
       viewW = viewH * aspect;
 
       camera.left = -viewW * 0.5;
