@@ -153,11 +153,17 @@ function buildGeometry(dots: GridDot[]) {
   return geo;
 }
 
-function iconPanelWeight(panelIdx: number, progress: number) {
-  const d = Math.abs(progress - panelIdx);
-  // Wider plateau (0.30) and softer edges (0.92) so icons rest fully visible per panel
-  return 1 - THREE.MathUtils.smoothstep(d, 0.3, 0.92);
+/** One-hot icon weights for a settled lineas panel index. */
+function panelToIconW(idx: number) {
+  return {
+    w0: idx === 0 ? 1 : 0,
+    w1: idx === 1 ? 1 : 0,
+    w2: idx === 2 ? 1 : 0,
+    w3: idx === 3 ? 1 : 0,
+  };
 }
+
+const ICON_MORPH_DURATION = 0.5;
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
   if (!el) return 0;
@@ -612,15 +618,50 @@ export default function Atmosphere() {
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
     const sm = { scale: 1, offsetX: 0, offsetY: 0 };
-    let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0 };
+    let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0, settled: true };
     let lineasIconMix = 0;
     let iconW = { w0: 1, w1: 0, w2: 0, w3: 0 };
+    let iconMorphFrom = { w0: 1, w1: 0, w2: 0, w3: 0 };
+    let iconMorphTo = { w0: 1, w1: 0, w2: 0, w3: 0 };
+    let iconMorphT = 1;
     let sectionTransition: { from: keyof typeof cur; to: keyof typeof cur; progress: number } | null = null;
 
+    const startIconMorph = (targetIdx: number) => {
+      const target = panelToIconW(targetIdx);
+      iconMorphFrom = { ...iconW };
+      iconMorphTo = target;
+      iconMorphT = 0;
+    };
+
     const onLineasPanel = (e: Event) => {
-      const detail = (e as CustomEvent<{ index: number; frac: number; progress: number; raw: number }>).detail;
-      if (detail) lineasPanel = detail;
-      if (reduceMotion) renderFrame(0, clock.elapsedTime);
+      const detail = (e as CustomEvent<{
+        index: number;
+        frac: number;
+        progress: number;
+        raw: number;
+        settled?: boolean;
+      }>).detail;
+      if (!detail) return;
+
+      const wasSettled = lineasPanel.settled;
+      lineasPanel = { ...detail, settled: detail.settled ?? true };
+
+      if (reduceMotion) {
+        if (lineasPanel.settled) {
+          iconW = panelToIconW(lineasPanel.index);
+          iconMorphT = 1;
+        }
+        renderFrame(0, clock.elapsedTime);
+        return;
+      }
+
+      if (lineasPanel.settled && !wasSettled) {
+        startIconMorph(lineasPanel.index);
+      } else if (lineasPanel.settled && iconMorphT >= 1) {
+        iconW = panelToIconW(lineasPanel.index);
+        iconMorphFrom = { ...iconW };
+        iconMorphTo = { ...iconW };
+      }
     };
 
     const onSectionTransition = (e: Event) => {
@@ -736,29 +777,22 @@ export default function Atmosphere() {
       const iconTargetMix = inLineasIcons ? 1 : 0;
       lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 2.4, delta);
 
-      const p = lineasPanel.progress;
-      const targetIconW = {
-        w0: iconPanelWeight(0, p),
-        w1: iconPanelWeight(1, p),
-        w2: iconPanelWeight(2, p),
-        w3: iconPanelWeight(3, p),
-      };
+      if (!lineasPanel.settled) {
+        // Hold committed icon weights while the user is scrolling.
+      } else if (iconMorphT < 1) {
+        iconMorphT = Math.min(1, iconMorphT + delta / ICON_MORPH_DURATION);
+        const ease = iconMorphT * iconMorphT * (3 - 2 * iconMorphT);
+        iconW.w0 = THREE.MathUtils.lerp(iconMorphFrom.w0, iconMorphTo.w0, ease);
+        iconW.w1 = THREE.MathUtils.lerp(iconMorphFrom.w1, iconMorphTo.w1, ease);
+        iconW.w2 = THREE.MathUtils.lerp(iconMorphFrom.w2, iconMorphTo.w2, ease);
+        iconW.w3 = THREE.MathUtils.lerp(iconMorphFrom.w3, iconMorphTo.w3, ease);
+      }
 
-      const peakIconW = Math.max(
-        targetIconW.w0,
-        targetIconW.w1,
-        targetIconW.w2,
-        targetIconW.w3,
-      );
+      const peakIconW = Math.max(iconW.w0, iconW.w1, iconW.w2, iconW.w3);
       if (inLineasIcons && peakIconW > 0.2) {
         const mixFloor = cur.lineas * (0.72 + peakIconW * 0.55);
         lineasIconMix = Math.max(lineasIconMix, Math.min(1, mixFloor));
       }
-
-      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.65, delta);
-      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.65, delta);
-      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 1.65, delta);
-      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 1.65, delta);
 
       if (reduceMotion) {
         const inLineas = beats.lineas > 0.35 || lineasPanel.raw > 0.001;

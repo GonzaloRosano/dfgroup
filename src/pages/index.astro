@@ -215,7 +215,10 @@ const crafts = [
   const navHeight = () =>
     parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 0;
 
-  const updateLineasScroll = () => {
+  const LINEAS_SCROLL_SETTLE_MS = 200;
+  let lineasScrollSettleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const updateLineasScroll = (settled = false) => {
     if (!linesShowcase || !linesTrack) return;
 
     const stickyH = linesSticky?.offsetHeight ?? window.innerHeight;
@@ -251,18 +254,31 @@ const crafts = [
 
     window.dispatchEvent(
       new CustomEvent('df:lineas-panel', {
-        detail: { index, frac, progress, raw },
+        detail: { index, frac, progress, raw, settled },
       }),
     );
   };
 
-  const onScroll = () => {
-    updateLineasScroll();
+  const settleLineasScroll = () => {
+    if (lineasScrollSettleTimer) {
+      clearTimeout(lineasScrollSettleTimer);
+      lineasScrollSettleTimer = null;
+    }
+    updateLineasScroll(true);
   };
 
-  updateLineasScroll();
+  const onScroll = () => {
+    updateLineasScroll(false);
+    if (lineasScrollSettleTimer) clearTimeout(lineasScrollSettleTimer);
+    lineasScrollSettleTimer = setTimeout(settleLineasScroll, LINEAS_SCROLL_SETTLE_MS);
+  };
+
+  updateLineasScroll(true);
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll, { passive: true });
+  window.addEventListener('resize', settleLineasScroll, { passive: true });
+  if ('onscrollend' in window) {
+    window.addEventListener('scrollend', settleLineasScroll, { passive: true });
+  }
 </script>
 
 <style>
