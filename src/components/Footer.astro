@@ -18,7 +18,7 @@ const year = new Date().getFullYear();
       <ul>
         {lines.map((line) => (
           <li>
-            <a href={`#${line.slug}`}>{line.code}</a>
+            <a href={`/#${line.slug}`}>{line.code}</a>
           </li>
         ))}
       </ul>
@@ -27,8 +27,8 @@ const year = new Date().getFullYear();
     <nav aria-label="Grupo">
       <p class="site-footer__label">Grupo</p>
       <ul>
-        <li><a href="#grupo">Sobre Nosotros</a></li>
-        <li><a href="#contacto">Contacto</a></li>
+        <li><a href="/#grupo">Sobre Nosotros</a></li>
+        <li><a href="/#contacto">Contacto</a></li>
         <li><a href="/privacidad">Privacidad</a></li>
       </ul>
     </nav>

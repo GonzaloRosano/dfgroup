@@ -2,10 +2,10 @@
 import { lines } from '../data/lines';
 
 const navLinks = [
-  { href: '#grupo', label: 'Grupo' },
-  { href: '#lineas', label: 'Líneas' },
-  { href: '#oficio', label: 'Oficio' },
-  { href: '#contacto', label: 'Contacto' },
+  { href: '/#grupo', label: 'Grupo' },
+  { href: '/#lineas', label: 'Líneas' },
+  { href: '/#oficio', label: 'Oficio' },
+  { href: '/#contacto', label: 'Contacto' },
 ];
 
 const lineSlugs = lines.map((line) => line.slug);
@@ -13,7 +13,7 @@ const lineSlugs = lines.map((line) => line.slug);
 
 <header class="site-header" data-site-header>
   <div class="nav-bar" data-nav-bar>
-    <a class="brand" href="#inicio" aria-label="Dark Feather Group — inicio">
+    <a class="brand" href="/#inicio" aria-label="Dark Feather Group — inicio">
       <span class="brand__mark" aria-hidden="true">
         <img class="brand__logo" src="/logo.svg" alt="" width="20" height="22" />
       </span>
@@ -31,7 +31,7 @@ const lineSlugs = lines.map((line) => line.slug);
       ))}
     </nav>
 
-    <a class="nav__cta" href="#contacto" data-nav-link>
+    <a class="nav__cta" href="/#contacto" data-nav-link>
       <span class="nav__cta-text">Empezar proyecto</span>
       <span class="nav__cta-arrow" aria-hidden="true">→</span>
     </a>
@@ -71,7 +71,7 @@ const lineSlugs = lines.map((line) => line.slug);
 
     <div class="menu-overlay__inner">
       <nav class="menu-overlay__nav" aria-label="Menú completo">
-        <a href="#inicio" data-menu-link data-nav-link>
+        <a href="/#inicio" data-menu-link data-nav-link>
           <span>Inicio</span>
         </a>
         {navLinks.map((link, i) => (
@@ -81,7 +81,7 @@ const lineSlugs = lines.map((line) => line.slug);
         ))}
         <div class="menu-overlay__lines" aria-label="Líneas del grupo">
           {lines.map((line, i) => (
-            <a href={`#${line.slug}`} data-menu-link data-nav-link style={`--menu-i: ${i + navLinks.length + 1}`}>
+            <a href={`/#${line.slug}`} data-menu-link data-nav-link style={`--menu-i: ${i + navLinks.length + 1}`}>
               <span class="menu-overlay__line-code">{line.code}</span>
             </a>
           ))}
@@ -93,7 +93,7 @@ const lineSlugs = lines.map((line) => line.slug);
         <a class="menu-overlay__email" href="mailto:hola@darkfeathergroup.com">
           hola@darkfeathergroup.com
         </a>
-        <a class="menu-overlay__talk" href="#contacto" data-menu-link>Empezar proyecto</a>
+        <a class="menu-overlay__talk" href="/#contacto" data-menu-link>Empezar proyecto</a>
       </div>
     </div>
   </div>
@@ -132,7 +132,7 @@ const lineSlugs = lines.map((line) => line.slug);
     const navId = resolveNavId(sectionId);
 
     document.querySelectorAll('[data-nav-link]').forEach((link) => {
-      const href = link.getAttribute('href')?.slice(1) ?? '';
+      const href = (link.hash || '').slice(1);
       const isLineLink = lineSectionIds.has(href);
       const isActive =
         href === sectionId || (href === navId && !isLineLink);
@@ -265,9 +265,11 @@ const lineSlugs = lines.map((line) => line.slug);
     target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   };
 
-  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+  document.querySelectorAll('a[href^="#"], a[href^="/#"]').forEach((anchor) => {
     anchor.addEventListener('click', (event) => {
-      const hash = anchor.getAttribute('href');
+      // anchor.hash resolves the fragment regardless of whether href is
+      // "#grupo" or "/#grupo" — needed since links must work from any page.
+      const hash = anchor.hash;
       if (!hash || hash === '#') return;
 
       const sectionId = hash.slice(1);
