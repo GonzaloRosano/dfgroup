@@ -25,6 +25,8 @@ const SHAPE_OFFSET_X = 0;
 export const SHAPE_SCALE = 0.75;
 const PAD_X = 0.1;
 const PAD_Y = 0.1;
+/** Max Manhattan distance when mapping empty feather cells to icon pixels. */
+const ICON_NEAREST_MANHATTAN = 3;
 /** No dilation — filled icons are already dense; dilation clips edge pixels. */
 const ICON_DILATE_PX = 0;
 
@@ -220,31 +222,40 @@ export function centerShapeBuffer(positions: Float32Array): void {
   }
 }
 
-type FilledCell = { col: number; row: number; x: number; y: number };
-
-function collectFilledCells(
+function nearestFilledManhattan(
+  col: number,
+  row: number,
   filled: Uint8Array,
   cols: number,
   rows: number,
-  aspect: number,
-): FilledCell[] {
-  const cells: FilledCell[] = [];
+  maxDist: number,
+): { col: number; row: number } | null {
+  let bestDist = maxDist + 1;
+  let best: { col: number; row: number } | null = null;
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      if (!filled[row * cols + col]) continue;
-      const u = col / (cols - 1);
-      const v = row / (rows - 1);
-      const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
-      cells.push({ col, row, x, y });
+  for (let dr = -maxDist; dr <= maxDist; dr++) {
+    for (let dc = -maxDist; dc <= maxDist; dc++) {
+      if (dc === 0 && dr === 0) continue;
+      const manhattan = Math.abs(dc) + Math.abs(dr);
+      if (manhattan > maxDist) continue;
+
+      const c = col + dc;
+      const g = row + dr;
+      if (c < 0 || c >= cols || g < 0 || g >= rows) continue;
+      if (!filled[g * cols + c]) continue;
+
+      if (manhattan < bestDist) {
+        bestDist = manhattan;
+        best = { col: c, row: g };
+      }
     }
   }
 
-  return cells;
+  return best;
 }
 
-/** Map feather dots to icon silhouette via shared grid coordinates + nearest filled cell. */
-function mapDotsToIconGrid(
+/** Map each feather dot to icon ortho coords via direct grid-cell correspondence (logo-style). */
+export function buildIconGrid(
   dots: GridDot[],
   filled: Uint8Array,
   cols: number,
@@ -252,52 +263,107 @@ function mapDotsToIconGrid(
   aspect: number,
 ): Float32Array {
   const out = new Float32Array(dots.length * 3);
-  const cells = collectFilledCells(filled, cols, rows, aspect);
-  if (cells.length === 0) return out;
-
-  const lookup = new Map<number, { x: number; y: number }>();
-  for (const cell of cells) {
-    lookup.set(cell.row * cols + cell.col, { x: cell.x, y: cell.y });
-  }
 
   for (let i = 0; i < dots.length; i++) {
-    const col = Math.round(dots[i].col * (cols - 1));
-    const row = Math.round(dots[i].row * (rows - 1));
-    let pos = lookup.get(row * cols + col);
+    const col = Math.max(0, Math.min(cols - 1, Math.round(dots[i].col * (cols - 1))));
+    const row = Math.max(0, Math.min(rows - 1, Math.round(dots[i].row * (rows - 1))));
 
-    if (!pos) {
-      let bestDist = Infinity;
-      for (const cell of cells) {
-        const dc = cell.col - col;
-        const dr = cell.row - row;
-        const dist = dc * dc + dr * dr;
-        if (dist < bestDist) {
-          bestDist = dist;
-          pos = { x: cell.x, y: cell.y };
-        }
+    let targetCol = col;
+    let targetRow = row;
+
+    if (!filled[row * cols + col]) {
+      const nearest = nearestFilledManhattan(
+        col,
+        row,
+        filled,
+        cols,
+        rows,
+        ICON_NEAREST_MANHATTAN,
+      );
+      if (!nearest) {
+        out[i * 3] = dots[i].x;
+        out[i * 3 + 1] = dots[i].y;
+        continue;
       }
+      targetCol = nearest.col;
+      targetRow = nearest.row;
     }
 
-    if (!pos) continue;
-    out[i * 3] = pos.x;
-    out[i * 3 + 1] = pos.y;
+    const u = targetCol / (cols - 1);
+    const v = targetRow / (rows - 1);
+    const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
+    out[i * 3] = x;
+    out[i * 3 + 1] = y;
   }
 
   centerShapeBuffer(out);
   return out;
 }
 
-export function buildLogoGrid(): GridDot[] {
-  const filled = rasterizePaths([LOGO_PATH], LOGO_VIEW_W, LOGO_VIEW_H);
+export type ShapeBBox = { minX: number; maxX: number; minY: number; maxY: number };
+
+export function shapeBBox(positions: Float32Array): ShapeBBox | null {
+  const n = positions.length / 3;
+  if (n === 0) return null;
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (let i = 0; i < n; i++) {
+    const x = positions[i * 3];
+    const y = positions[i * 3 + 1];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
+  return { minX, maxX, minY, maxY };
+}
+
+export function shapeYSpread(positions: Float32Array): number {
+  const bbox = shapeBBox(positions);
+  return bbox ? bbox.maxY - bbox.minY : 0;
+}
+
+/** True when shape bbox fits inside ortho frustum with fractional margin on each side. */
+export function shapeWithinFrustum(
+  positions: Float32Array,
+  viewHalfW: number,
+  viewHalfH: number,
+  marginFrac = 0.1,
+): boolean {
+  const bbox = shapeBBox(positions);
+  if (!bbox) return false;
+
+  const marginX = viewHalfW * marginFrac;
+  const marginY = viewHalfH * marginFrac;
+
+  return (
+    bbox.minX >= -viewHalfW + marginX
+    && bbox.maxX <= viewHalfW - marginX
+    && bbox.minY >= -viewHalfH + marginY
+    && bbox.maxY <= viewHalfH - marginY
+  );
+}
+
+export function buildGridDotsFromFilled(
+  filled: Uint8Array,
+  cols: number,
+  rows: number,
+  aspect: number,
+): GridDot[] {
   const dots: GridDot[] = [];
 
-  for (let row = 0; row < GRID_ROWS; row++) {
-    for (let col = 0; col < GRID_COLS; col++) {
-      if (!filled[row * GRID_COLS + col]) continue;
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (!filled[row * cols + col]) continue;
 
-      const nx = col / (GRID_COLS - 1);
-      const ny = row / (GRID_ROWS - 1);
-      const { x, y } = cellToOrtho(nx, ny, LOGO_ASPECT, PAD_X, PAD_Y);
+      const nx = col / (cols - 1);
+      const ny = row / (rows - 1);
+      const { x, y } = cellToOrtho(nx, ny, aspect, PAD_X, PAD_Y);
       const tip = 1 - ny;
 
       dots.push({ x, y, tip, col: nx, row: ny });
@@ -329,6 +395,11 @@ export function buildLogoGrid(): GridDot[] {
   return dots;
 }
 
+export function buildLogoGrid(): GridDot[] {
+  const filled = rasterizePaths([LOGO_PATH], LOGO_VIEW_W, LOGO_VIEW_H);
+  return buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, LOGO_ASPECT);
+}
+
 export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Float32Array {
   const filled = rasterizePaths(
     icon.paths,
@@ -344,7 +415,7 @@ export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Flo
     icon.fillRule,
   );
   const aspect = icon.viewH / icon.viewW;
-  return mapDotsToIconGrid(dots, filled, GRID_COLS, GRID_ROWS, aspect);
+  return buildIconGrid(dots, filled, GRID_COLS, GRID_ROWS, aspect);
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {

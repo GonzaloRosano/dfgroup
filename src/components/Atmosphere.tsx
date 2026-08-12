@@ -23,6 +23,8 @@ const ASPECT = 135 / 122;
 const VIEW_H = 1.55;
 /** Extra frustum margin (world units) so point sprites aren't clipped at edges. */
 const VIEW_MARGIN = 0.08;
+/** Disable wave/shear distortion once icon morph is underway. */
+const ICON_STABLE_MIX = 0.3;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -718,11 +720,12 @@ export default function Atmosphere() {
       points.rotation.z = reduceMotion || isDesktop ? 0 : elapsed * 0.024 * cur.inicio;
 
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
-      uniforms.uShear.value = pose.shear * (1 - lineasIconMix);
-      uniforms.uWave.value = pose.wave * (1 - lineasIconMix * 0.85);
+      const iconStable = lineasIconMix > ICON_STABLE_MIX ? 1 : 0;
+      uniforms.uShear.value = iconStable ? 0 : pose.shear * (1 - lineasIconMix);
+      uniforms.uWave.value = iconStable ? 0 : pose.wave * (1 - lineasIconMix * 0.85);
       uniforms.uScatter.value = pose.scatter;
       uniforms.uGather.value = pose.gather;
-      uniforms.uStretchX.value = THREE.MathUtils.lerp(pose.stretchX, 1, lineasIconMix);
+      uniforms.uStretchX.value = iconStable ? 1 : THREE.MathUtils.lerp(pose.stretchX, 1, lineasIconMix);
       uniforms.uDissolve.value = pose.dissolve;
       uniforms.uEmberMix.value = pose.ember;
       uniforms.uAlpha.value = pose.alpha;
@@ -731,7 +734,7 @@ export default function Atmosphere() {
         : cur.oficio * (0.72 + Math.sin(elapsed * 3.1) * 0.28);
       uniforms.uGrupoPulse.value = reduceMotion ? 0 : Math.sin(elapsed * 1.35) * cur.grupo;
       uniforms.uLineasFrac.value = lineasPanel.frac * cur.lineas;
-      uniforms.uLineasSnap.value = reduceMotion || lineasIconMix > 0.5
+      uniforms.uLineasSnap.value = reduceMotion || lineasIconMix > ICON_STABLE_MIX
         ? 0
         : cur.lineas * (0.12 + Math.abs(Math.sin(elapsed * 4.2 + lineasPanel.index)) * 0.28);
 
