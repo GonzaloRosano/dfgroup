@@ -227,19 +227,12 @@ const DOT_VERT = /* glsl */ `
     p.xy += radial * morphPulse * 0.045;
     p.z += morphPulse * 0.16;
 
-    // Inicio: organic per-dot breathe sway, so the hero feather feels alive
-    // instead of just rigidly rocking as one rigid cloud.
-    vec2 inicioOff = vec2(
-      sin(uTime * 0.62 + p.x * 22.0 + p.y * 10.0),
-      cos(uTime * 0.48 + p.y * 26.0 + p.x * 8.0) * 0.35
-    ) * 0.008 * uWInicio * uMotion;
-
     float tipMask = smoothstep(0.7, 0.97, aTip);
     vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
     vec2 contactOff = radial * (0.03 + seed * 0.05) * (0.7 + 0.3 * sin(uTime * 0.55 + seed * 10.0))
                     * uWContacto * uMotion;
     p.xy += radial * uDissolve * sin(uTime * 0.7 + seed * 14.0) * 0.06 * uWContacto;
-    p.xy += inicioOff + oficioOff + contactOff;
+    p.xy += oficioOff + contactOff;
     p.xy += radial * uScatter * (0.55 + seed * 0.65);
 
     vec2 shaft = vec2(0.0, -0.14);
