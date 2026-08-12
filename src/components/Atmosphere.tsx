@@ -12,12 +12,14 @@ import {
 export { GRID_COLS, GRID_ROWS };
 
 /**
- * 2D orthographic dot-grid — one mesh morphs across every page shape.
+ * Perspective point cloud — one mesh morphs across every page shape.
  * inicio feather → grupo circle → lineas icons → oficio feather → contacto line.
+ * Idle: gentle 3D yaw/pitch like the original feather (not 2D Z spin, not tide).
  */
 
 const VIEW_H = 1.0;
 const VIEW_MARGIN = 0.10;
+const CAM_FOV = 36;
 const ICON_MORPH_DURATION = 0.5;
 const ICON_MORPH_DURATION_REDUCED = 0.12;
 const DOT_PX = 2.4;
@@ -26,8 +28,9 @@ const EMBER = new THREE.Color(0xc45a4a);
 const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
 const LINEAS_INDEX_MAX = 3;
-/** Whole-cloud pendulum on Z — subtle, editorial, all sections. */
-const ROCK_AMP = THREE.MathUtils.degToRad(6);
+/** Original feather used PerspectiveCamera + rotation.y; oscillate instead of spin. */
+const YAW_AMP = THREE.MathUtils.degToRad(18);
+const PITCH_AMP = THREE.MathUtils.degToRad(7);
 const ROCK_PERIOD = 8;
 
 function buildPageGeometry(morph: PageMorphData) {
@@ -291,8 +294,8 @@ export default function Atmosphere() {
       }
 
       const scene = new THREE.Scene();
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
-      camera.position.z = 1;
+      const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 0.1, 40);
+      camera.position.set(0, 0, 2);
 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setClearColor(0x000000, 0);
@@ -487,10 +490,12 @@ export default function Atmosphere() {
         viewH = VIEW_H + VIEW_MARGIN * 2;
         viewW = viewH * canvasAspect;
 
-        camera.left = -viewW * 0.5;
-        camera.right = viewW * 0.5;
-        camera.top = viewH * 0.5;
-        camera.bottom = -viewH * 0.5;
+        camera.aspect = canvasAspect;
+        camera.fov = CAM_FOV;
+        camera.near = 0.1;
+        camera.far = 40;
+        const dist = (viewH * 0.5) / Math.tan(THREE.MathUtils.degToRad(CAM_FOV * 0.5));
+        camera.position.set(0, 0, dist);
         camera.updateProjectionMatrix();
 
         renderer.setSize(w, h, false);
@@ -564,9 +569,16 @@ export default function Atmosphere() {
 
         points.scale.setScalar(sm.scale);
         points.position.set(sm.offsetX, sm.offsetY, 0);
-        points.rotation.z = reduceMotion
-          ? 0
-          : Math.sin((elapsed * Math.PI * 2) / ROCK_PERIOD) * ROCK_AMP;
+        if (reduceMotion) {
+          points.rotation.set(0, 0, 0);
+        } else {
+          const t = (elapsed * Math.PI * 2) / ROCK_PERIOD;
+          points.rotation.set(
+            Math.sin(t * 0.8 + 0.7) * PITCH_AMP,
+            Math.sin(t) * YAW_AMP,
+            0,
+          );
+        }
 
         uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
         uniforms.uScatter.value = pose.scatter;
