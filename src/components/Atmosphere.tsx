@@ -20,7 +20,7 @@ export { GRID_COLS, GRID_ROWS };
 
 const ASPECT = 135 / 122;
 /** Orthographic vertical half-extent — wider frustum prevents top/bottom dot clipping. */
-const VIEW_H = 1.45;
+const VIEW_H = 1.9;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -257,7 +257,7 @@ const DOT_VERT = /* glsl */ `
            + lineasShape * uWLineas
            + aLine * uWContacto;
 
-    p.x *= mix(1.0, uStretchX, 0.85);
+    p.x *= mix(1.0, uStretchX, 0.85 * (1.0 - iconFocus * 0.92));
 
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
@@ -469,7 +469,7 @@ export default function Atmosphere() {
       },
       lineas: {
         scale: 0.96, breathe: 0, offsetX: 0, offsetY: 0,
-        scatter: 0, gather: 0, stretchX: 1.06, shear: 0.14, wave: 0.008,
+        scatter: 0, gather: 0, stretchX: 1, shear: 0.08, wave: 0.008,
         ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
       },
       oficio: {

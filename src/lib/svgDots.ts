@@ -23,9 +23,9 @@ const LOGO_PATH =
 
 const SHAPE_OFFSET_X = 0;
 /** Uniform shrink for all SVG-sampled shapes (feather + line icons). */
-export const SHAPE_SCALE = 0.78;
-const PAD_X = 0.12;
-const PAD_Y = 0.12;
+export const SHAPE_SCALE = 0.62;
+const PAD_X = 0.14;
+const PAD_Y = 0.14;
 /** No dilation — filled icons are already dense; dilation clips edge pixels. */
 const ICON_DILATE_PX = 0;
 
@@ -43,6 +43,7 @@ export type SvgIconData = {
   viewY: number;
   viewW: number;
   viewH: number;
+  fillRule: CanvasFillRule;
 };
 
 const EMPTY_ICON: SvgIconData = {
@@ -51,6 +52,7 @@ const EMPTY_ICON: SvgIconData = {
   viewY: 0,
   viewW: ICON_VIEW_W,
   viewH: ICON_VIEW_H,
+  fillRule: 'evenodd',
 };
 
 function parseViewBox(svg: Element | null): Pick<SvgIconData, 'viewX' | 'viewY' | 'viewW' | 'viewH'> {
@@ -64,6 +66,16 @@ function parseViewBox(svg: Element | null): Pick<SvgIconData, 'viewX' | 'viewY' 
   }
 
   return { viewX: parts[0], viewY: parts[1], viewW: parts[2], viewH: parts[3] };
+}
+
+function parseFillRule(svg: Element | null): CanvasFillRule {
+  const rootRule = svg?.getAttribute('fill-rule');
+  if (rootRule === 'evenodd' || rootRule === 'nonzero') return rootRule;
+
+  const pathRule = svg?.querySelector('path')?.getAttribute('fill-rule');
+  if (pathRule === 'evenodd' || pathRule === 'nonzero') return pathRule;
+
+  return 'evenodd';
 }
 
 function cellToOrtho(
@@ -137,6 +149,7 @@ export function rasterizePaths(
   viewY = 0,
   padX = PAD_X,
   padY = PAD_Y,
+  fillRule: CanvasFillRule = 'evenodd',
 ): Uint8Array {
   const canvas = document.createElement('canvas');
   canvas.width = cols;
@@ -162,7 +175,7 @@ export function rasterizePaths(
 
   for (const d of paths) {
     try {
-      ctx.fill(new Path2D(d));
+      ctx.fill(new Path2D(d), fillRule);
     } catch {
       // Skip invalid path data — feather grid still renders.
     }
@@ -209,37 +222,15 @@ export function centerShapeBuffer(positions: Float32Array): void {
   }
 }
 
-function centerTargetPoints(targets: { x: number; y: number }[]): void {
-  if (targets.length === 0) return;
+type FilledCell = { col: number; row: number; x: number; y: number };
 
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-
-  for (const t of targets) {
-    if (t.x < minX) minX = t.x;
-    if (t.x > maxX) maxX = t.x;
-    if (t.y < minY) minY = t.y;
-    if (t.y > maxY) maxY = t.y;
-  }
-
-  const cx = (minX + maxX) * 0.5;
-  const cy = (minY + maxY) * 0.5;
-
-  for (const t of targets) {
-    t.x -= cx;
-    t.y -= cy;
-  }
-}
-
-function filledToTargets(
+function collectFilledCells(
   filled: Uint8Array,
   cols: number,
   rows: number,
   aspect: number,
-) {
-  const targets: { u: number; v: number; x: number; y: number }[] = [];
+): FilledCell[] {
+  const cells: FilledCell[] = [];
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -247,32 +238,54 @@ function filledToTargets(
       const u = col / (cols - 1);
       const v = row / (rows - 1);
       const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
-      targets.push({ u, v, x, y });
+      cells.push({ col, row, x, y });
     }
   }
 
-  targets.sort((a, b) => a.v - b.v || a.u - b.u);
-  centerTargetPoints(targets);
-
-  return targets;
+  return cells;
 }
 
-/** Spatially sorted assignment — keeps dot count identical to feather grid. */
-export function assignDotsToTargets(dots: GridDot[], targets: { x: number; y: number }[]): Float32Array {
+/** Map feather dots to icon silhouette via shared grid coordinates + nearest filled cell. */
+function mapDotsToIconGrid(
+  dots: GridDot[],
+  filled: Uint8Array,
+  cols: number,
+  rows: number,
+  aspect: number,
+): Float32Array {
   const out = new Float32Array(dots.length * 3);
-  if (targets.length === 0) return out;
+  const cells = collectFilledCells(filled, cols, rows, aspect);
+  if (cells.length === 0) return out;
 
-  const order = dots.map((_, i) => i);
-  order.sort((a, b) => dots[a].row - dots[b].row || dots[a].col - dots[b].col);
-
-  for (let j = 0; j < order.length; j++) {
-    const i = order[j];
-    const target = targets[j % targets.length];
-    out[i * 3] = target.x;
-    out[i * 3 + 1] = target.y;
-    out[i * 3 + 2] = 0;
+  const lookup = new Map<number, { x: number; y: number }>();
+  for (const cell of cells) {
+    lookup.set(cell.row * cols + cell.col, { x: cell.x, y: cell.y });
   }
 
+  for (let i = 0; i < dots.length; i++) {
+    const col = Math.round(dots[i].col * (cols - 1));
+    const row = Math.round(dots[i].row * (rows - 1));
+    let pos = lookup.get(row * cols + col);
+
+    if (!pos) {
+      let bestDist = Infinity;
+      for (const cell of cells) {
+        const dc = cell.col - col;
+        const dr = cell.row - row;
+        const dist = dc * dc + dr * dr;
+        if (dist < bestDist) {
+          bestDist = dist;
+          pos = { x: cell.x, y: cell.y };
+        }
+      }
+    }
+
+    if (!pos) continue;
+    out[i * 3] = pos.x;
+    out[i * 3 + 1] = pos.y;
+  }
+
+  centerShapeBuffer(out);
   return out;
 }
 
@@ -328,11 +341,11 @@ export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Flo
     ICON_DILATE_PX,
     icon.viewX,
     icon.viewY,
+    PAD_X,
+    PAD_Y,
+    icon.fillRule,
   );
-  const targets = filledToTargets(filled, GRID_COLS, GRID_ROWS, ICON_ASPECT);
-  const out = assignDotsToTargets(dots, targets);
-  centerShapeBuffer(out);
-  return out;
+  return mapDotsToIconGrid(dots, filled, GRID_COLS, GRID_ROWS, ICON_ASPECT);
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
@@ -343,6 +356,7 @@ export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
   const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
   const paths: string[] = [];
   const { viewX, viewY, viewW, viewH } = parseViewBox(doc.documentElement);
+  const fillRule = parseFillRule(doc.documentElement);
 
   doc.querySelectorAll('path').forEach((el) => {
     const d = el.getAttribute('d');
@@ -353,7 +367,7 @@ export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
     console.warn(`[svgDots] no paths parsed from SVG (check XML validity): ${url}`);
   }
 
-  return { paths, viewX, viewY, viewW, viewH };
+  return { paths, viewX, viewY, viewW, viewH, fillRule };
 }
 
 export const EMPTY_ICON_PATHS = Object.fromEntries(
