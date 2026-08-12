@@ -655,25 +655,43 @@ function iconPositionsForUnion(
 }
 
 /**
- * A single unity ring — "el colectivo" as one whole, not four separate parts.
- * Angle/radius come from the dot's own index, never cells[i].col/row: that
- * carried the original silhouette's raster order, which is what made the
- * previous four-cluster version look like four ghost copies of the same
+ * A single hexagon outline — angular, like the feather's straight edges,
+ * reading as cells/nodes forming one whole rather than a soft circle.
+ * Angle/position come from the dot's own index, never cells[i].col/row:
+ * that carried the original silhouette's raster order, which is what made
+ * the earlier four-cluster version look like four ghost copies of the same
  * shape stamped at different spots instead of four distinct blobs.
  */
 function buildGrupoFromCells(cells: { col: number; row: number }[]): Float32Array {
   const out = new Float32Array(cells.length * 3);
   const n = cells.length || 1;
-  const ringRadius = 0.34;
-  const ringWidth = 0.05;
+  const sides = 6;
+  const radius = 0.36;
+  const bandWidth = 0.045;
+
+  const verts: [number, number][] = [];
+  for (let s = 0; s <= sides; s++) {
+    const a = (s / sides) * Math.PI * 2 - Math.PI * 0.5;
+    verts.push([Math.cos(a) * radius, Math.sin(a) * radius]);
+  }
 
   for (let i = 0; i < n; i++) {
-    const t = i / n;
-    const angle = t * Math.PI * 2 - Math.PI * 0.5;
+    const perim = (i / n) * sides;
+    const seg = Math.floor(perim) % sides;
+    const localT = perim - Math.floor(perim);
+    const [x0, y0] = verts[seg];
+    const [x1, y1] = verts[seg + 1];
+    const x = x0 + (x1 - x0) * localT;
+    const y = y0 + (y1 - y0) * localT;
+
     const hash = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-    const r = ringRadius + (hash - 0.5) * ringWidth;
-    out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
-    out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
+    const jitter = (hash - 0.5) * bandWidth;
+    const len = Math.hypot(x, y) || 1;
+    const jx = x + (x / len) * jitter;
+    const jy = y + (y / len) * jitter;
+
+    out[i * 3] = jx * SHAPE_SCALE;
+    out[i * 3 + 1] = jy * LOGO_ASPECT * SHAPE_SCALE;
   }
 
   centerShapeBuffer(out);
