@@ -3,14 +3,6 @@
 export const GRID_COLS = 96;
 export const GRID_ROWS = 106;
 
-export type GridDot = {
-  x: number;
-  y: number;
-  tip: number;
-  col: number;
-  row: number;
-};
-
 const LOGO_VIEW_W = 122;
 const LOGO_VIEW_H = 135;
 const LOGO_ASPECT = LOGO_VIEW_H / LOGO_VIEW_W;
@@ -25,8 +17,6 @@ const SHAPE_OFFSET_X = 0;
 export const SHAPE_SCALE = 0.78;
 export const PAD_X = 0.1;
 export const PAD_Y = 0.1;
-/** Max Manhattan distance when mapping empty feather cells to icon pixels. */
-const ICON_NEAREST_MANHATTAN = 3;
 /** No dilation — filled icons are already dense; dilation clips edge pixels. */
 const ICON_DILATE_PX = 0;
 
@@ -307,84 +297,6 @@ function closestFilledMap(filled: Uint8Array, cols: number, rows: number): Int32
   return nearest;
 }
 
-function nearestFilledManhattan(
-  col: number,
-  row: number,
-  filled: Uint8Array,
-  cols: number,
-  rows: number,
-  maxDist: number,
-): { col: number; row: number } | null {
-  let bestDist = maxDist + 1;
-  let best: { col: number; row: number } | null = null;
-
-  for (let dr = -maxDist; dr <= maxDist; dr++) {
-    for (let dc = -maxDist; dc <= maxDist; dc++) {
-      if (dc === 0 && dr === 0) continue;
-      const manhattan = Math.abs(dc) + Math.abs(dr);
-      if (manhattan > maxDist) continue;
-
-      const c = col + dc;
-      const g = row + dr;
-      if (c < 0 || c >= cols || g < 0 || g >= rows) continue;
-      if (!filled[g * cols + c]) continue;
-
-      if (manhattan < bestDist) {
-        bestDist = manhattan;
-        best = { col: c, row: g };
-      }
-    }
-  }
-
-  return best;
-}
-
-/** Map each feather dot to icon ortho coords via direct grid-cell correspondence (logo-style). */
-export function buildIconGrid(
-  dots: GridDot[],
-  filled: Uint8Array,
-  cols: number,
-  rows: number,
-  aspect: number,
-): Float32Array {
-  const out = new Float32Array(dots.length * 3);
-
-  for (let i = 0; i < dots.length; i++) {
-    const col = Math.max(0, Math.min(cols - 1, Math.round(dots[i].col * (cols - 1))));
-    const row = Math.max(0, Math.min(rows - 1, Math.round(dots[i].row * (rows - 1))));
-
-    let targetCol = col;
-    let targetRow = row;
-
-    if (!filled[row * cols + col]) {
-      const nearest = nearestFilledManhattan(
-        col,
-        row,
-        filled,
-        cols,
-        rows,
-        ICON_NEAREST_MANHATTAN,
-      );
-      if (!nearest) {
-        out[i * 3] = dots[i].x;
-        out[i * 3 + 1] = dots[i].y;
-        continue;
-      }
-      targetCol = nearest.col;
-      targetRow = nearest.row;
-    }
-
-    const u = targetCol / (cols - 1);
-    const v = targetRow / (rows - 1);
-    const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
-    out[i * 3] = x;
-    out[i * 3 + 1] = y;
-  }
-
-  centerShapeBuffer(out);
-  return out;
-}
-
 export type ShapeBBox = { minX: number; maxX: number; minY: number; maxY: number };
 
 export function shapeBBox(positions: Float32Array): ShapeBBox | null {
@@ -406,130 +318,6 @@ export function shapeBBox(positions: Float32Array): ShapeBBox | null {
   }
 
   return { minX, maxX, minY, maxY };
-}
-
-export function shapeYSpread(positions: Float32Array): number {
-  const bbox = shapeBBox(positions);
-  return bbox ? bbox.maxY - bbox.minY : 0;
-}
-
-/** True when shape bbox fits inside ortho frustum with fractional margin on each side. */
-export function shapeWithinFrustum(
-  positions: Float32Array,
-  viewHalfW: number,
-  viewHalfH: number,
-  marginFrac = 0.1,
-): boolean {
-  const bbox = shapeBBox(positions);
-  if (!bbox) return false;
-
-  const marginX = viewHalfW * marginFrac;
-  const marginY = viewHalfH * marginFrac;
-
-  return (
-    bbox.minX >= -viewHalfW + marginX
-    && bbox.maxX <= viewHalfW - marginX
-    && bbox.minY >= -viewHalfH + marginY
-    && bbox.maxY <= viewHalfH - marginY
-  );
-}
-
-export function buildGridDotsFromFilled(
-  filled: Uint8Array,
-  cols: number,
-  rows: number,
-  aspect: number,
-): GridDot[] {
-  const dots: GridDot[] = [];
-
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      if (!filled[row * cols + col]) continue;
-
-      const nx = col / (cols - 1);
-      const ny = row / (rows - 1);
-      const { x, y } = cellToOrtho(nx, ny, aspect, PAD_X, PAD_Y);
-      const tip = 1 - ny;
-
-      dots.push({ x, y, tip, col: nx, row: ny });
-    }
-  }
-
-  if (dots.length > 0) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-
-    for (const dot of dots) {
-      if (dot.x < minX) minX = dot.x;
-      if (dot.x > maxX) maxX = dot.x;
-      if (dot.y < minY) minY = dot.y;
-      if (dot.y > maxY) maxY = dot.y;
-    }
-
-    const cx = (minX + maxX) * 0.5;
-    const cy = (minY + maxY) * 0.5;
-
-    for (const dot of dots) {
-      dot.x -= cx;
-      dot.y -= cy;
-    }
-  }
-
-  return dots;
-}
-
-export function buildLogoGrid(): GridDot[] {
-  const filled = rasterizePaths([LOGO_PATH], LOGO_VIEW_W, LOGO_VIEW_H);
-  return buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, LOGO_ASPECT);
-}
-
-export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Float32Array {
-  const filled = rasterizePaths(
-    icon.paths,
-    icon.viewW,
-    icon.viewH,
-    GRID_COLS,
-    GRID_ROWS,
-    ICON_DILATE_PX,
-    icon.viewX,
-    icon.viewY,
-    PAD_X,
-    PAD_Y,
-    icon.fillRule,
-  );
-  const aspect = icon.viewH / icon.viewW;
-  return buildIconGrid(dots, filled, GRID_COLS, GRID_ROWS, aspect);
-}
-
-/** Full icon silhouette dots (not constrained to feather mask). */
-export function buildIconDotsFromPaths(icon: SvgIconData): GridDot[] {
-  const filled = rasterizePaths(
-    icon.paths,
-    icon.viewW,
-    icon.viewH,
-    GRID_COLS,
-    GRID_ROWS,
-    ICON_DILATE_PX,
-    icon.viewX,
-    icon.viewY,
-    PAD_X,
-    PAD_Y,
-    icon.fillRule,
-  );
-  const aspect = icon.viewH / icon.viewW;
-  return buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, aspect);
-}
-
-export function iconDotsToPositions(dots: GridDot[]): Float32Array {
-  const out = new Float32Array(dots.length * 3);
-  for (let i = 0; i < dots.length; i++) {
-    out[i * 3] = dots[i].x;
-    out[i * 3 + 1] = dots[i].y;
-    out[i * 3 + 2] = 0;
-  }
-  return out;
 }
 
 /**
