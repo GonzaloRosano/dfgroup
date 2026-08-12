@@ -208,7 +208,12 @@ p {
 .section {
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+  min-height: var(--home-section-min-h);
+  height: var(--home-section-min-h);
   padding-block: var(--space-xl);
+  overflow-y: auto;
+  scroll-snap-align: start;
 }
 
 .section--tight {
@@ -305,9 +310,16 @@ p {
 
 .page-hero {
   position: relative;
+  box-sizing: border-box;
+  min-height: var(--home-section-min-h);
+  height: var(--home-section-min-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: calc(var(--nav-height) + 2.5rem) 0 4rem;
   text-align: center;
   overflow: hidden;
+  scroll-snap-align: start;
 }
 
 .page-hero__title {

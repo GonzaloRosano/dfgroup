@@ -11,7 +11,6 @@ const year = new Date().getFullYear();
         <img class="site-footer__logo" src="/logo.svg" alt="" width="22" height="24" />
         Dark Feather Group
       </p>
-      <p class="site-footer__note">Estudio creativo · noir editorial.</p>
     </div>
 
     <nav aria-label="Líneas DF">
@@ -28,9 +27,9 @@ const year = new Date().getFullYear();
     <nav aria-label="Grupo">
       <p class="site-footer__label">Grupo</p>
       <ul>
-        <li><a href="#grupo">Sobre DF</a></li>
+        <li><a href="#grupo">Sobre Nosotros</a></li>
         <li><a href="#contacto">Contacto</a></li>
-        <li><a href="/derechos">Derechos</a></li>
+        <li><a href="/privacidad">Privacidad</a></li>
       </ul>
     </nav>
   </div>
@@ -47,6 +46,9 @@ const year = new Date().getFullYear();
     border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
     padding-block: var(--space-lg) var(--space-md);
     margin-top: auto;
+    /* Mandatory snap needs a valid landing point past #contacto, or it
+       springs back before the (shorter-than-viewport) footer is reachable. */
+    scroll-snap-align: end;
   }
 
   .site-footer__grid {

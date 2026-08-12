@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const updated = 'agosto de 2026';
+---
+
+<BaseLayout
+  title="Privacidad · Dark Feather Group"
+  description="Qué datos trata este sitio y qué servicios de terceros usa."
+>
+  <section class="page-hero">
+    <div class="container">
+      <h1 class="page-hero__title">Privacidad</h1>
+      <p class="page-hero__lead">
+        Sin formularios, sin cookies, sin analítica. Lo único que sale de
+        acá es una fuente tipográfica.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container privacy">
+      <h2>Qué guardamos</h2>
+      <p>
+        Nada de tu visita. El botón de contacto abre tu propio cliente de
+        correo y ahí termina nuestra parte — el mensaje va directo a tu
+        proveedor de email, nunca pasa por un servidor nuestro.
+      </p>
+
+      <h2>Google Fonts</h2>
+      <p>
+        Bricolage Grotesque e IBM Plex Sans vienen de Google Fonts. Para
+        servirlas, tu navegador le pide la tipografía a{' '}
+        <code>fonts.googleapis.com</code>, y en ese pedido va tu IP. Es el
+        único dato que sale de este sitio hacia un tercero, y lo maneja
+        Google — no nosotros. Está todo en su{' '}
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
+          política de privacidad
+        </a>.
+      </p>
+
+      <h2>Contacto</h2>
+      <p>
+        ¿Dudas sobre esto? Escribinos a{' '}
+        <a href="mailto:hola@darkfeathergroup.com">hola@darkfeathergroup.com</a>.
+      </p>
+
+      <p class="privacy__updated">Última actualización: {updated}.</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .privacy h2 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .privacy h2:first-child {
+    margin-top: 0;
+  }
+
+  .privacy p {
+    color: var(--fog);
+    max-width: 60ch;
+    line-height: 1.72;
+  }
+
+  .privacy code {
+    font-family: var(--font-body);
+    background: color-mix(in srgb, var(--bone) 8%, transparent);
+    padding: 0.1em 0.4em;
+    border-radius: 0.3em;
+  }
+
+  .privacy a {
+    color: var(--bone);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .privacy__updated {
+    margin-top: 2rem;
+    color: var(--mute);
+    font-size: 0.88rem;
+  }
+</style>
