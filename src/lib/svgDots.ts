@@ -32,7 +32,7 @@ const ICON_DILATE_PX = 0;
 export const ICON_SVGS = {
   hosting: '/icons/server.svg',
   series: '/icons/series.svg',
-  atelier: '/icons/atelier.svg',
+  atelier: '/icons/paint.svg',
   atelierCode: '/icons/atelier-code.svg',
   voices: '/icons/microphone.svg',
 } as const;
