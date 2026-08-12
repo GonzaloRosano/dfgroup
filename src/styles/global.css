@@ -50,6 +50,10 @@
     (var(--lineas-panel-count) - 1) * var(--lineas-scroll-per-panel-mobile)
   );
 
+  /* Home sections: keep copy in the left half (WebGL atmosphere uses right 50%). */
+  --home-content-max: min(640px, calc(50vw - 1rem));
+  --home-content-inset: max(1rem, calc((100vw - var(--page)) / 2));
+
   --header-bg: color-mix(in srgb, var(--void) 72%, transparent);
   --header-bg-scrolled: color-mix(in srgb, var(--void) 90%, transparent);
   --header-border: color-mix(in srgb, var(--bone) 9%, transparent);

@@ -409,7 +409,6 @@ const crafts = [
     display: flex;
     flex-direction: column;
     justify-content: center;
-    max-width: 52rem;
     padding-block: clamp(1.5rem, 4vh, 3rem);
   }
 
@@ -634,7 +633,7 @@ const crafts = [
   }
 
   .lines-showcase__copy {
-    max-width: min(36rem, 52vw);
+    max-width: 36rem;
     padding-right: 1.5rem;
   }
 
@@ -775,8 +774,6 @@ const crafts = [
 
   .contact__inner {
     text-align: center;
-    max-width: 36rem;
-    margin-inline: auto;
   }
 
   .contact__lead {
@@ -792,13 +789,51 @@ const crafts = [
   }
 
   @media (min-width: 960px) {
+    .hero__grid.container,
+    .about__inner.container,
+    .crafts > .container,
+    .contact__inner.container,
+    .lines-showcase__header.container,
+    .lines-showcase__copy.container {
+      width: var(--home-content-max);
+      max-width: calc(50vw - 0.5rem);
+      margin-inline: unset;
+      margin-left: var(--home-content-inset);
+      margin-right: auto;
+      padding-right: 1.5rem;
+      box-sizing: border-box;
+    }
+
     .hero__grid {
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: 2rem 3rem;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .hero__copy {
+      width: 100%;
+      max-width: none;
     }
 
     .hero__visual {
-      min-height: clamp(20rem, 52vh, 30rem);
+      display: none;
+    }
+
+    .tagline-strip p {
+      text-align: left;
+      width: var(--home-content-max);
+      max-width: calc(50vw - 0.5rem);
+      margin-inline: unset;
+      margin-left: var(--home-content-inset);
+      padding-right: 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .contact__inner {
+      text-align: left;
+    }
+
+    .contact__lead {
+      margin-inline: 0;
     }
 
     .crafts__grid {
