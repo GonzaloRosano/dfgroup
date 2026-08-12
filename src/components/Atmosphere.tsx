@@ -137,7 +137,6 @@ function buildGeometry(dots: GridDot[], icons: IconPaths) {
   geo.setAttribute('aServer', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.hosting, dots), 3));
   geo.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.series, dots), 3));
   geo.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelier, dots), 3));
-  geo.setAttribute('aCode', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelierCode, dots), 3));
   geo.setAttribute('aMic', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.voices, dots), 3));
   return geo;
 }
@@ -146,7 +145,6 @@ function updateIconAttributes(geometry: THREE.BufferGeometry, dots: GridDot[], i
   geometry.setAttribute('aServer', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.hosting, dots), 3));
   geometry.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.series, dots), 3));
   geometry.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelier, dots), 3));
-  geometry.setAttribute('aCode', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelierCode, dots), 3));
   geometry.setAttribute('aMic', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.voices, dots), 3));
 }
 
@@ -154,12 +152,6 @@ function iconPanelWeight(panelIdx: number, progress: number) {
   const d = Math.abs(progress - panelIdx);
   // Wider plateau (0.30) and softer edges (0.92) so icons rest fully visible per panel
   return 1 - THREE.MathUtils.smoothstep(d, 0.3, 0.92);
-}
-
-function atelierCodeWeight(progress: number) {
-  const sub = THREE.MathUtils.clamp(progress - 2, 0, 1);
-  // Palette holds first half; code morph completes in second half of panel 2
-  return THREE.MathUtils.smoothstep(sub, 0.5, 0.92);
 }
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
@@ -197,7 +189,6 @@ const DOT_VERT = /* glsl */ `
   attribute vec3 aServer;
   attribute vec3 aSeries;
   attribute vec3 aBrush;
-  attribute vec3 aCode;
   attribute vec3 aMic;
 
   uniform float uTime;
@@ -221,7 +212,6 @@ const DOT_VERT = /* glsl */ `
   uniform float uIconW1;
   uniform float uIconW2;
   uniform float uIconW3;
-  uniform float uAtelierCode;
   uniform float uLineasFrac;
   uniform float uGrupoPulse;
   uniform float uLineasSnap;
@@ -243,14 +233,15 @@ const DOT_VERT = /* glsl */ `
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
     vTip = aTip;
 
-    vec3 atelierIcon = mix(aBrush, aCode, uAtelierCode);
     float iconWSum = uIconW0 + uIconW1 + uIconW2 + uIconW3;
     vec3 iconShape = (aServer * uIconW0
                    + aSeries * uIconW1
-                   + atelierIcon * uIconW2
+                   + aBrush * uIconW2
                    + aMic * uIconW3) / max(iconWSum, 0.001);
 
     vec3 lineasShape = mix(aWave, iconShape, uLineasIconMix);
+
+    float iconFocus = uLineasIconMix * clamp(uIconW0 + uIconW1 + uIconW2 + uIconW3, 0.0, 1.0);
 
     vec3 p = position * (uWInicio + uWOficio)
            + aCircle * uWGrupo
@@ -262,7 +253,6 @@ const DOT_VERT = /* glsl */ `
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
     float ang = atan(p.y, p.x);
-    float iconFocus = uLineasIconMix * clamp(uIconW0 + uIconW1 + uIconW2 + uIconW3, 0.0, 1.0);
 
     // --- #inicio: organic breathe sway (tighter Y so feather stays optically centered) ---
     vec2 inicioOff = vec2(
@@ -426,7 +416,6 @@ export default function Atmosphere() {
       uIconW1: { value: 0 },
       uIconW2: { value: 0 },
       uIconW3: { value: 0 },
-      uAtelierCode: { value: 0 },
       uLineasFrac: { value: 0 },
       uGrupoPulse: { value: 0 },
       uLineasSnap: { value: 0 },
@@ -526,7 +515,7 @@ export default function Atmosphere() {
     const sm = { scale: 1, offsetX: 0, offsetY: 0 };
     let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0 };
     let lineasIconMix = 0;
-    let iconW = { w0: 1, w1: 0, w2: 0, w3: 0, atelierCode: 0 };
+    let iconW = { w0: 1, w1: 0, w2: 0, w3: 0 };
     let sectionTransition: { from: keyof typeof cur; to: keyof typeof cur; progress: number } | null = null;
 
     const onLineasPanel = (e: Event) => {
@@ -654,7 +643,6 @@ export default function Atmosphere() {
         w1: iconPanelWeight(1, p),
         w2: iconPanelWeight(2, p),
         w3: iconPanelWeight(3, p),
-        atelierCode: atelierCodeWeight(p),
       };
 
       const peakIconW = Math.max(
@@ -672,7 +660,6 @@ export default function Atmosphere() {
       iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.65, delta);
       iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 1.65, delta);
       iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 1.65, delta);
-      iconW.atelierCode = THREE.MathUtils.damp(iconW.atelierCode, targetIconW.atelierCode, k * 1.8, delta);
 
       if (reduceMotion) {
         const inLineas = beats.lineas > 0.35 || lineasPanel.raw > 0.001;
@@ -688,7 +675,6 @@ export default function Atmosphere() {
           uniforms.uIconW1.value = idx === 1 ? 1 : 0;
           uniforms.uIconW2.value = idx === 2 ? 1 : 0;
           uniforms.uIconW3.value = idx === 3 ? 1 : 0;
-          uniforms.uAtelierCode.value = idx === 2 && lineasPanel.frac > 0.5 ? 1 : 0;
         } else {
           uniforms.uWInicio.value = 1;
           uniforms.uWGrupo.value = 0;
@@ -700,7 +686,6 @@ export default function Atmosphere() {
           uniforms.uIconW1.value = 0;
           uniforms.uIconW2.value = 0;
           uniforms.uIconW3.value = 0;
-          uniforms.uAtelierCode.value = 0;
         }
       } else {
         uniforms.uWInicio.value = cur.inicio;
@@ -713,7 +698,6 @@ export default function Atmosphere() {
         uniforms.uIconW1.value = iconW.w1;
         uniforms.uIconW2.value = iconW.w2;
         uniforms.uIconW3.value = iconW.w3;
-        uniforms.uAtelierCode.value = iconW.atelierCode;
       }
 
       const inicioLife = cur.inicio;
