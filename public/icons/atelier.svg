@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Kidney-shaped palette, thumb hole, paint wells (evenodd cutouts) -->
+  <!-- Kidney palette — inset ~14–82 × 18–90 -->
   <path
     fill="currentColor"
     fill-rule="evenodd"
-    d="M 48 16
-       C 70 14 86 32 84 52
-       C 82 72 66 92 44 94
-       C 26 96 10 80 12 58
-       C 14 36 30 18 48 16 Z
-       M 22 58 A 9 9 0 1 1 21.99 58 Z
-       M 50 38 A 5 5 0 1 1 49.99 38 Z
-       M 64 46 A 4 4 0 1 1 63.99 46 Z
-       M 56 66 A 4.5 4.5 0 1 1 55.99 66 Z"
+    d="M 48 18
+       C 68 16 82 32 80 52
+       C 78 72 64 88 42 90
+       C 24 92 14 78 16 56
+       C 18 34 30 20 48 18 Z
+       M 22 56 A 8 8 0 1 1 21.99 56 Z
+       M 52 40 A 5 5 0 1 1 51.99 40 Z
+       M 66 48 A 4 4 0 1 1 65.99 48 Z
+       M 58 66 A 4.5 4.5 0 1 1 57.99 66 Z"
   />
 </svg>

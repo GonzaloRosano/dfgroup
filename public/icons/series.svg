@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Media button ring -->
+  <!-- Play button ring — circle r=29 at 48,53 (inset 19–87 × 24–82) -->
   <path
     fill="currentColor"
     fill-rule="evenodd"
-    d="M48 17 A36 36 0 1 1 47.99 17 Z M48 23 A30 30 0 1 0 48.01 23 Z"
+    d="M 48 24 A 29 29 0 1 1 47.99 24 Z M 48 30 A 23 23 0 1 0 48.01 30 Z"
   />
   <!-- Play triangle -->
-  <path fill="currentColor" d="M40 39 L40 67 L64 53 Z" />
+  <path fill="currentColor" d="M 42 44 L 42 62 L 62 53 Z" />
 </svg>

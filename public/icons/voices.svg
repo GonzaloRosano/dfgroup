@@ -1,41 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Soft capsule head with dot grille (evenodd cutouts) -->
+  <!-- Vintage Shure-style mic — tilted head, grille slits, neck, stem, base -->
   <path
     fill="currentColor"
     fill-rule="evenodd"
-    d="M 48 10
-       C 64 10 74 22 74 38
-       C 74 54 64 66 48 66
-       C 32 66 22 54 22 38
-       C 22 22 32 10 48 10 Z
-       M 36 28 A 3 3 0 1 1 35.99 28 Z
-       M 48 28 A 3 3 0 1 1 47.99 28 Z
-       M 60 28 A 3 3 0 1 1 59.99 28 Z
-       M 36 38 A 3 3 0 1 1 35.99 38 Z
-       M 48 38 A 3 3 0 1 1 47.99 38 Z
-       M 60 38 A 3 3 0 1 1 59.99 38 Z
-       M 36 48 A 3 3 0 1 1 35.99 48 Z
-       M 48 48 A 3 3 0 1 1 47.99 48 Z
-       M 60 48 A 3 3 0 1 1 59.99 48 Z"
+    d="M 28 16
+       L 66 20
+       Q 72 21 72 27
+       L 68 48
+       Q 67 52 62 51
+       L 24 47
+       Q 18 46 18 40
+       L 22 19
+       Q 23 15 28 16 Z
+       M 26 24 H 64 V 26.5 H 26 Z
+       M 25 28 H 65 V 30.5 H 25 Z
+       M 24 32 H 66 V 34.5 H 24 Z
+       M 24 36 H 66 V 38.5 H 24 Z
+       M 25 40 H 65 V 42.5 H 25 Z
+       M 26 44 H 64 V 46.5 H 26 Z
+       M 28 48 H 62 V 50.5 H 28 Z"
   />
-  <!-- Rounded stem -->
   <path
     fill="currentColor"
-    d="M 42 66 H 54 V 80 Q 54 84 48 84 Q 42 84 42 80 Z"
-  />
-  <!-- Stand arc -->
-  <path
-    fill="currentColor"
-    d="M 26 80
-       C 26 92 36 98 48 98
-       C 60 98 70 92 70 80
-       L 64 80
-       C 64 88 57 92 48 92
-       C 39 92 32 88 32 80 Z"
-  />
-  <!-- Rounded base -->
-  <path
-    fill="currentColor"
-    d="M 32 96 H 64 Q 70 96 70 102 Q 70 104 64 104 H 32 Q 26 104 26 102 Q 26 96 32 96 Z"
+    fill-rule="evenodd"
+    d="M 34 51
+       C 32 54 34 57 38 58
+       C 42 59 46 59 48 59
+       C 50 59 54 59 58 58
+       C 62 57 64 54 62 51
+       C 60 49 54 48 48 48
+       C 42 48 36 49 34 51 Z
+       M 48 53 A 3.5 3.5 0 1 1 47.99 53 Z
+       M 43 59 H 53 V 87 H 43 Z
+       M 34 87
+       H 62
+       Q 68 87 68 91
+       Q 68 94 62 94
+       H 34
+       Q 28 94 28 91
+       Q 28 87 34 87 Z"
   />
 </svg>
