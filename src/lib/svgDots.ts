@@ -37,6 +37,13 @@ export const ICON_SVGS = {
   voices: '/icons/microphone.svg',
 } as const;
 
+export const ICON_PANEL_KEYS = Object.keys(ICON_SVGS) as (keyof typeof ICON_SVGS)[];
+
+/** Ortho bbox width when a lineas icon is fully visible. */
+export const ICON_TARGET_WIDTH = 0.9;
+/** Max ortho bbox height after width scaling; tall icons shrink uniformly. */
+export const ICON_MAX_HEIGHT = 1.0;
+
 export type SvgIconData = {
   paths: string[];
   viewX: number;
@@ -445,6 +452,162 @@ export function iconDotsToPositions(dots: GridDot[]): Float32Array {
     out[i * 3 + 2] = 0;
   }
   return out;
+}
+
+/**
+ * Scale centered shape: width → targetWidth, then uniform shrink if height exceeds maxHeight.
+ */
+export function normalizeIconShapeBuffer(
+  positions: Float32Array,
+  targetWidth = ICON_TARGET_WIDTH,
+  maxHeight = ICON_MAX_HEIGHT,
+): void {
+  const bbox = shapeBBox(positions);
+  if (!bbox) return;
+
+  const width = bbox.maxX - bbox.minX;
+  const height = bbox.maxY - bbox.minY;
+  if (width <= 1e-6 || height <= 1e-6) return;
+
+  let scale = targetWidth / width;
+  if (height * scale > maxHeight) {
+    scale = maxHeight / height;
+  }
+
+  for (let i = 0; i < positions.length / 3; i++) {
+    positions[i * 3] *= scale;
+    positions[i * 3 + 1] *= scale;
+  }
+}
+
+export type LineasIconMorphData = {
+  count: number;
+  positions: Float32Array;
+  iconPositions: [Float32Array, Float32Array, Float32Array, Float32Array];
+  tips: Float32Array;
+  cols: Float32Array;
+  rows: Float32Array;
+};
+
+const EMPTY_MORPH: LineasIconMorphData = {
+  count: 0,
+  positions: new Float32Array(0),
+  iconPositions: [
+    new Float32Array(0),
+    new Float32Array(0),
+    new Float32Array(0),
+    new Float32Array(0),
+  ],
+  tips: new Float32Array(0),
+  cols: new Float32Array(0),
+  rows: new Float32Array(0),
+};
+
+function rasterizeIconFilled(icon: SvgIconData): Uint8Array {
+  return rasterizePaths(
+    icon.paths,
+    icon.viewW,
+    icon.viewH,
+    GRID_COLS,
+    GRID_ROWS,
+    ICON_DILATE_PX,
+    icon.viewX,
+    icon.viewY,
+    PAD_X,
+    PAD_Y,
+    icon.fillRule,
+  );
+}
+
+function iconUnionCells(filledGrids: Uint8Array[]): { col: number; row: number }[] {
+  const cells: { col: number; row: number }[] = [];
+
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const idx = row * GRID_COLS + col;
+      let any = false;
+      for (const filled of filledGrids) {
+        if (filled[idx]) {
+          any = true;
+          break;
+        }
+      }
+      if (any) cells.push({ col, row });
+    }
+  }
+
+  return cells;
+}
+
+/** Per-icon ortho positions aligned to shared grid cells (for GPU morph). */
+function iconPositionsForUnion(
+  icon: SvgIconData,
+  filled: Uint8Array,
+  cells: { col: number; row: number }[],
+): Float32Array {
+  const aspect = icon.viewH / icon.viewW;
+  const out = new Float32Array(cells.length * 3);
+
+  for (let i = 0; i < cells.length; i++) {
+    const { col, row } = cells[i];
+    let targetCol = col;
+    let targetRow = row;
+
+    if (!filled[row * GRID_COLS + col]) {
+      const nearest = nearestFilledManhattan(
+        col,
+        row,
+        filled,
+        GRID_COLS,
+        GRID_ROWS,
+        ICON_NEAREST_MANHATTAN,
+      );
+      if (!nearest) continue;
+      targetCol = nearest.col;
+      targetRow = nearest.row;
+    }
+
+    const u = targetCol / (GRID_COLS - 1);
+    const v = targetRow / (GRID_ROWS - 1);
+    const { x, y } = cellToOrtho(u, v, aspect, PAD_X, PAD_Y);
+    out[i * 3] = x;
+    out[i * 3 + 1] = y;
+  }
+
+  centerShapeBuffer(out);
+  return out;
+}
+
+/** Shared dot set + four normalized position targets for lineas icon morph. */
+export function buildLineasIconMorph(
+  icons: Record<keyof typeof ICON_SVGS, SvgIconData>,
+  targetWidth = ICON_TARGET_WIDTH,
+  maxHeight = ICON_MAX_HEIGHT,
+): LineasIconMorphData {
+  const filledGrids = ICON_PANEL_KEYS.map((key) => rasterizeIconFilled(icons[key]));
+  const cells = iconUnionCells(filledGrids);
+  if (cells.length === 0) return EMPTY_MORPH;
+
+  const iconPositions = ICON_PANEL_KEYS.map((key, idx) => {
+    const positions = iconPositionsForUnion(icons[key], filledGrids[idx], cells);
+    normalizeIconShapeBuffer(positions, targetWidth, maxHeight);
+    return positions;
+  }) as LineasIconMorphData['iconPositions'];
+
+  const count = cells.length;
+  const positions = iconPositions[0].slice();
+  const tips = new Float32Array(count);
+  const cols = new Float32Array(count);
+  const rows = new Float32Array(count);
+
+  for (let i = 0; i < count; i++) {
+    const { col, row } = cells[i];
+    cols[i] = col / (GRID_COLS - 1);
+    rows[i] = row / (GRID_ROWS - 1);
+    tips[i] = 1 - rows[i];
+  }
+
+  return { count, positions, iconPositions, tips, cols, rows };
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
