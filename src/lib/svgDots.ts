@@ -27,6 +27,9 @@ export const ICON_SVGS = {
   voices: '/icons/microphone.svg',
 } as const;
 
+/** Contacto's page shape — a filled icon like the other sections, not a bare line. */
+export const CONTACT_SVG = '/icons/contact.svg';
+
 export const ICON_PANEL_KEYS = Object.keys(ICON_SVGS) as (keyof typeof ICON_SVGS)[];
 
 /** Ortho bbox width when a lineas icon is fully visible. */
@@ -43,7 +46,7 @@ export type SvgIconData = {
   fillRule: CanvasFillRule;
 };
 
-const EMPTY_ICON: SvgIconData = {
+export const EMPTY_ICON: SvgIconData = {
   paths: [],
   viewX: 0,
   viewY: 0,
@@ -578,20 +581,6 @@ function buildGrupoFromCells(
   return { positions: out, edge: edgeOut };
 }
 
-function buildLineFromCells(cells: { col: number; row: number }[]): Float32Array {
-  const out = new Float32Array(cells.length * 3);
-
-  for (let i = 0; i < cells.length; i++) {
-    const col = cells[i].col / (GRID_COLS - 1);
-    const row = cells[i].row / (GRID_ROWS - 1);
-    out[i * 3] = (col - 0.5) * 1.12 * SHAPE_SCALE;
-    out[i * 3 + 1] = (row - 0.5) * 0.06 * LOGO_ASPECT * SHAPE_SCALE;
-  }
-
-  centerShapeBuffer(out);
-  return out;
-}
-
 /** Shared dot set + four normalized position targets for lineas icon morph. */
 export function buildLineasIconMorph(
   icons: Record<keyof typeof ICON_SVGS, SvgIconData>,
@@ -669,12 +658,14 @@ function rasterizeLogoFilled(): Uint8Array {
  */
 export function buildPageMorph(
   icons: Record<keyof typeof ICON_SVGS, SvgIconData>,
+  contactIcon: SvgIconData = EMPTY_ICON,
   targetWidth = ICON_TARGET_WIDTH,
   maxHeight = ICON_MAX_HEIGHT,
 ): PageMorphData {
   const logoFilled = rasterizeLogoFilled();
   const iconFilled = ICON_PANEL_KEYS.map((key) => rasterizeIconFilled(icons[key]));
-  const cells = iconUnionCells([logoFilled, ...iconFilled]);
+  const contactFilled = rasterizeIconFilled(contactIcon);
+  const cells = iconUnionCells([logoFilled, ...iconFilled, contactFilled]);
   if (cells.length === 0) return EMPTY_PAGE_MORPH;
 
   // Same width/height normalization as the lineas icons, so every page
@@ -685,8 +676,13 @@ export function buildPageMorph(
   const { positions: grupo, edge: grupoEdge } = buildGrupoFromCells(cells, logoFilled);
   normalizeIconShapeBuffer(grupo, targetWidth, maxHeight);
   const oficio = inicio.slice();
-  const contacto = buildLineFromCells(cells);
-  normalizeIconShapeBuffer(contacto, targetWidth, maxHeight);
+  const contacto = contactIcon.paths.length && contactFilled.indexOf(1) >= 0
+    ? (() => {
+        const positions = positionsForFilled(contactFilled, cells, contactIcon.viewH / contactIcon.viewW);
+        normalizeIconShapeBuffer(positions, targetWidth, maxHeight);
+        return positions;
+      })()
+    : inicio.slice();
   const iconPositions = ICON_PANEL_KEYS.map((key, idx) => {
     const icon = icons[key];
     if (!icon.paths.length || iconFilled[idx].indexOf(1) < 0) return inicio.slice();

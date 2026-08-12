@@ -15,7 +15,9 @@ import {
 } from 'three';
 import {
   buildPageMorph,
+  CONTACT_SVG,
   EMPTY_ICON_PATHS,
+  fetchSvgPaths,
   loadIconPaths,
   type PageMorphData,
   GRID_COLS,
@@ -229,10 +231,7 @@ const DOT_VERT = /* glsl */ `
 
     float tipMask = smoothstep(0.7, 0.97, aTip);
     vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
-    vec2 contactOff = radial * (0.03 + seed * 0.05) * (0.7 + 0.3 * sin(uTime * 0.55 + seed * 10.0))
-                    * uWContacto * uMotion;
-    p.xy += radial * uDissolve * sin(uTime * 0.7 + seed * 14.0) * 0.06 * uWContacto;
-    p.xy += oficioOff + contactOff;
+    p.xy += oficioOff;
     p.xy += radial * uScatter * (0.55 + seed * 0.65);
 
     vec2 shaft = vec2(0.0, -0.14);
@@ -407,7 +406,7 @@ export default function Atmosphere() {
         },
         contacto: {
           scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0.04,
-          scatter: 0.035, gather: 0, ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
+          scatter: 0, gather: 0, ember: 0.12, alpha: 0.82, reveal: 1, dissolve: 0,
         },
       };
 
@@ -673,9 +672,9 @@ export default function Atmosphere() {
         frame = requestAnimationFrame(tick);
       }
 
-      void loadIconPaths().then((icons) => {
+      void Promise.all([loadIconPaths(), fetchSvgPaths(CONTACT_SVG)]).then(([icons, contactIcon]) => {
         if (disposed) return;
-        pageMorph = buildPageMorph(icons);
+        pageMorph = buildPageMorph(icons, contactIcon);
         if (pageMorph.count === 0) return;
         const nextGeo = buildPageGeometry(pageMorph);
         geometry.dispose();
