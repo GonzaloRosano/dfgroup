@@ -67,28 +67,6 @@ function buildPageGeometry(morph: PageMorphData) {
   return geo;
 }
 
-function panelWeightsOneHot(index: number) {
-  return {
-    w0: index === 0 ? 1 : 0,
-    w1: index === 1 ? 1 : 0,
-    w2: index === 2 ? 1 : 0,
-    w3: index === 3 ? 1 : 0,
-  };
-}
-
-function lerpPanelWeights(
-  a: ReturnType<typeof panelWeightsOneHot>,
-  b: ReturnType<typeof panelWeightsOneHot>,
-  t: number,
-) {
-  return {
-    w0: MathUtils.lerp(a.w0, b.w0, t),
-    w1: MathUtils.lerp(a.w1, b.w1, t),
-    w2: MathUtils.lerp(a.w2, b.w2, t),
-    w3: MathUtils.lerp(a.w3, b.w3, t),
-  };
-}
-
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
@@ -123,10 +101,17 @@ function readLineasIndex(root: Element | null) {
   return MathUtils.clamp(Math.round(n), 0, LINEAS_INDEX_MAX);
 }
 
-/** Page shape chain: inicio 0 → grupo 1 → icons 2–5 → oficio 6 → contacto 7. */
+/**
+ * Page shape chain: inicio 0 → grupo 1 → icons 2–5 → oficio 6 → contacto 7.
+ * iconIdx is the *settled* icon (0-3) — only used to pick which icon bucket
+ * shows while lineas fades in/out. Icon-to-icon swaps while already inside
+ * lineas bypass this entirely (see the direct uFrom/uTo override in
+ * renderFrame) since a linear pos chain can't represent wrap-around
+ * (voices -> hosting) without sweeping through the buckets in between.
+ */
 function pageShapePair(
   w: { inicio: number; grupo: number; lineas: number; oficio: number; contacto: number },
-  iconW: { w0: number; w1: number; w2: number; w3: number },
+  iconIdx: number,
 ) {
   const sum = w.inicio + w.grupo + w.lineas + w.oficio + w.contacto;
   const n = sum < 1e-4
@@ -138,11 +123,6 @@ function pageShapePair(
         oficio: w.oficio / sum,
         contacto: w.contacto / sum,
       };
-
-  const iconSum = iconW.w0 + iconW.w1 + iconW.w2 + iconW.w3;
-  const iconIdx = iconSum < 1e-4
-    ? 0
-    : (iconW.w1 + iconW.w2 * 2 + iconW.w3 * 3) / iconSum;
 
   const pos = n.grupo * 1 + n.lineas * (2 + iconIdx) + n.oficio * 6 + n.contacto * 7;
   const from = MathUtils.clamp(Math.floor(pos + 1e-6), 0, 7);
@@ -478,7 +458,6 @@ export default function Atmosphere() {
 
       const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
       const sm = { scale: 1, offsetX: 0, offsetY: 0 };
-      let iconW = { w0: 1, w1: 0, w2: 0, w3: 0 };
       let settledIconIndex = readLineasIndex(sections.lineas);
       let panelIconMorph = { active: false, from: 0, to: 0, t: 0 };
 
@@ -571,34 +550,21 @@ export default function Atmosphere() {
 
         const pose = blendPose(cur, poses);
 
-        let targetIconW = panelWeightsOneHot(settledIconIndex);
         let iconMorphT = 1;
+        let directIconSwap: { from: number; to: number; t: number } | null = null;
 
         if (panelIconMorph.active) {
           const morphDuration = reduceMotion ? ICON_MORPH_DURATION_REDUCED : ICON_MORPH_DURATION;
           panelIconMorph.t = Math.min(1, panelIconMorph.t + delta / morphDuration);
           const eased = reduceMotion ? panelIconMorph.t : easeInOutCubic(panelIconMorph.t);
-          targetIconW = lerpPanelWeights(
-            panelWeightsOneHot(panelIconMorph.from),
-            panelWeightsOneHot(panelIconMorph.to),
-            eased,
-          );
           iconMorphT = panelIconMorph.t;
+          directIconSwap = { from: panelIconMorph.from, to: panelIconMorph.to, t: eased };
           if (panelIconMorph.t >= 1) {
             settledIconIndex = panelIconMorph.to;
             panelIconMorph.active = false;
             iconMorphT = 1;
-            targetIconW = panelWeightsOneHot(settledIconIndex);
+            directIconSwap = null;
           }
-        }
-
-        if (panelIconMorph.active || reduceMotion) {
-          iconW = { ...targetIconW };
-        } else {
-          iconW.w0 = MathUtils.damp(iconW.w0, targetIconW.w0, k * 6, delta);
-          iconW.w1 = MathUtils.damp(iconW.w1, targetIconW.w1, k * 6, delta);
-          iconW.w2 = MathUtils.damp(iconW.w2, targetIconW.w2, k * 6, delta);
-          iconW.w3 = MathUtils.damp(iconW.w3, targetIconW.w3, k * 6, delta);
         }
         uniforms.uIconMorphT.value = iconMorphT;
 
@@ -609,10 +575,20 @@ export default function Atmosphere() {
         uniforms.uWOficio.value = sectionW.oficio;
         uniforms.uWContacto.value = sectionW.contacto;
 
-        const pair = pageShapePair(sectionW, iconW);
-        uniforms.uFrom.value = pair.from;
-        uniforms.uTo.value = pair.to;
-        uniforms.uShapeT.value = pair.t;
+        if (directIconSwap) {
+          // Direct bucket-to-bucket crossfade between exactly the two icons
+          // involved — every icon-to-icon transition (including the
+          // voices -> hosting wrap) behaves identically: a clean two-shape
+          // swap, never sweeping through unrelated icons in between.
+          uniforms.uFrom.value = 2 + directIconSwap.from;
+          uniforms.uTo.value = 2 + directIconSwap.to;
+          uniforms.uShapeT.value = directIconSwap.t;
+        } else {
+          const pair = pageShapePair(sectionW, settledIconIndex);
+          uniforms.uFrom.value = pair.from;
+          uniforms.uTo.value = pair.to;
+          uniforms.uShapeT.value = pair.t;
+        }
 
         const breatheScale = reduceMotion
           ? 1
