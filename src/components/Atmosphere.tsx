@@ -198,8 +198,14 @@ const DOT_VERT = /* glsl */ `
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
     vTip = aTip;
 
-    float morphActive = step(0.001, uIconMorphT) * (1.0 - step(0.999, uIconMorphT));
-    float morphPulse = sin(uIconMorphT * 3.14159265) * morphActive * uWLineas;
+    // Same "morph" treatment everywhere: the lineas icon-to-icon crossfade
+    // pulses on uIconMorphT; every other section-to-section shape swap now
+    // pulses the same way straight off uShapeT, which is already 0 at rest
+    // and peaks mid-transition — no separate active/inactive flag needed.
+    float iconMorphActive = step(0.001, uIconMorphT) * (1.0 - step(0.999, uIconMorphT));
+    float iconMorphPulse = sin(uIconMorphT * 3.14159265) * iconMorphActive * uWLineas;
+    float shapeMorphPulse = sin(clamp(uShapeT, 0.0, 1.0) * 3.14159265);
+    float morphPulse = max(iconMorphPulse, shapeMorphPulse);
     vMorphDip = 1.0 - 0.12 * morphPulse;
 
     vec3 s0 = aInicio;
@@ -399,25 +405,27 @@ export default function Atmosphere() {
         contacto: document.getElementById('contacto'),
       };
 
+      // Same scale everywhere — inicio/grupo/oficio/contacto now size like lineas.
+      const SHAPE_SCALE_UNIFORM = 0.8;
       const poses = {
         inicio: {
-          scale: 1, offsetX: 0, offsetY: 0, breathe: 0.055,
+          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0, breathe: 0.055,
           scatter: 0, gather: 0, ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
         },
         grupo: {
-          scale: 0.98, offsetX: 0, offsetY: 0,
+          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0,
           scatter: 0, gather: 0, ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
         },
         lineas: {
-          scale: 0.8, offsetX: 0, offsetY: 0,
+          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0,
           scatter: 0, gather: 0, ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
         },
         oficio: {
-          scale: 0.97, offsetX: 0, offsetY: 0,
+          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0,
           scatter: 0, gather: 0.035, ember: 0.92, alpha: 0.81, reveal: 1, dissolve: 0,
         },
         contacto: {
-          scale: 0.86, offsetX: 0, offsetY: 0.04,
+          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0.04,
           scatter: 0.035, gather: 0, ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
         },
       };

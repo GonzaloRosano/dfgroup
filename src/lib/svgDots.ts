@@ -777,10 +777,16 @@ export function buildPageMorph(
   const cells = iconUnionCells([logoFilled, ...iconFilled]);
   if (cells.length === 0) return EMPTY_PAGE_MORPH;
 
+  // Same width/height normalization as the lineas icons, so every page
+  // shape shares one consistent footprint instead of each keeping its own
+  // natural (very different) proportions.
   const inicio = positionsForFilled(logoFilled, cells, LOGO_ASPECT);
+  normalizeIconShapeBuffer(inicio, targetWidth, maxHeight);
   const grupo = buildGrupoFromCells(cells);
+  normalizeIconShapeBuffer(grupo, targetWidth, maxHeight);
   const oficio = inicio.slice();
   const contacto = buildLineFromCells(cells);
+  normalizeIconShapeBuffer(contacto, targetWidth, maxHeight);
   const iconPositions = ICON_PANEL_KEYS.map((key, idx) => {
     const icon = icons[key];
     if (!icon.paths.length || iconFilled[idx].indexOf(1) < 0) return inicio.slice();
