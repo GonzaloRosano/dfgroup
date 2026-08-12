@@ -708,20 +708,22 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): {
     // cell's row, unrelated to grupo's own geometry. Mapping i -> targets
     // directly (i % length) makes "position in hexagon" and "i" both
     // monotonic, so they correlate: one edge of the hexagon systematically
-    // lands on lower-aTip dots and reads as cut off. A multiplicative hash
-    // shuffles which target each i lands on, breaking that correlation so
-    // any dimmer dots scatter evenly instead of concentrating on one side.
-    const shuffled = (i * 2654435761) % targets.length;
-    const target = targets[shuffled];
-    // Wider, better-decorrelated jitter: the previous small/low-entropy
-    // jitter didn't fully break up the underlying grid's regularity, so
-    // repeated cycles through the same target list showed up as visible
-    // moire/wave banding instead of reading as a solid, dense fill.
-    const hashX = Math.abs(Math.sin(i * 12.9898 + 3.1) * 43758.5453) % 1;
-    const hashY = Math.abs(Math.sin(i * 78.233 + 7.9) * 91731.7) % 1;
-    const jitterCells = 1.6;
-    const u = (target.col + (hashX - 0.5) * jitterCells) / (GRID_COLS - 1);
-    const v = (target.row + (hashY - 0.5) * jitterCells) / (GRID_ROWS - 1);
+    // lands on lower-aTip dots and reads as cut off. A sin-based hash
+    // (not `(i * constant) % length`, which has known lattice artifacts
+    // against a non-power-of-2 modulus — that's what produced a visible
+    // chevron pattern here) shuffles which target each i lands on instead,
+    // so any dimmer dots scatter evenly rather than concentrating on one
+    // side or forming a repeating pattern.
+    const hash = Math.abs(Math.sin(i * 12.9898 + 78.233) * 43758.5453) % 1;
+    const target = targets[Math.floor(hash * targets.length)];
+    // No jitter: the feather/icons look clean because positionsForFilled
+    // snaps every dot to an *exact* grid cell — no randomness. Jittering
+    // repeat cycles here (tried twice) always reads as a grainy scatter
+    // instead of that same crisp lattice. Landing repeats exactly on top
+    // of each other is fine — coincident points just render as one dot,
+    // which is indistinguishable from not having repeated them at all.
+    const u = target.col / (GRID_COLS - 1);
+    const v = target.row / (GRID_ROWS - 1);
     const { x, y } = cellToOrtho(u, v, LOGO_ASPECT, PAD_X, PAD_Y);
     out[i * 3] = x;
     out[i * 3 + 1] = y;
