@@ -26,7 +26,8 @@ const SHAPE_OFFSET_X = 0;
 export const SHAPE_SCALE = 0.78;
 const PAD_X = 0.12;
 const PAD_Y = 0.12;
-const ICON_DILATE_PX = 1;
+/** No dilation — filled icons are already dense; dilation clips edge pixels. */
+const ICON_DILATE_PX = 0;
 
 export const ICON_SVGS = {
   hosting: '/icons/server.svg',
@@ -38,22 +39,31 @@ export const ICON_SVGS = {
 
 export type SvgIconData = {
   paths: string[];
+  viewX: number;
+  viewY: number;
   viewW: number;
   viewH: number;
 };
 
-const EMPTY_ICON: SvgIconData = { paths: [], viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
+const EMPTY_ICON: SvgIconData = {
+  paths: [],
+  viewX: 0,
+  viewY: 0,
+  viewW: ICON_VIEW_W,
+  viewH: ICON_VIEW_H,
+};
 
-function parseViewBox(svg: Element | null): { viewW: number; viewH: number } {
+function parseViewBox(svg: Element | null): Pick<SvgIconData, 'viewX' | 'viewY' | 'viewW' | 'viewH'> {
+  const fallback = { viewX: 0, viewY: 0, viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
   const raw = svg?.getAttribute('viewBox');
-  if (!raw) return { viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
+  if (!raw) return fallback;
 
   const parts = raw.trim().split(/[\s,]+/).map(Number);
   if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
-    return { viewW: ICON_VIEW_W, viewH: ICON_VIEW_H };
+    return fallback;
   }
 
-  return { viewW: parts[2], viewH: parts[3] };
+  return { viewX: parts[0], viewY: parts[1], viewW: parts[2], viewH: parts[3] };
 }
 
 function cellToOrtho(
@@ -90,6 +100,31 @@ function dilateFilled(filled: Uint8Array, cw: number, ch: number, radius: number
   return out;
 }
 
+/** Axis-aligned bbox of filled pixels (for verification / debugging). */
+export function filledPixelBBox(
+  filled: Uint8Array,
+  cols: number,
+  rows: number,
+): { minCol: number; maxCol: number; minRow: number; maxRow: number } | null {
+  let minCol = cols;
+  let maxCol = -1;
+  let minRow = rows;
+  let maxRow = -1;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (!filled[row * cols + col]) continue;
+      if (col < minCol) minCol = col;
+      if (col > maxCol) maxCol = col;
+      if (row < minRow) minRow = row;
+      if (row > maxRow) maxRow = row;
+    }
+  }
+
+  if (maxCol < 0) return null;
+  return { minCol, maxCol, minRow, maxRow };
+}
+
 /** Rasterize SVG path data onto the dot grid (same technique as logo.svg sampling). */
 export function rasterizePaths(
   paths: string[],
@@ -98,6 +133,10 @@ export function rasterizePaths(
   cols = GRID_COLS,
   rows = GRID_ROWS,
   dilate = 0,
+  viewX = 0,
+  viewY = 0,
+  padX = PAD_X,
+  padY = PAD_Y,
 ): Uint8Array {
   const canvas = document.createElement('canvas');
   canvas.width = cols;
@@ -107,7 +146,18 @@ export function rasterizePaths(
   if (!ctx) return new Uint8Array(cols * rows);
 
   ctx.clearRect(0, 0, cols, rows);
-  ctx.scale(cols / viewW, rows / viewH);
+
+  const innerW = cols * (1 - padX * 2);
+  const innerH = rows * (1 - padY * 2);
+  const scale = Math.min(innerW / viewW, innerH / viewH);
+  const drawW = viewW * scale;
+  const drawH = viewH * scale;
+  const tx = (cols - drawW) * 0.5;
+  const ty = (rows - drawH) * 0.5;
+
+  ctx.translate(tx, ty);
+  ctx.scale(scale, scale);
+  ctx.translate(-viewX, -viewY);
   ctx.fillStyle = '#fff';
 
   for (const d of paths) {
@@ -269,7 +319,16 @@ export function buildLogoGrid(): GridDot[] {
 }
 
 export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Float32Array {
-  const filled = rasterizePaths(icon.paths, icon.viewW, icon.viewH, GRID_COLS, GRID_ROWS, ICON_DILATE_PX);
+  const filled = rasterizePaths(
+    icon.paths,
+    icon.viewW,
+    icon.viewH,
+    GRID_COLS,
+    GRID_ROWS,
+    ICON_DILATE_PX,
+    icon.viewX,
+    icon.viewY,
+  );
   const targets = filledToTargets(filled, GRID_COLS, GRID_ROWS, ICON_ASPECT);
   const out = assignDotsToTargets(dots, targets);
   centerShapeBuffer(out);
@@ -283,7 +342,7 @@ export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
   const svg = await res.text();
   const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
   const paths: string[] = [];
-  const { viewW, viewH } = parseViewBox(doc.documentElement);
+  const { viewX, viewY, viewW, viewH } = parseViewBox(doc.documentElement);
 
   doc.querySelectorAll('path').forEach((el) => {
     const d = el.getAttribute('d');
@@ -294,7 +353,7 @@ export async function fetchSvgPaths(url: string): Promise<SvgIconData> {
     console.warn(`[svgDots] no paths parsed from SVG (check XML validity): ${url}`);
   }
 
-  return { paths, viewW, viewH };
+  return { paths, viewX, viewY, viewW, viewH };
 }
 
 export const EMPTY_ICON_PATHS = Object.fromEntries(
