@@ -713,9 +713,13 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): {
     // any dimmer dots scatter evenly instead of concentrating on one side.
     const shuffled = (i * 2654435761) % targets.length;
     const target = targets[shuffled];
-    const hashX = Math.abs(Math.sin(i * 91.7 + 1.0) * 12345.6) % 1;
-    const hashY = Math.abs(Math.sin(i * 47.3 + 2.0) * 54321.9) % 1;
-    const jitterCells = 0.6;
+    // Wider, better-decorrelated jitter: the previous small/low-entropy
+    // jitter didn't fully break up the underlying grid's regularity, so
+    // repeated cycles through the same target list showed up as visible
+    // moire/wave banding instead of reading as a solid, dense fill.
+    const hashX = Math.abs(Math.sin(i * 12.9898 + 3.1) * 43758.5453) % 1;
+    const hashY = Math.abs(Math.sin(i * 78.233 + 7.9) * 91731.7) % 1;
+    const jitterCells = 1.6;
     const u = (target.col + (hashX - 0.5) * jitterCells) / (GRID_COLS - 1);
     const v = (target.row + (hashY - 0.5) * jitterCells) / (GRID_ROWS - 1);
     const { x, y } = cellToOrtho(u, v, LOGO_ASPECT, PAD_X, PAD_Y);
