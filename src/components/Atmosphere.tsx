@@ -413,7 +413,7 @@ export default function Atmosphere() {
           scatter: 0, gather: 0, ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
         },
         grupo: {
-          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0,
+          scale: SHAPE_SCALE_UNIFORM, offsetX: 0, offsetY: 0, breathe: 0.045,
           scatter: 0, gather: 0, ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
         },
         lineas: {
@@ -608,7 +608,7 @@ export default function Atmosphere() {
 
         const breatheScale = reduceMotion
           ? 1
-          : 1 + Math.sin(elapsed * 0.75) * pose.breathe * cur.inicio;
+          : 1 + Math.sin(elapsed * 0.75) * pose.breathe * (cur.inicio + cur.grupo);
         sm.scale = MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
         sm.offsetX = MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
         const targetOffsetY = isDesktop ? 0 : pose.offsetY;

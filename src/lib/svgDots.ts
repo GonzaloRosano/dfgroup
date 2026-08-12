@@ -686,8 +686,18 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): Float32Arra
   const circumradius = 0.42;
 
   for (let i = 0; i < n; i++) {
-    const angle = i * GOLDEN_ANGLE;
-    const t = Math.sqrt(i / n);
+    // The golden-angle step resonates with the hexagon's 6-fold symmetry,
+    // producing visible coherent spiral arms from center to the corners.
+    // Scramble angle/radius per-point (deterministic hash of i) to break
+    // that alignment up in the interior — but fade the jitter out toward
+    // the boundary (1 - t0) so the outer edge stays a crisp hexagon
+    // instead of turning into a soft/ragged blob.
+    const t0 = Math.sqrt(i / n);
+    const edgeFade = 1 - t0;
+    const hashA = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
+    const hashR = Math.abs(Math.sin(i * 78.233 + 4.7) * 12345.678) % 1;
+    const angle = i * GOLDEN_ANGLE + (hashA - 0.5) * 0.4 * edgeFade;
+    const t = t0 + (hashR - 0.5) * 0.1 * edgeFade;
     const r = t * polygonRadiusAtAngle(angle, sides, circumradius);
     out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
     out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
