@@ -687,18 +687,47 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): {
   const sides = 6;
   const circumradius = 0.42;
 
-  const targets: { col: number; row: number; edge: number }[] = [];
+  const membership = (col: number, row: number, cols: number, rows: number) => {
+    const u = col / (cols - 1);
+    const v = row / (rows - 1);
+    const x0 = (u - 0.5) * (1 - PAD_X * 2);
+    const y0 = -(v - 0.5) * LOGO_ASPECT * (1 - PAD_Y * 2);
+    const dist = Math.hypot(x0, y0);
+    const boundary = polygonRadiusAtAngle(Math.atan2(y0, x0), sides, circumradius);
+    return dist <= boundary ? dist > boundary * 0.97 : null;
+  };
+
+  // At the full 96x106 grid, the hexagon has *more* candidate cells than n
+  // (the feather/icons never hit this — they're part of the union that
+  // defines n, so they can't outnumber it). More slots than dots means full
+  // coverage is mathematically impossible, which shows up as visible
+  // gaps/holes instead of the feather's dense, seamless grid. Count cells at
+  // full resolution first, then resample at whatever coarser resolution
+  // keeps the candidate count comfortably under n (same circumradius, same
+  // on-screen size after normalizeIconShapeBuffer — just fewer, wider-spaced
+  // candidate cells, so there are enough dots to actually fill them).
+  let fullResCount = 0;
   for (let row = 0; row < GRID_ROWS; row++) {
     for (let col = 0; col < GRID_COLS; col++) {
-      const u = col / (GRID_COLS - 1);
-      const v = row / (GRID_ROWS - 1);
-      const x0 = (u - 0.5) * (1 - PAD_X * 2);
-      const y0 = -(v - 0.5) * LOGO_ASPECT * (1 - PAD_Y * 2);
-      const dist = Math.hypot(x0, y0);
-      const boundary = polygonRadiusAtAngle(Math.atan2(y0, x0), sides, circumradius);
-      if (dist <= boundary) {
-        targets.push({ col, row, edge: dist > boundary * 0.97 ? 1 : 0 });
-      }
+      if (membership(col, row, GRID_COLS, GRID_ROWS) !== null) fullResCount++;
+    }
+  }
+
+  // A hash-based pick isn't perfectly uniform: with only ~1.5x more dots
+  // than cells (the 0.65 this used to be), the odds any given cell never
+  // gets hit across n draws is ~e^(-n/targets.length) — around 20% at that
+  // ratio, matching the still-visible gaps. Lower ratio -> more oversampling
+  // -> that miss probability drops sharply (~5% at ~3x oversampling).
+  const desiredCount = n * 0.33;
+  const scale = Math.min(1, Math.sqrt(desiredCount / Math.max(fullResCount, 1)));
+  const hexCols = Math.max(8, Math.round(GRID_COLS * scale));
+  const hexRows = Math.max(8, Math.round(GRID_ROWS * scale));
+
+  const targets: { col: number; row: number; edge: number }[] = [];
+  for (let row = 0; row < hexRows; row++) {
+    for (let col = 0; col < hexCols; col++) {
+      const edge = membership(col, row, hexCols, hexRows);
+      if (edge !== null) targets.push({ col, row, edge: edge ? 1 : 0 });
     }
   }
   if (targets.length === 0) return { positions: out, edge: edgeOut };
@@ -722,8 +751,8 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): {
     // instead of that same crisp lattice. Landing repeats exactly on top
     // of each other is fine — coincident points just render as one dot,
     // which is indistinguishable from not having repeated them at all.
-    const u = target.col / (GRID_COLS - 1);
-    const v = target.row / (GRID_ROWS - 1);
+    const u = target.col / (hexCols - 1);
+    const v = target.row / (hexRows - 1);
     const { x, y } = cellToOrtho(u, v, LOGO_ASPECT, PAD_X, PAD_Y);
     out[i * 3] = x;
     out[i * 3 + 1] = y;
