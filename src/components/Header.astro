@@ -259,8 +259,10 @@ const lineSlugs = lines.map((line) => line.slug);
     }
   });
 
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const scrollToSection = (target) => {
-    target.scrollIntoView({ behavior: 'auto', block: 'start' });
+    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   };
 
   document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
@@ -276,6 +278,13 @@ const lineSlugs = lines.map((line) => line.slug);
       if (!target) return;
 
       event.preventDefault();
+
+      // Menu overlay sets body.menu-open (overflow: hidden), which silently
+      // blocks scrollIntoView — close it first so the scroll actually runs.
+      if (menuOverlay?.getAttribute('data-open') === 'true') {
+        closeMenu();
+      }
+
       scrollToSection(target);
 
       if (isLine) {
@@ -286,10 +295,6 @@ const lineSlugs = lines.map((line) => line.slug);
       }
 
       history.pushState(null, '', hash);
-
-      if (menuOverlay?.getAttribute('data-open') === 'true') {
-        closeMenu();
-      }
     });
   });
 

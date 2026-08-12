@@ -36,7 +36,10 @@
   --nav-height: calc(
     var(--header-inset-y) * 2 + var(--header-bar-pad-y) * 2 + var(--header-bar-min)
   );
-  --scroll-offset: calc(var(--nav-height) + 0.65rem);
+  /* Header floats (position: fixed, transparent pill) and each home section
+     already pads its own top by --nav-height — no extra scroll offset needed;
+     sections must land flush with the viewport top to fill the screen exactly. */
+  --scroll-offset: 0px;
   --home-viewport-h: 100vh;
   --home-section-min-h: 100vh;
   --home-section-pad-y: clamp(6rem, 10vw, 8rem);
@@ -57,6 +60,16 @@
   --header-blur-scrolled: 22px;
 }
 
+/* Mobile browser chrome resizes the viewport after scrollIntoView lands,
+   drifting 100vh sections out from under the nav target — dvh tracks the
+   real visible viewport so section height stays correct through that resize. */
+@supports (height: 100dvh) {
+  :root {
+    --home-viewport-h: 100dvh;
+    --home-section-min-h: 100dvh;
+  }
+}
+
 *,
 *::before,
 *::after {
@@ -66,10 +79,22 @@
 html {
   scroll-behavior: auto;
   scroll-padding-top: var(--scroll-offset);
+  scroll-snap-type: y mandatory;
 }
 
 main [id] {
   scroll-margin-top: var(--scroll-offset);
+}
+
+/* Full-screen home sections: mandatory forces every scroll to commit to the
+   next section and land flush with the viewport top — proximity barely
+   engages when each section is already exactly one screen tall. */
+#inicio,
+#grupo,
+#lineas,
+#oficio,
+#contacto {
+  scroll-snap-align: start;
 }
 
 @media (prefers-reduced-motion: reduce) {

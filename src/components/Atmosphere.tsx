@@ -183,7 +183,8 @@ const DOT_VERT = /* glsl */ `
     vTip = aTip;
 
     float morphActive = step(0.001, uIconMorphT) * (1.0 - step(0.999, uIconMorphT));
-    vMorphDip = 1.0 - 0.12 * sin(uIconMorphT * 3.14159265) * morphActive * uWLineas;
+    float morphPulse = sin(uIconMorphT * 3.14159265) * morphActive * uWLineas;
+    vMorphDip = 1.0 - 0.12 * morphPulse;
 
     vec3 s0 = aInicio;
     s0 = mix(s0, aGrupo, step(0.5, uFrom));
@@ -208,6 +209,11 @@ const DOT_VERT = /* glsl */ `
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
 
+    // Icon-to-icon crossfade: puff outward + lift toward camera at the
+    // midpoint instead of a flat straight-line lerp, so the swap reads as depth.
+    p.xy += radial * morphPulse * 0.045;
+    p.z += morphPulse * 0.16;
+
     float tipMask = smoothstep(0.7, 0.97, aTip);
     vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
     vec2 contactOff = radial * (0.03 + seed * 0.05) * (0.7 + 0.3 * sin(uTime * 0.55 + seed * 10.0))
@@ -222,7 +228,7 @@ const DOT_VERT = /* glsl */ `
     vWorldXY = (modelMatrix * vec4(p, 1.0)).xy;
 
     vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * (1.0 + uTipPulse * 0.2);
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * (1.0 + uTipPulse * 0.2) * (1.0 + morphPulse * 0.4);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -373,7 +379,7 @@ export default function Atmosphere() {
           scatter: 0, gather: 0, ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
         },
         lineas: {
-          scale: 0.96, offsetX: 0, offsetY: 0,
+          scale: 0.8, offsetX: 0, offsetY: 0,
           scatter: 0, gather: 0, ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
         },
         oficio: {

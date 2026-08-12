@@ -1,7 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 106" fill="none" aria-hidden="true">
-  <!-- Code brackets — inset 14–82 × 24–82 -->
   <path fill="currentColor" d="M 36 24 L 20 53 L 36 82 L 28 82 L 14 53 L 28 24 Z" />
   <path fill="currentColor" d="M 60 24 L 76 53 L 60 82 L 68 82 L 82 53 L 68 24 Z" />
-  <!-- Slash -->
   <path fill="currentColor" d="M 54 28 L 44 78 L 50 78 L 60 28 Z" />
 </svg>
