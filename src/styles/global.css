@@ -88,12 +88,14 @@ main [id] {
 
 /* Full-screen home sections: mandatory forces every scroll to commit to the
    next section and land flush with the viewport top — proximity barely
-   engages when each section is already exactly one screen tall. */
+   engages when each section is already exactly one screen tall.
+   #contacto is deliberately excluded: it sits right before the (much
+   shorter) footer, and two mandatory snap points that close together fight
+   each other, springing back and trapping the scroll before the footer. */
 #inicio,
 #grupo,
 #lineas,
-#oficio,
-#contacto {
+#oficio {
   scroll-snap-align: start;
 }
 
@@ -320,6 +322,54 @@ p {
   text-align: center;
   overflow: hidden;
   scroll-snap-align: start;
+}
+
+.scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(1.5rem, 4vh, 2.75rem);
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  color: var(--mute);
+  transition: color 220ms var(--ease-out);
+}
+
+.scroll-cue__arrow {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  animation: scroll-cue-bounce 1.8s ease-in-out infinite;
+}
+
+@keyframes scroll-cue-bounce {
+  0%,
+  100% {
+    transform: rotate(45deg) translateY(-3px);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: rotate(45deg) translateY(4px);
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .scroll-cue:hover {
+    color: var(--bone);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue__arrow {
+    animation: none;
+  }
 }
 
 .page-hero__title {
