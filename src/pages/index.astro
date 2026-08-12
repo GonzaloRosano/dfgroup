@@ -63,19 +63,19 @@ const crafts = [
       <h2 class="about__title reveal" data-reveal>El colectivo detrás de la pluma.</h2>
       <div class="about__body" data-reveal-group>
         <p class="reveal" data-reveal>
-          Dark Feather Group es un estudio creativo que trabaja a contraluz: menos
-          ruido, más atmósfera. Diseñamos identidades, desarrollamos experiencias
-          web, producimos arte y sonido — siempre con la misma dirección de arte.
+          Trabajamos a contraluz: menos ruido, más atmósfera. Identidad,
+          desarrollo web, arte y sonido — bajo una sola dirección, no como
+          cuatro proveedores sueltos con el mismo logo.
         </p>
         <p class="reveal" data-reveal>
-          No somos una fábrica de plantillas ni un launch deck con números
-          inflados. Somos cuatro líneas de producto — hosting, series, taller y
-          voces — que comparten un lenguaje visual noir y un criterio editorial.
+          No somos una fábrica de plantillas ni un pitch deck con métricas
+          infladas. Somos cuatro líneas — hosting, series, taller y voces —
+          con el mismo idioma visual y el mismo criterio editorial.
         </p>
         <p class="reveal" data-reveal>
-          Cada proyecto busca significar algo: una marca que se siente habitada,
-          una serie que respira en capítulos, una web que no parece un catálogo
-          genérico. Ese es el oficio.
+          Un proyecto de Dark Feather se nota antes de leer el nombre: una
+          marca que parece habitada, una serie que respira en capítulos, un
+          sitio que no huele a plantilla. Ese es el oficio completo.
         </p>
       </div>
     </div>
@@ -567,6 +567,25 @@ const crafts = [
     padding-block: clamp(1.5rem, 4vh, 3rem);
   }
 
+  /* Short viewports (landscape phones, small browser windows): a forced
+     100dvh section clips real content there — fall back to natural height
+     and plain scroll instead of fighting the layout to fit one screen. */
+  @media (max-height: 500px) {
+    .hero,
+    .about,
+    .lines-showcase,
+    .crafts,
+    .contact {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    .lines-showcase__stage {
+      overflow: visible;
+    }
+  }
+
   @media (max-width: 959px) {
     .lines-showcase__copy {
       max-width: none;
@@ -598,6 +617,11 @@ const crafts = [
     .contact {
       min-height: var(--home-section-min-h);
       height: var(--home-section-min-h);
+      padding-bottom: min(30vh, 260px);
+    }
+
+    .lines-showcase__stage {
+      padding-bottom: min(30vh, 260px);
     }
 
     .hero__shield {

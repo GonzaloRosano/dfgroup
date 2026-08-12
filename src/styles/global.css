@@ -99,6 +99,22 @@ main [id] {
   scroll-snap-align: start;
 }
 
+/* Short viewports (landscape phones, small browser windows): a forced
+   100dvh section clips real content there — fall back to natural height
+   and plain scroll instead of fighting the layout to fit one screen. */
+@media (max-height: 500px) {
+  html {
+    scroll-snap-type: none;
+  }
+
+  .page-hero,
+  .section {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

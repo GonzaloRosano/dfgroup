@@ -617,17 +617,24 @@ function iconPositionsForUnion(
   return positionsForFilled(filled, cells, icon.viewH / icon.viewW);
 }
 
-function buildCircleFromCells(cells: { col: number; row: number }[]): Float32Array {
+/** Four soft clusters, one per product line — reads as "collective", sets up the lineas section. */
+function buildGrupoFromCells(cells: { col: number; row: number }[]): Float32Array {
   const out = new Float32Array(cells.length * 3);
-  const n = cells.length || 1;
+  const centers: [number, number][] = [
+    [-0.24, 0.2],
+    [0.24, 0.2],
+    [-0.24, -0.2],
+    [0.24, -0.2],
+  ];
 
   for (let i = 0; i < cells.length; i++) {
-    const t = i / n;
-    const angle = t * Math.PI * 2 - Math.PI * 0.5;
+    const [cx, cy] = centers[i % centers.length];
+    const col = cells[i].col / (GRID_COLS - 1);
     const row = cells[i].row / (GRID_ROWS - 1);
-    const r = Math.sqrt(row * 0.85 + 0.08) * 0.4;
-    out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
-    out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
+    const jitterX = (col - 0.5) * 0.24;
+    const jitterY = (row - 0.5) * 0.22;
+    out[i * 3] = (cx + jitterX) * SHAPE_SCALE;
+    out[i * 3 + 1] = (cy + jitterY) * LOGO_ASPECT * SHAPE_SCALE;
   }
 
   centerShapeBuffer(out);
@@ -728,7 +735,7 @@ export function buildPageMorph(
   if (cells.length === 0) return EMPTY_PAGE_MORPH;
 
   const inicio = positionsForFilled(logoFilled, cells, LOGO_ASPECT);
-  const grupo = buildCircleFromCells(cells);
+  const grupo = buildGrupoFromCells(cells);
   const oficio = inicio.slice();
   const contacto = buildLineFromCells(cells);
   const iconPositions = ICON_PANEL_KEYS.map((key, idx) => {
