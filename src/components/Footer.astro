@@ -52,6 +52,12 @@ const year = new Date().getFullYear();
   .site-footer {
     position: relative;
     z-index: 1;
+    /* .home-atmosphere is position:fixed, so it stays on screen behind
+       whatever else is in the viewport, including the footer once you
+       scroll that far — without its own background the footer is on top
+       for stacking/hit-testing but the canvas still shows through every
+       gap (padding, gutters, letterforms) where the footer paints nothing. */
+    background: var(--void);
     border-top: 1px solid color-mix(in srgb, var(--bone) 8%, transparent);
     padding-block: var(--space-lg) var(--space-md);
     margin-top: auto;
