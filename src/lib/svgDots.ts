@@ -22,9 +22,9 @@ const LOGO_PATH =
 
 const SHAPE_OFFSET_X = 0;
 /** Uniform shrink for all SVG-sampled shapes (feather + line icons). */
-export const SHAPE_SCALE = 0.75;
-const PAD_X = 0.1;
-const PAD_Y = 0.1;
+export const SHAPE_SCALE = 0.78;
+export const PAD_X = 0.1;
+export const PAD_Y = 0.1;
 /** Max Manhattan distance when mapping empty feather cells to icon pixels. */
 const ICON_NEAREST_MANHATTAN = 3;
 /** No dilation — filled icons are already dense; dilation clips edge pixels. */
@@ -416,6 +416,35 @@ export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Flo
   );
   const aspect = icon.viewH / icon.viewW;
   return buildIconGrid(dots, filled, GRID_COLS, GRID_ROWS, aspect);
+}
+
+/** Full icon silhouette dots (not constrained to feather mask). */
+export function buildIconDotsFromPaths(icon: SvgIconData): GridDot[] {
+  const filled = rasterizePaths(
+    icon.paths,
+    icon.viewW,
+    icon.viewH,
+    GRID_COLS,
+    GRID_ROWS,
+    ICON_DILATE_PX,
+    icon.viewX,
+    icon.viewY,
+    PAD_X,
+    PAD_Y,
+    icon.fillRule,
+  );
+  const aspect = icon.viewH / icon.viewW;
+  return buildGridDotsFromFilled(filled, GRID_COLS, GRID_ROWS, aspect);
+}
+
+export function iconDotsToPositions(dots: GridDot[]): Float32Array {
+  const out = new Float32Array(dots.length * 3);
+  for (let i = 0; i < dots.length; i++) {
+    out[i * 3] = dots[i].x;
+    out[i * 3 + 1] = dots[i].y;
+    out[i * 3 + 2] = 0;
+  }
+  return out;
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {

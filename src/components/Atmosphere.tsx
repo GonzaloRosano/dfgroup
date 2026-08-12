@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import {
-  buildIconShapeFromPaths,
+  buildIconDotsFromPaths,
   buildLogoGrid,
   centerShapeBuffer,
   EMPTY_ICON_PATHS,
+  ICON_SVGS,
   loadIconPaths,
   SHAPE_SCALE,
   type GridDot,
@@ -34,6 +35,9 @@ const SECTION_DAMP = 2.4;
 const SHAPE_OFFSET_X = 0;
 
 type IconPaths = Awaited<ReturnType<typeof loadIconPaths>>;
+type IconPanelKey = keyof typeof ICON_SVGS;
+
+const ICON_PANEL_KEYS: IconPanelKey[] = ['hosting', 'series', 'atelier', 'voices'];
 
 /** Filled disc — #grupo */
 function buildShapeCircle(dots: GridDot[]): Float32Array {
@@ -107,7 +111,7 @@ function buildShapeLine(dots: GridDot[]): Float32Array {
   return out;
 }
 
-function buildGeometry(dots: GridDot[], icons: IconPaths) {
+function buildGeometry(dots: GridDot[]) {
   const positions = new Float32Array(dots.length * 3);
   const tips = new Float32Array(dots.length);
   const cols = new Float32Array(dots.length);
@@ -138,18 +142,34 @@ function buildGeometry(dots: GridDot[], icons: IconPaths) {
   geo.setAttribute('aCircle', new THREE.BufferAttribute(buildShapeCircle(dots), 3));
   geo.setAttribute('aWave', new THREE.BufferAttribute(lineasBlend, 3));
   geo.setAttribute('aLine', new THREE.BufferAttribute(buildShapeLine(dots), 3));
-  geo.setAttribute('aServer', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.hosting, dots), 3));
-  geo.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.series, dots), 3));
-  geo.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelier, dots), 3));
-  geo.setAttribute('aMic', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.voices, dots), 3));
   return geo;
 }
 
-function updateIconAttributes(geometry: THREE.BufferGeometry, dots: GridDot[], icons: IconPaths) {
-  geometry.setAttribute('aServer', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.hosting, dots), 3));
-  geometry.setAttribute('aSeries', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.series, dots), 3));
-  geometry.setAttribute('aBrush', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.atelier, dots), 3));
-  geometry.setAttribute('aMic', new THREE.BufferAttribute(buildIconShapeFromPaths(icons.voices, dots), 3));
+function buildIconPanelGeometry(dots: GridDot[]) {
+  const positions = new Float32Array(dots.length * 3);
+  const tips = new Float32Array(dots.length);
+  const cols = new Float32Array(dots.length);
+  const rows = new Float32Array(dots.length);
+
+  dots.forEach((dot, i) => {
+    positions[i * 3] = dot.x;
+    positions[i * 3 + 1] = dot.y;
+    positions[i * 3 + 2] = 0;
+    tips[i] = dot.tip;
+    cols[i] = dot.col;
+    rows[i] = dot.row;
+  });
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('aTip', new THREE.BufferAttribute(tips, 1));
+  geo.setAttribute('aCol', new THREE.BufferAttribute(cols, 1));
+  geo.setAttribute('aRow', new THREE.BufferAttribute(rows, 1));
+  return geo;
+}
+
+function buildIconPanelGeometries(icons: IconPaths) {
+  return ICON_PANEL_KEYS.map((key) => buildIconPanelGeometry(buildIconDotsFromPaths(icons[key])));
 }
 
 function iconPanelWeight(panelIdx: number, progress: number) {
@@ -190,10 +210,6 @@ const DOT_VERT = /* glsl */ `
   attribute vec3 aCircle;
   attribute vec3 aWave;
   attribute vec3 aLine;
-  attribute vec3 aServer;
-  attribute vec3 aSeries;
-  attribute vec3 aBrush;
-  attribute vec3 aMic;
 
   uniform float uTime;
   uniform float uMotion;
@@ -212,10 +228,6 @@ const DOT_VERT = /* glsl */ `
   uniform float uWOficio;
   uniform float uWContacto;
   uniform float uLineasIconMix;
-  uniform float uIconW0;
-  uniform float uIconW1;
-  uniform float uIconW2;
-  uniform float uIconW3;
   uniform float uLineasFrac;
   uniform float uGrupoPulse;
   uniform float uLineasSnap;
@@ -237,20 +249,13 @@ const DOT_VERT = /* glsl */ `
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
     vTip = aTip;
 
-    float iconWSum = uIconW0 + uIconW1 + uIconW2 + uIconW3;
-    vec3 iconShape = (aServer * uIconW0
-                   + aSeries * uIconW1
-                   + aBrush * uIconW2
-                   + aMic * uIconW3) / max(iconWSum, 0.001);
-
-    vec3 lineasShape = mix(aWave, iconShape, uLineasIconMix);
-
-    float iconFocus = uLineasIconMix * clamp(uIconW0 + uIconW1 + uIconW2 + uIconW3, 0.0, 1.0);
+    vec3 lineasShape = aWave;
+    float iconFocus = uLineasIconMix * uWLineas;
     float iconLocked = step(0.5, iconFocus);
 
     vec3 p = position * (uWInicio + uWOficio)
            + aCircle * uWGrupo
-           + lineasShape * uWLineas
+           + lineasShape * uWLineas * (1.0 - uLineasIconMix)
            + aLine * uWContacto;
 
     p.x *= mix(mix(1.0, uStretchX, 0.85), 1.0, iconLocked);
@@ -353,6 +358,96 @@ const DOT_FRAG = /* glsl */ `
   }
 `;
 
+const ICON_VERT = /* glsl */ `
+  attribute float aTip;
+  attribute float aCol;
+  attribute float aRow;
+
+  uniform float uTime;
+  uniform float uMotion;
+  uniform float uPixelRatio;
+  uniform float uWLineas;
+  uniform float uLineasIconMix;
+  uniform float uIconW0;
+  uniform float uIconW1;
+  uniform float uIconW2;
+  uniform float uIconW3;
+  uniform float uPanelIndex;
+  uniform float uLineasSnap;
+  uniform float uAlpha;
+
+  varying float vVisible;
+  varying float vCol;
+  varying vec2 vWorldXY;
+
+  float panelWeight(float idx) {
+    if (idx < 0.5) return uIconW0;
+    if (idx < 1.5) return uIconW1;
+    if (idx < 2.5) return uIconW2;
+    return uIconW3;
+  }
+
+  void main() {
+    vCol = aCol;
+
+    float selfW = panelWeight(uPanelIndex);
+    float mixW = uLineasIconMix * selfW * uWLineas;
+    vVisible = mixW;
+
+    vec3 p = position * uWLineas;
+
+    float iconLocked = step(0.5, mixW);
+    float seed = fract(aCol * 12.9898 + aRow * 78.233);
+
+    float snapWave = sin(uTime * 4.2 + aRow * 24.0);
+    vec2 lineasOff = vec2(
+      snapWave * 0.014 + uLineasSnap * 0.022 * sin(uTime * 9.0 + aCol * 30.0),
+      cos(uTime * 3.1 + aCol * 18.0) * 0.005
+    ) * uWLineas * uMotion * (1.0 - iconLocked);
+
+    p.xy += lineasOff;
+
+    vWorldXY = (modelMatrix * vec4(p, 1.0)).xy;
+
+    vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio;
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const ICON_FRAG = /* glsl */ `
+  uniform vec3 uWhite;
+  uniform vec3 uEmber;
+  uniform float uAlpha;
+  uniform float uTime;
+  uniform vec2 uMouse;
+  uniform float uHoverStrength;
+  uniform float uHoverRadius;
+
+  varying float vVisible;
+  varying float vCol;
+  varying vec2 vWorldXY;
+
+  void main() {
+    if (vVisible < 0.02) discard;
+
+    vec2 uv = gl_PointCoord - 0.5;
+    float d = length(uv);
+    if (d > 0.46) discard;
+
+    vec3 col = uWhite;
+
+    float hoverDist = length(vWorldXY - uMouse);
+    float hoverTint = (1.0 - smoothstep(uHoverRadius * 0.28, uHoverRadius, hoverDist)) * uHoverStrength;
+    col = mix(col, uEmber, hoverTint * 0.52);
+
+    float alpha = uAlpha * vVisible * 0.82;
+    if (alpha < 0.03) discard;
+
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
 export default function Atmosphere() {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -393,7 +488,8 @@ export default function Atmosphere() {
         return () => {};
       }
 
-      const geometry = buildGeometry(gridDots, EMPTY_ICON_PATHS);
+      const geometry = buildGeometry(gridDots);
+      const iconGeometries = buildIconPanelGeometries(EMPTY_ICON_PATHS);
 
     const uniforms = {
       uTime: { value: 0 },
@@ -441,6 +537,25 @@ export default function Atmosphere() {
 
     const points = new THREE.Points(geometry, material);
     scene.add(points);
+
+    const iconMaterials = ICON_PANEL_KEYS.map((_, panelIndex) => new THREE.ShaderMaterial({
+      uniforms: {
+        ...uniforms,
+        uPanelIndex: { value: panelIndex },
+      },
+      vertexShader: ICON_VERT,
+      fragmentShader: ICON_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.NormalBlending,
+    }));
+
+    const iconPoints = iconGeometries.map((iconGeo, panelIndex) => {
+      const mesh = new THREE.Points(iconGeo, iconMaterials[panelIndex]);
+      scene.add(mesh);
+      return mesh;
+    });
 
     const sections = {
       inicio: document.getElementById('inicio'),
@@ -719,6 +834,12 @@ export default function Atmosphere() {
       points.position.set(sm.offsetX, sm.offsetY, 0);
       points.rotation.z = reduceMotion || isDesktop ? 0 : elapsed * 0.024 * cur.inicio;
 
+      for (const iconMesh of iconPoints) {
+        iconMesh.scale.setScalar(sm.scale);
+        iconMesh.position.set(sm.offsetX, sm.offsetY, 0);
+        iconMesh.rotation.z = points.rotation.z;
+      }
+
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
       const iconStable = lineasIconMix > ICON_STABLE_MIX ? 1 : 0;
       uniforms.uShear.value = iconStable ? 0 : pose.shear * (1 - lineasIconMix);
@@ -764,7 +885,13 @@ export default function Atmosphere() {
 
     void loadIconPaths().then((icons) => {
       if (disposed) return;
-      updateIconAttributes(geometry, gridDots, icons);
+      const nextGeometries = buildIconPanelGeometries(icons);
+      nextGeometries.forEach((nextGeo, panelIndex) => {
+        const mesh = iconPoints[panelIndex];
+        if (!mesh) return;
+        mesh.geometry.dispose();
+        mesh.geometry = nextGeo;
+      });
     });
 
     teardown = () => {
@@ -782,6 +909,8 @@ export default function Atmosphere() {
       canvas.removeEventListener('pointerleave', onPointerLeave);
       geometry.dispose();
       material.dispose();
+      iconGeometries.forEach((iconGeo) => iconGeo.dispose());
+      iconMaterials.forEach((iconMat) => iconMat.dispose());
       renderer.dispose();
       if (canvas.parentElement === mount) {
         mount.removeChild(canvas);
