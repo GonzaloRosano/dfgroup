@@ -697,7 +697,7 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): {
       const dist = Math.hypot(x0, y0);
       const boundary = polygonRadiusAtAngle(Math.atan2(y0, x0), sides, circumradius);
       if (dist <= boundary) {
-        targets.push({ col, row, edge: dist > boundary * 0.88 ? 1 : 0 });
+        targets.push({ col, row, edge: dist > boundary * 0.97 ? 1 : 0 });
       }
     }
   }
