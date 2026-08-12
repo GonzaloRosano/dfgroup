@@ -677,7 +677,10 @@ function polygonRadiusAtAngle(angle: number, sides: number, circumradius: number
  * exactly on top of each other. Also flags cells near the boundary so the
  * caller can brighten just the outermost dots.
  */
-function buildGrupoFromCells(cells: { col: number; row: number }[]): {
+function buildGrupoFromCells(
+  cells: { col: number; row: number }[],
+  logoFilled: Uint8Array,
+): {
   positions: Float32Array;
   edge: Float32Array;
 } {
@@ -723,40 +726,64 @@ function buildGrupoFromCells(cells: { col: number; row: number }[]): {
   const hexCols = Math.max(8, Math.round(GRID_COLS * scale));
   const hexRows = Math.max(8, Math.round(GRID_ROWS * scale));
 
-  const targets: { col: number; row: number; edge: number }[] = [];
+  const targets: { edge: number; x: number; y: number }[] = [];
   for (let row = 0; row < hexRows; row++) {
     for (let col = 0; col < hexCols; col++) {
       const edge = membership(col, row, hexCols, hexRows);
-      if (edge !== null) targets.push({ col, row, edge: edge ? 1 : 0 });
+      if (edge === null) continue;
+      const u = col / (hexCols - 1);
+      const v = row / (hexRows - 1);
+      const { x, y } = cellToOrtho(u, v, LOGO_ASPECT, PAD_X, PAD_Y);
+      targets.push({ edge: edge ? 1 : 0, x, y });
     }
   }
   if (targets.length === 0) return { positions: out, edge: edgeOut };
 
   for (let i = 0; i < n; i++) {
-    // aTip (visibility) is derived from cells[i].row — the *shared* union
-    // cell's row, unrelated to grupo's own geometry. Mapping i -> targets
-    // directly (i % length) makes "position in hexagon" and "i" both
-    // monotonic, so they correlate: one edge of the hexagon systematically
-    // lands on lower-aTip dots and reads as cut off. A sin-based hash
-    // (not `(i * constant) % length`, which has known lattice artifacts
-    // against a non-power-of-2 modulus — that's what produced a visible
-    // chevron pattern here) shuffles which target each i lands on instead,
-    // so any dimmer dots scatter evenly rather than concentrating on one
-    // side or forming a repeating pattern.
-    const hash = Math.abs(Math.sin(i * 12.9898 + 78.233) * 43758.5453) % 1;
-    const target = targets[Math.floor(hash * targets.length)];
-    // No jitter: the feather/icons look clean because positionsForFilled
-    // snaps every dot to an *exact* grid cell — no randomness. Jittering
-    // repeat cycles here (tried twice) always reads as a grainy scatter
-    // instead of that same crisp lattice. Landing repeats exactly on top
-    // of each other is fine — coincident points just render as one dot,
-    // which is indistinguishable from not having repeated them at all.
-    const u = target.col / (hexCols - 1);
-    const v = target.row / (hexRows - 1);
-    const { x, y } = cellToOrtho(u, v, LOGO_ASPECT, PAD_X, PAD_Y);
-    out[i * 3] = x;
-    out[i * 3 + 1] = y;
-    edgeOut[i] = target.edge;
+    const { col, row } = cells[i];
+
+    if (logoFilled[row * GRID_COLS + col]) {
+      // This cell is part of the feather's own silhouette, so it's also a
+      // dot that's *on screen* right before/after the inicio <-> grupo
+      // morph. Send it to the nearest target *by real on-screen distance*
+      // (not a hash, not a rescaled grid index) so that transition moves
+      // each feather dot a short, coherent distance instead of teleporting
+      // it to an unrelated slot.
+      const homeU = col / (GRID_COLS - 1);
+      const homeV = row / (GRID_ROWS - 1);
+      const { x: hx, y: hy } = cellToOrtho(homeU, homeV, LOGO_ASPECT, PAD_X, PAD_Y);
+
+      let best = targets[0];
+      let bestDist = Infinity;
+      for (const target of targets) {
+        const dx = target.x - hx;
+        const dy = target.y - hy;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = target;
+        }
+      }
+
+      out[i * 3] = best.x;
+      out[i * 3 + 1] = best.y;
+      edgeOut[i] = best.edge;
+    } else {
+      // This cell only exists because some *line icon* silhouette needed
+      // it — grupo never morphs directly with those, so there's no
+      // transition to keep coherent here. Nearest-by-distance would still
+      // apply (it doesn't know that), and because these icon-only cells
+      // cluster tightly in their own small silhouette-shaped region, a
+      // faithful distance match reproduces that recognizable icon outline
+      // inside the hexagon instead of blending into it. A hash scatters
+      // these across every target uniformly instead, so they read as fill,
+      // not as a ghost of whichever icon they came from.
+      const hash = Math.abs(Math.sin(i * 12.9898 + 78.233) * 43758.5453) % 1;
+      const target = targets[Math.min(targets.length - 1, Math.floor(hash * targets.length))];
+      out[i * 3] = target.x;
+      out[i * 3 + 1] = target.y;
+      edgeOut[i] = target.edge;
+    }
   }
 
   centerShapeBuffer(out);
@@ -867,7 +894,7 @@ export function buildPageMorph(
   // natural (very different) proportions.
   const inicio = positionsForFilled(logoFilled, cells, LOGO_ASPECT);
   normalizeIconShapeBuffer(inicio, targetWidth, maxHeight);
-  const { positions: grupo, edge: grupoEdge } = buildGrupoFromCells(cells);
+  const { positions: grupo, edge: grupoEdge } = buildGrupoFromCells(cells, logoFilled);
   normalizeIconShapeBuffer(grupo, targetWidth, maxHeight);
   const oficio = inicio.slice();
   const contacto = buildLineFromCells(cells);
