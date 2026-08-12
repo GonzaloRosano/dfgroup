@@ -617,24 +617,26 @@ function iconPositionsForUnion(
   return positionsForFilled(filled, cells, icon.viewH / icon.viewW);
 }
 
-/** Four soft clusters, one per product line — reads as "collective", sets up the lineas section. */
+/**
+ * A single unity ring — "el colectivo" as one whole, not four separate parts.
+ * Angle/radius come from the dot's own index, never cells[i].col/row: that
+ * carried the original silhouette's raster order, which is what made the
+ * previous four-cluster version look like four ghost copies of the same
+ * shape stamped at different spots instead of four distinct blobs.
+ */
 function buildGrupoFromCells(cells: { col: number; row: number }[]): Float32Array {
   const out = new Float32Array(cells.length * 3);
-  const centers: [number, number][] = [
-    [-0.24, 0.2],
-    [0.24, 0.2],
-    [-0.24, -0.2],
-    [0.24, -0.2],
-  ];
+  const n = cells.length || 1;
+  const ringRadius = 0.34;
+  const ringWidth = 0.05;
 
-  for (let i = 0; i < cells.length; i++) {
-    const [cx, cy] = centers[i % centers.length];
-    const col = cells[i].col / (GRID_COLS - 1);
-    const row = cells[i].row / (GRID_ROWS - 1);
-    const jitterX = (col - 0.5) * 0.24;
-    const jitterY = (row - 0.5) * 0.22;
-    out[i * 3] = (cx + jitterX) * SHAPE_SCALE;
-    out[i * 3 + 1] = (cy + jitterY) * LOGO_ASPECT * SHAPE_SCALE;
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const angle = t * Math.PI * 2 - Math.PI * 0.5;
+    const hash = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
+    const r = ringRadius + (hash - 0.5) * ringWidth;
+    out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
+    out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
   }
 
   centerShapeBuffer(out);
