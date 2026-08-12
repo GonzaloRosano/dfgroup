@@ -215,10 +215,28 @@ const crafts = [
   const navHeight = () =>
     parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 0;
 
-  const LINEAS_SCROLL_SETTLE_MS = 200;
-  const LINEAS_SNAP_THRESHOLD = 0.015;
+  const LINEAS_SCROLL_SETTLE_MS = 300;
+  const LINEAS_SNAP_THRESHOLD = 0.028;
+  const LINEAS_SNAP_DURATION_MS = 580;
+  const LINEAS_MORPH_SETTLE_DELAY_MS = 50;
   let lineasScrollSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  let lineasMorphSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  let lineasSnapRaf: number | null = null;
   let lineasProgrammaticSnap = false;
+  let lineasIsSettled = true;
+
+  const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
+
+  const cancelLineasSnap = () => {
+    if (lineasSnapRaf !== null) {
+      cancelAnimationFrame(lineasSnapRaf);
+      lineasSnapRaf = null;
+    }
+    if (lineasMorphSettleTimer) {
+      clearTimeout(lineasMorphSettleTimer);
+      lineasMorphSettleTimer = null;
+    }
+  };
 
   const lineasMetrics = () => {
     const stickyH = linesSticky?.offsetHeight ?? window.innerHeight;
@@ -229,7 +247,7 @@ const crafts = [
   const lineasInView = (rect: DOMRect, stickyH: number) =>
     rect.top <= navHeight() + 8 && rect.bottom >= stickyH * 0.72;
 
-  const updateLineasScroll = () => {
+  const updateLineasScroll = (settled = lineasIsSettled) => {
     if (!linesShowcase || !linesTrack) return;
 
     const { stickyH, scrollable } = lineasMetrics();
@@ -252,7 +270,7 @@ const crafts = [
 
     linesPanels.forEach((panel, i) => {
       const dist = Math.abs(progress - i);
-      const panelOpacity = 1 - smoothstep(0.28, 0.92, dist);
+      const panelOpacity = 1 - smoothstep(0.32, 0.88, dist);
       (panel as HTMLElement).style.setProperty('--panel-opacity', String(panelOpacity));
       panel.classList.toggle('is-active', i === index);
     });
@@ -261,9 +279,14 @@ const crafts = [
 
     window.dispatchEvent(
       new CustomEvent('df:lineas-panel', {
-        detail: { index, frac, progress, raw },
+        detail: { index, frac, progress, raw, settled },
       }),
     );
+  };
+
+  const markLineasSettled = () => {
+    lineasIsSettled = true;
+    updateLineasScroll(true);
   };
 
   const snapLineasToNearestPanel = () => {
@@ -278,29 +301,50 @@ const crafts = [
     const nearestIndex = clamp(Math.round(raw * PANEL_STEPS), 0, PANEL_STEPS);
     const targetRaw = nearestIndex / PANEL_STEPS;
 
-    if (Math.abs(raw - targetRaw) < LINEAS_SNAP_THRESHOLD) return;
+    if (Math.abs(raw - targetRaw) < LINEAS_SNAP_THRESHOLD) {
+      if (!lineasIsSettled) markLineasSettled();
+      return;
+    }
 
     const targetRectTop = nh - targetRaw * scrollable;
     const targetScrollY = window.scrollY + rect.top - targetRectTop;
 
+    cancelLineasSnap();
+    lineasIsSettled = false;
     lineasProgrammaticSnap = true;
-    window.scrollTo({
-      top: targetScrollY,
-      behavior: reduceMotion ? 'auto' : 'smooth',
-    });
-
-    const finishSnap = () => {
-      lineasProgrammaticSnap = false;
-      updateLineasScroll();
-    };
+    updateLineasScroll(false);
 
     if (reduceMotion) {
-      finishSnap();
-    } else if ('onscrollend' in window) {
-      window.addEventListener('scrollend', finishSnap, { passive: true, once: true });
-    } else {
-      setTimeout(finishSnap, 600);
+      window.scrollTo(0, targetScrollY);
+      lineasProgrammaticSnap = false;
+      markLineasSettled();
+      return;
     }
+
+    const startY = window.scrollY;
+    const distance = targetScrollY - startY;
+    const startTime = performance.now();
+
+    lineasMorphSettleTimer = setTimeout(() => {
+      lineasMorphSettleTimer = null;
+      markLineasSettled();
+    }, LINEAS_MORPH_SETTLE_DELAY_MS);
+
+    const step = (now: number) => {
+      const t = Math.min((now - startTime) / LINEAS_SNAP_DURATION_MS, 1);
+      window.scrollTo(0, startY + distance * easeOutCubic(t));
+      updateLineasScroll(false);
+
+      if (t < 1) {
+        lineasSnapRaf = requestAnimationFrame(step);
+      } else {
+        lineasSnapRaf = null;
+        lineasProgrammaticSnap = false;
+        if (!lineasIsSettled) markLineasSettled();
+      }
+    };
+
+    lineasSnapRaf = requestAnimationFrame(step);
   };
 
   const onLineasScrollIdle = () => {
@@ -314,14 +358,23 @@ const crafts = [
   };
 
   const onScroll = () => {
-    updateLineasScroll();
-    if (!lineasProgrammaticSnap) scheduleLineasSnap();
+    if (lineasProgrammaticSnap) {
+      updateLineasScroll(false);
+      return;
+    }
+
+    if (lineasIsSettled) {
+      lineasIsSettled = false;
+    }
+    cancelLineasSnap();
+    updateLineasScroll(false);
+    scheduleLineasSnap();
   };
 
-  updateLineasScroll();
+  updateLineasScroll(true);
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', () => {
-    updateLineasScroll();
+    updateLineasScroll(false);
     snapLineasToNearestPanel();
   }, { passive: true });
   if ('onscrollend' in window) {
@@ -691,7 +744,7 @@ const crafts = [
     align-items: center;
     padding-block: 1rem 3rem;
     opacity: var(--panel-opacity, 1);
-    transition: opacity 120ms linear;
+    transition: opacity 220ms var(--ease-out);
   }
 
   .lines-showcase__panel.is-active {

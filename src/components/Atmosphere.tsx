@@ -27,7 +27,8 @@ const VIEW_MARGIN = 0.10;
 /** Disable wave/shear distortion once icon morph is underway. */
 const ICON_STABLE_MIX = 0.3;
 /** Panel icon crossfade after scroll snap settles (seconds). */
-const ICON_MORPH_DURATION = 0.3;
+const ICON_MORPH_DURATION = 0.5;
+const ICON_MORPH_DURATION_REDUCED = 0.12;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -177,8 +178,8 @@ function lerpPanelWeights(
   };
 }
 
-function easeOutCubic(t: number) {
-  return 1 - (1 - t) ** 3;
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
@@ -396,8 +397,7 @@ const ICON_VERT = /* glsl */ `
     vVisible = mixW;
 
     float morphActive = step(0.001, uIconMorphT) * (1.0 - step(0.999, uIconMorphT));
-    vMorphDip = 1.0 - 0.34 * sin(uIconMorphT * 3.14159265) * morphActive;
-    float sizeDip = 1.0 - 0.12 * sin(uIconMorphT * 3.14159265) * morphActive;
+    vMorphDip = 1.0 - 0.17 * sin(uIconMorphT * 3.14159265) * morphActive;
 
     vec3 iconPos = aIcon0 * uIconW0
                  + aIcon1 * uIconW1
@@ -422,7 +422,7 @@ const ICON_VERT = /* glsl */ `
     vWorldXY = (modelMatrix * vec4(p, 1.0)).xy;
 
     vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * sizeDip;
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio;
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -793,8 +793,11 @@ export default function Atmosphere() {
       let iconMorphT = 1;
 
       if (panelIconMorph.active) {
-        panelIconMorph.t = Math.min(1, panelIconMorph.t + delta / ICON_MORPH_DURATION);
-        const eased = easeOutCubic(panelIconMorph.t);
+        const morphDuration = reduceMotion ? ICON_MORPH_DURATION_REDUCED : ICON_MORPH_DURATION;
+        panelIconMorph.t = Math.min(1, panelIconMorph.t + delta / morphDuration);
+        const eased = reduceMotion
+          ? panelIconMorph.t
+          : easeInOutCubic(panelIconMorph.t);
         targetIconW = lerpPanelWeights(
           panelWeightsOneHot(panelIconMorph.from),
           panelWeightsOneHot(panelIconMorph.to),
