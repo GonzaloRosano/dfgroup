@@ -26,6 +26,8 @@ const VIEW_H = 1.0;
 const VIEW_MARGIN = 0.10;
 /** Disable wave/shear distortion once icon morph is underway. */
 const ICON_STABLE_MIX = 0.3;
+/** Panel icon crossfade after scroll snap settles (seconds). */
+const ICON_MORPH_DURATION = 0.3;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -153,10 +155,30 @@ function buildGeometry(dots: GridDot[]) {
   return geo;
 }
 
-function iconPanelWeight(panelIdx: number, progress: number) {
-  const d = Math.abs(progress - panelIdx);
-  // Wider plateau (0.30) and softer edges (0.92) so icons rest fully visible per panel
-  return 1 - THREE.MathUtils.smoothstep(d, 0.3, 0.92);
+function panelWeightsOneHot(index: number) {
+  return {
+    w0: index === 0 ? 1 : 0,
+    w1: index === 1 ? 1 : 0,
+    w2: index === 2 ? 1 : 0,
+    w3: index === 3 ? 1 : 0,
+  };
+}
+
+function lerpPanelWeights(
+  a: ReturnType<typeof panelWeightsOneHot>,
+  b: ReturnType<typeof panelWeightsOneHot>,
+  t: number,
+) {
+  return {
+    w0: THREE.MathUtils.lerp(a.w0, b.w0, t),
+    w1: THREE.MathUtils.lerp(a.w1, b.w1, t),
+    w2: THREE.MathUtils.lerp(a.w2, b.w2, t),
+    w3: THREE.MathUtils.lerp(a.w3, b.w3, t),
+  };
+}
+
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3;
 }
 
 function sectionPresence(el: Element | null, vh: number, scrollTrack = false) {
@@ -359,9 +381,11 @@ const ICON_VERT = /* glsl */ `
   uniform float uIconW3;
   uniform float uLineasSnap;
   uniform float uAlpha;
+  uniform float uIconMorphT;
 
   varying float vVisible;
   varying float vCol;
+  varying float vMorphDip;
   varying vec2 vWorldXY;
 
   void main() {
@@ -370,6 +394,10 @@ const ICON_VERT = /* glsl */ `
     float wSum = uIconW0 + uIconW1 + uIconW2 + uIconW3;
     float mixW = uLineasIconMix * uWLineas * clamp(wSum, 0.0, 1.0);
     vVisible = mixW;
+
+    float morphActive = step(0.001, uIconMorphT) * (1.0 - step(0.999, uIconMorphT));
+    vMorphDip = 1.0 - 0.34 * sin(uIconMorphT * 3.14159265) * morphActive;
+    float sizeDip = 1.0 - 0.12 * sin(uIconMorphT * 3.14159265) * morphActive;
 
     vec3 iconPos = aIcon0 * uIconW0
                  + aIcon1 * uIconW1
@@ -394,7 +422,7 @@ const ICON_VERT = /* glsl */ `
     vWorldXY = (modelMatrix * vec4(p, 1.0)).xy;
 
     vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio;
+    gl_PointSize = ${DOT_PX.toFixed(1)} * uPixelRatio * sizeDip;
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -410,6 +438,7 @@ const ICON_FRAG = /* glsl */ `
 
   varying float vVisible;
   varying float vCol;
+  varying float vMorphDip;
   varying vec2 vWorldXY;
 
   void main() {
@@ -425,7 +454,7 @@ const ICON_FRAG = /* glsl */ `
     float hoverTint = (1.0 - smoothstep(uHoverRadius * 0.28, uHoverRadius, hoverDist)) * uHoverStrength;
     col = mix(col, uEmber, hoverTint * 0.52);
 
-    float alpha = uAlpha * vVisible * 0.82;
+    float alpha = uAlpha * vVisible * vMorphDip * 0.82;
     if (alpha < 0.03) discard;
 
     gl_FragColor = vec4(col, alpha);
@@ -505,6 +534,7 @@ export default function Atmosphere() {
       uLineasFrac: { value: 0 },
       uGrupoPulse: { value: 0 },
       uLineasSnap: { value: 0 },
+      uIconMorphT: { value: 1 },
       uMouse: { value: new THREE.Vector2(0, 0) },
       uHoverStrength: { value: 0 },
       uHoverRadius: { value: 0.14 },
@@ -612,14 +642,37 @@ export default function Atmosphere() {
 
     const cur = { inicio: 1, grupo: 0, lineas: 0, oficio: 0, contacto: 0 };
     const sm = { scale: 1, offsetX: 0, offsetY: 0 };
-    let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0 };
+    let lineasPanel = { index: 0, frac: 0, progress: 0, raw: 0, settled: true };
     let lineasIconMix = 0;
     let iconW = { w0: 1, w1: 0, w2: 0, w3: 0 };
+    let settledIconIndex = 0;
+    let panelIconMorph = { active: false, from: 0, to: 0, t: 0 };
     let sectionTransition: { from: keyof typeof cur; to: keyof typeof cur; progress: number } | null = null;
 
     const onLineasPanel = (e: Event) => {
-      const detail = (e as CustomEvent<{ index: number; frac: number; progress: number; raw: number }>).detail;
-      if (detail) lineasPanel = detail;
+      const detail = (e as CustomEvent<{
+        index: number;
+        frac: number;
+        progress: number;
+        raw: number;
+        settled?: boolean;
+      }>).detail;
+      if (!detail) return;
+
+      if (detail.settled) {
+        if (detail.index !== settledIconIndex) {
+          if (!panelIconMorph.active) {
+            panelIconMorph = { active: true, from: settledIconIndex, to: detail.index, t: 0 };
+          } else {
+            panelIconMorph.to = detail.index;
+          }
+        }
+      } else if (panelIconMorph.active) {
+        panelIconMorph.active = false;
+        panelIconMorph.t = 0;
+      }
+
+      lineasPanel = { ...detail, settled: detail.settled ?? false };
       if (reduceMotion) renderFrame(0, clock.elapsedTime);
     };
 
@@ -736,29 +789,40 @@ export default function Atmosphere() {
       const iconTargetMix = inLineasIcons ? 1 : 0;
       lineasIconMix = THREE.MathUtils.damp(lineasIconMix, iconTargetMix, k * 2.4, delta);
 
-      const p = lineasPanel.progress;
-      const targetIconW = {
-        w0: iconPanelWeight(0, p),
-        w1: iconPanelWeight(1, p),
-        w2: iconPanelWeight(2, p),
-        w3: iconPanelWeight(3, p),
-      };
+      let targetIconW = panelWeightsOneHot(settledIconIndex);
+      let iconMorphT = 1;
 
-      const peakIconW = Math.max(
-        targetIconW.w0,
-        targetIconW.w1,
-        targetIconW.w2,
-        targetIconW.w3,
-      );
-      if (inLineasIcons && peakIconW > 0.2) {
-        const mixFloor = cur.lineas * (0.72 + peakIconW * 0.55);
+      if (panelIconMorph.active) {
+        panelIconMorph.t = Math.min(1, panelIconMorph.t + delta / ICON_MORPH_DURATION);
+        const eased = easeOutCubic(panelIconMorph.t);
+        targetIconW = lerpPanelWeights(
+          panelWeightsOneHot(panelIconMorph.from),
+          panelWeightsOneHot(panelIconMorph.to),
+          eased,
+        );
+        iconMorphT = panelIconMorph.t;
+        if (panelIconMorph.t >= 1) {
+          settledIconIndex = panelIconMorph.to;
+          panelIconMorph.active = false;
+          iconMorphT = 1;
+          targetIconW = panelWeightsOneHot(settledIconIndex);
+        }
+      }
+
+      if (inLineasIcons) {
+        const mixFloor = cur.lineas * 0.92;
         lineasIconMix = Math.max(lineasIconMix, Math.min(1, mixFloor));
       }
 
-      iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 1.65, delta);
-      iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 1.65, delta);
-      iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 1.65, delta);
-      iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 1.65, delta);
+      if (panelIconMorph.active) {
+        iconW = { ...targetIconW };
+      } else {
+        iconW.w0 = THREE.MathUtils.damp(iconW.w0, targetIconW.w0, k * 6, delta);
+        iconW.w1 = THREE.MathUtils.damp(iconW.w1, targetIconW.w1, k * 6, delta);
+        iconW.w2 = THREE.MathUtils.damp(iconW.w2, targetIconW.w2, k * 6, delta);
+        iconW.w3 = THREE.MathUtils.damp(iconW.w3, targetIconW.w3, k * 6, delta);
+      }
+      uniforms.uIconMorphT.value = iconMorphT;
 
       if (reduceMotion) {
         const inLineas = beats.lineas > 0.35 || lineasPanel.raw > 0.001;
@@ -774,6 +838,8 @@ export default function Atmosphere() {
           uniforms.uIconW1.value = idx === 1 ? 1 : 0;
           uniforms.uIconW2.value = idx === 2 ? 1 : 0;
           uniforms.uIconW3.value = idx === 3 ? 1 : 0;
+          settledIconIndex = idx;
+          uniforms.uIconMorphT.value = 1;
         } else {
           uniforms.uWInicio.value = 1;
           uniforms.uWGrupo.value = 0;
