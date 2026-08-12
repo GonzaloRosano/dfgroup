@@ -54,7 +54,7 @@ const crafts = [
     </div>
   </section>
 
-  <section id="grupo" class="section about">
+  <section id="grupo" class="section about" tabindex="0" role="region" aria-label="Grupo">
     <div class="tagline-strip reveal" data-reveal aria-hidden="true">
       <p>Sombra·Oficio·Presencia</p>
     </div>
@@ -131,10 +131,11 @@ const crafts = [
             lines.map((line, i) => (
               <button
                 type="button"
+                role="tab"
                 class:list={['lines-showcase__dot', i === 0 && 'is-active']}
                 data-lines-dot={i}
                 aria-label={`Ir a ${line.code}`}
-                aria-current={i === 0 ? 'true' : undefined}
+                aria-selected={i === 0 ? 'true' : 'false'}
               />
             ))
           }
@@ -146,7 +147,7 @@ const crafts = [
     </div>
   </section>
 
-  <section id="oficio" class="section crafts">
+  <section id="oficio" class="section crafts" tabindex="0" role="region" aria-label="Oficio">
     <div class="container">
       <p class="section-eyebrow reveal reveal--left" data-reveal>Oficio</p>
       <h2 class="crafts__title reveal" data-reveal>Oficio con atmósfera.</h2>
@@ -167,7 +168,7 @@ const crafts = [
     </div>
   </section>
 
-  <section id="contacto" class="section contact">
+  <section id="contacto" class="section contact" tabindex="0" role="region" aria-label="Contacto">
     <div class="container contact__inner" data-reveal-group>
       <p class="section-eyebrow reveal reveal--left" data-reveal>Contacto</p>
       <h2 class="contact__title reveal" data-reveal>Hablemos.</h2>
@@ -175,10 +176,9 @@ const crafts = [
         Contanos qué línea te interesa y cómo suena el proyecto. Respondemos con
         criterio, no con un bot.
       </p>
-      <a class="btn btn--solid contact__cta reveal" data-reveal href="mailto:hola@darkfeathergroup.com">
-        hola@darkfeathergroup.com
+      <a class="btn btn--solid contact__cta reveal" data-reveal href="mailto:darkfeathergroup@gmail.com">
+        darkfeathergroup@gmail.com
       </a>
-      <p class="contact__hint reveal" data-reveal>Correo de ejemplo · reemplazar con el canal real.</p>
     </div>
   </section>
 </BaseLayout>
@@ -249,8 +249,7 @@ const crafts = [
     linesDots.forEach((dot, i) => {
       const active = i === index;
       dot.classList.toggle('is-active', active);
-      if (active) dot.setAttribute('aria-current', 'true');
-      else dot.removeAttribute('aria-current');
+      dot.setAttribute('aria-selected', active ? 'true' : 'false');
     });
 
     linesPanels.forEach((panel, i) => {
@@ -967,13 +966,6 @@ const crafts = [
   .contact__lead {
     margin-inline: auto;
     margin-bottom: 2rem;
-  }
-
-  .contact__hint {
-    margin-top: 1rem;
-    color: var(--mute);
-    font-size: 0.9rem;
-    max-width: none;
   }
 
   @media (min-width: 960px) {
