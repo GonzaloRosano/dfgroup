@@ -16,16 +16,15 @@ const LOGO_VIEW_H = 135;
 const LOGO_ASPECT = LOGO_VIEW_H / LOGO_VIEW_W;
 export const ICON_VIEW_W = 96;
 export const ICON_VIEW_H = 106;
-const ICON_ASPECT = ICON_VIEW_H / ICON_VIEW_W;
 
 const LOGO_PATH =
   'M 105.500 12.572 C 101.650 16.136, 91.750 24.155, 83.500 30.392 C 59.486 48.547, 39.599 67.920, 31.913 80.644 C 26.345 89.862, 21.189 100.776, 18.516 109 C 15.715 117.620, 14.266 119.849, 6.897 126.878 C 3.104 130.495, 0 133.803, 0 134.228 C 0 136.216, 4.186 134.531, 11.500 129.600 C 15.900 126.633, 24.900 121.461, 31.500 118.107 C 38.100 114.753, 45.814 110.094, 48.641 107.754 C 69.115 90.814, 80.854 78.771, 89.339 66 C 91.349 62.975, 93.339 60.050, 93.763 59.500 C 95.049 57.828, 101.915 44.930, 105.474 37.500 C 110.421 27.174, 115.681 5.896, 113.250 6.046 C 112.838 6.072, 109.350 9.008, 105.500 12.572';
 
 const SHAPE_OFFSET_X = 0;
 /** Uniform shrink for all SVG-sampled shapes (feather + line icons). */
-export const SHAPE_SCALE = 0.62;
-const PAD_X = 0.14;
-const PAD_Y = 0.14;
+export const SHAPE_SCALE = 0.75;
+const PAD_X = 0.1;
+const PAD_Y = 0.1;
 /** No dilation — filled icons are already dense; dilation clips edge pixels. */
 const ICON_DILATE_PX = 0;
 
@@ -344,7 +343,8 @@ export function buildIconShapeFromPaths(icon: SvgIconData, dots: GridDot[]): Flo
     PAD_Y,
     icon.fillRule,
   );
-  return mapDotsToIconGrid(dots, filled, GRID_COLS, GRID_ROWS, ICON_ASPECT);
+  const aspect = icon.viewH / icon.viewW;
+  return mapDotsToIconGrid(dots, filled, GRID_COLS, GRID_ROWS, aspect);
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {

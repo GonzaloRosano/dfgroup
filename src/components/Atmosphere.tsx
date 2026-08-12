@@ -19,8 +19,10 @@ export { GRID_COLS, GRID_ROWS };
  */
 
 const ASPECT = 135 / 122;
-/** Orthographic vertical half-extent — wider frustum prevents top/bottom dot clipping. */
-const VIEW_H = 1.9;
+/** Orthographic vertical half-extent — tuned so icons fill ~70% of panel without edge clip. */
+const VIEW_H = 1.55;
+/** Extra frustum margin (world units) so point sprites aren't clipped at edges. */
+const VIEW_MARGIN = 0.08;
 const DOT_PX = 2.4;
 const WHITE = new THREE.Color(0xe8e6e1);
 const EMBER = new THREE.Color(0xc45a4a);
@@ -242,13 +244,14 @@ const DOT_VERT = /* glsl */ `
     vec3 lineasShape = mix(aWave, iconShape, uLineasIconMix);
 
     float iconFocus = uLineasIconMix * clamp(uIconW0 + uIconW1 + uIconW2 + uIconW3, 0.0, 1.0);
+    float iconLocked = step(0.5, iconFocus);
 
     vec3 p = position * (uWInicio + uWOficio)
            + aCircle * uWGrupo
            + lineasShape * uWLineas
            + aLine * uWContacto;
 
-    p.x *= mix(1.0, uStretchX, 0.85 * (1.0 - iconFocus * 0.92));
+    p.x *= mix(mix(1.0, uStretchX, 0.85), 1.0, iconLocked);
 
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
@@ -266,13 +269,13 @@ const DOT_VERT = /* glsl */ `
     vec2 grupoOff = vec2(cos(orbitPhase), sin(orbitPhase)) * orbitAmp * uWGrupo * uMotion;
     p.xy *= mix(vec2(1.0), vec2(1.0 + uGrupoPulse * 0.08), uWGrupo);
 
-    // --- #lineas: snap shear + panel-driven horizontal jitter ---
+    // --- #lineas: snap shear + panel-driven horizontal jitter (off when icons locked) ---
     float snapWave = sin(uTime * 4.2 + aRow * 24.0);
     vec2 lineasOff = vec2(
       snapWave * 0.014 + uLineasSnap * 0.022 * sin(uTime * 9.0 + aCol * 30.0),
-      cos(uTime * 3.1 + aCol * 18.0) * 0.005 * mix(1.0, 0.0, iconFocus)
-    ) * uWLineas * uMotion * mix(1.0, 0.12, iconFocus);
-    p.x += uShear * p.y * uWLineas * mix(1.35, 0.0, iconFocus);
+      cos(uTime * 3.1 + aCol * 18.0) * 0.005
+    ) * uWLineas * uMotion * (1.0 - iconLocked);
+    p.x += uShear * p.y * uWLineas * (1.0 - iconLocked);
 
     // --- #oficio: warm ember tremble at quill tip ---
     float tipMask = smoothstep(0.7, 0.97, aTip);
@@ -586,9 +589,9 @@ export default function Atmosphere() {
       const h = mount.clientHeight;
       if (!w || !h) return false;
 
-      const aspect = w / h;
-      viewH = VIEW_H;
-      viewW = viewH * aspect;
+      const canvasAspect = w / h;
+      viewH = VIEW_H + VIEW_MARGIN * 2;
+      viewW = viewH * canvasAspect;
 
       camera.left = -viewW * 0.5;
       camera.right = viewW * 0.5;
@@ -715,11 +718,11 @@ export default function Atmosphere() {
       points.rotation.z = reduceMotion || isDesktop ? 0 : elapsed * 0.024 * cur.inicio;
 
       uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
-      uniforms.uShear.value = pose.shear;
-      uniforms.uWave.value = pose.wave;
+      uniforms.uShear.value = pose.shear * (1 - lineasIconMix);
+      uniforms.uWave.value = pose.wave * (1 - lineasIconMix * 0.85);
       uniforms.uScatter.value = pose.scatter;
       uniforms.uGather.value = pose.gather;
-      uniforms.uStretchX.value = pose.stretchX;
+      uniforms.uStretchX.value = THREE.MathUtils.lerp(pose.stretchX, 1, lineasIconMix);
       uniforms.uDissolve.value = pose.dissolve;
       uniforms.uEmberMix.value = pose.ember;
       uniforms.uAlpha.value = pose.alpha;
@@ -728,7 +731,7 @@ export default function Atmosphere() {
         : cur.oficio * (0.72 + Math.sin(elapsed * 3.1) * 0.28);
       uniforms.uGrupoPulse.value = reduceMotion ? 0 : Math.sin(elapsed * 1.35) * cur.grupo;
       uniforms.uLineasFrac.value = lineasPanel.frac * cur.lineas;
-      uniforms.uLineasSnap.value = reduceMotion
+      uniforms.uLineasSnap.value = reduceMotion || lineasIconMix > 0.5
         ? 0
         : cur.lineas * (0.12 + Math.abs(Math.sin(elapsed * 4.2 + lineasPanel.index)) * 0.28);
 
