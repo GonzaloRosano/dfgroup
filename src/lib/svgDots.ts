@@ -667,44 +667,65 @@ function polygonRadiusAtAngle(angle: number, sides: number, circumradius: number
 /**
  * A single *filled* hexagon — angular like the feather's straight edges,
  * reading as cells/nodes forming one whole rather than a soft circle.
- * Filled (not an outline) so dots spread across the whole interior at the
- * same density as the feather/icons, instead of all cramming into a thin
- * perimeter band.
  *
- * Built as a phyllotaxis (sunflower-seed) spiral, clipped to the hexagon's
- * boundary at each point's own angle — fills the area evenly using only the
- * dot's own index. An earlier attempt piggybacked on the feather/icons'
- * rasterize+nearest-snap pipeline, but that only works for shapes that are
- * themselves part of the shared union (feather, icons); for an unrelated
- * shape planted elsewhere, distant union cells snap unevenly around it and
- * the result comes out lumpy/distorted, not a clean hexagon.
+ * Same grid-quantized-fill style as the feather/icons instead of a
+ * mathematical spiral: membership test (dist <= polygon boundary at that
+ * angle) against the shared GRID_COLS x GRID_ROWS grid, so the dot density
+ * and grid-snap character match the rest of the page shapes. Filled cells
+ * are collected once, then the n union dots cycle through that list
+ * (i % targets.length) with a small per-cycle jitter so repeats don't stack
+ * exactly on top of each other. Also flags cells near the boundary so the
+ * caller can brighten just the outermost dots.
  */
-function buildGrupoFromCells(cells: { col: number; row: number }[]): Float32Array {
+function buildGrupoFromCells(cells: { col: number; row: number }[]): {
+  positions: Float32Array;
+  edge: Float32Array;
+} {
   const out = new Float32Array(cells.length * 3);
+  const edgeOut = new Float32Array(cells.length);
   const n = cells.length || 1;
   const sides = 6;
   const circumradius = 0.42;
 
+  const targets: { col: number; row: number; edge: number }[] = [];
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const u = col / (GRID_COLS - 1);
+      const v = row / (GRID_ROWS - 1);
+      const x0 = (u - 0.5) * (1 - PAD_X * 2);
+      const y0 = -(v - 0.5) * LOGO_ASPECT * (1 - PAD_Y * 2);
+      const dist = Math.hypot(x0, y0);
+      const boundary = polygonRadiusAtAngle(Math.atan2(y0, x0), sides, circumradius);
+      if (dist <= boundary) {
+        targets.push({ col, row, edge: dist > boundary * 0.88 ? 1 : 0 });
+      }
+    }
+  }
+  if (targets.length === 0) return { positions: out, edge: edgeOut };
+
   for (let i = 0; i < n; i++) {
-    // The golden-angle step resonates with the hexagon's 6-fold symmetry,
-    // producing visible coherent spiral arms from center to the corners.
-    // Scramble angle/radius per-point (deterministic hash of i) to break
-    // that alignment up in the interior — but fade the jitter out toward
-    // the boundary (1 - t0) so the outer edge stays a crisp hexagon
-    // instead of turning into a soft/ragged blob.
-    const t0 = Math.sqrt(i / n);
-    const edgeFade = 1 - t0;
-    const hashA = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-    const hashR = Math.abs(Math.sin(i * 78.233 + 4.7) * 12345.678) % 1;
-    const angle = i * GOLDEN_ANGLE + (hashA - 0.5) * 0.4 * edgeFade;
-    const t = t0 + (hashR - 0.5) * 0.1 * edgeFade;
-    const r = t * polygonRadiusAtAngle(angle, sides, circumradius);
-    out[i * 3] = Math.cos(angle) * r * SHAPE_SCALE;
-    out[i * 3 + 1] = Math.sin(angle) * r * LOGO_ASPECT * SHAPE_SCALE;
+    // aTip (visibility) is derived from cells[i].row — the *shared* union
+    // cell's row, unrelated to grupo's own geometry. Mapping i -> targets
+    // directly (i % length) makes "position in hexagon" and "i" both
+    // monotonic, so they correlate: one edge of the hexagon systematically
+    // lands on lower-aTip dots and reads as cut off. A multiplicative hash
+    // shuffles which target each i lands on, breaking that correlation so
+    // any dimmer dots scatter evenly instead of concentrating on one side.
+    const shuffled = (i * 2654435761) % targets.length;
+    const target = targets[shuffled];
+    const hashX = Math.abs(Math.sin(i * 91.7 + 1.0) * 12345.6) % 1;
+    const hashY = Math.abs(Math.sin(i * 47.3 + 2.0) * 54321.9) % 1;
+    const jitterCells = 0.6;
+    const u = (target.col + (hashX - 0.5) * jitterCells) / (GRID_COLS - 1);
+    const v = (target.row + (hashY - 0.5) * jitterCells) / (GRID_ROWS - 1);
+    const { x, y } = cellToOrtho(u, v, LOGO_ASPECT, PAD_X, PAD_Y);
+    out[i * 3] = x;
+    out[i * 3 + 1] = y;
+    edgeOut[i] = target.edge;
   }
 
   centerShapeBuffer(out);
-  return out;
+  return { positions: out, edge: edgeOut };
 }
 
 function buildLineFromCells(cells: { col: number; row: number }[]): Float32Array {
@@ -757,6 +778,7 @@ export type PageMorphData = {
   count: number;
   inicio: Float32Array;
   grupo: Float32Array;
+  grupoEdge: Float32Array;
   oficio: Float32Array;
   contacto: Float32Array;
   iconPositions: [Float32Array, Float32Array, Float32Array, Float32Array];
@@ -769,6 +791,7 @@ const EMPTY_PAGE_MORPH: PageMorphData = {
   count: 0,
   inicio: new Float32Array(0),
   grupo: new Float32Array(0),
+  grupoEdge: new Float32Array(0),
   oficio: new Float32Array(0),
   contacto: new Float32Array(0),
   iconPositions: [
@@ -809,7 +832,7 @@ export function buildPageMorph(
   // natural (very different) proportions.
   const inicio = positionsForFilled(logoFilled, cells, LOGO_ASPECT);
   normalizeIconShapeBuffer(inicio, targetWidth, maxHeight);
-  const grupo = buildGrupoFromCells(cells);
+  const { positions: grupo, edge: grupoEdge } = buildGrupoFromCells(cells);
   normalizeIconShapeBuffer(grupo, targetWidth, maxHeight);
   const oficio = inicio.slice();
   const contacto = buildLineFromCells(cells);
@@ -834,7 +857,7 @@ export function buildPageMorph(
     tips[i] = 1 - rows[i];
   }
 
-  return { count, inicio, grupo, oficio, contacto, iconPositions, tips, cols, rows };
+  return { count, inicio, grupo, grupoEdge, oficio, contacto, iconPositions, tips, cols, rows };
 }
 
 export async function fetchSvgPaths(url: string): Promise<SvgIconData> {

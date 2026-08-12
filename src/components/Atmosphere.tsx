@@ -54,6 +54,7 @@ function buildPageGeometry(morph: PageMorphData) {
   geo.setAttribute('position', new BufferAttribute(morph.inicio.slice(), 3));
   geo.setAttribute('aInicio', new BufferAttribute(morph.inicio, 3));
   geo.setAttribute('aGrupo', new BufferAttribute(morph.grupo, 3));
+  geo.setAttribute('aGrupoEdge', new BufferAttribute(morph.grupoEdge, 1));
   geo.setAttribute('aOficio', new BufferAttribute(morph.oficio, 3));
   geo.setAttribute('aContacto', new BufferAttribute(morph.contacto, 3));
   geo.setAttribute('aIcon0', new BufferAttribute(morph.iconPositions[0], 3));
@@ -156,6 +157,7 @@ const DOT_VERT = /* glsl */ `
   attribute float aRow;
   attribute vec3 aInicio;
   attribute vec3 aGrupo;
+  attribute float aGrupoEdge;
   attribute vec3 aOficio;
   attribute vec3 aContacto;
   attribute vec3 aIcon0;
@@ -187,12 +189,14 @@ const DOT_VERT = /* glsl */ `
   varying float vDissolve;
   varying float vFeatherMix;
   varying float vMorphDip;
+  varying float vGrupoEdgeGlow;
   varying vec2 vWorldXY;
 
   void main() {
     vCol = aCol;
     vDissolve = uDissolve;
     vFeatherMix = uWInicio + uWOficio;
+    vGrupoEdgeGlow = aGrupoEdge * uWGrupo;
 
     float minTip = 1.0 - uReveal;
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
@@ -288,6 +292,7 @@ const DOT_FRAG = /* glsl */ `
   varying float vDissolve;
   varying float vFeatherMix;
   varying float vMorphDip;
+  varying float vGrupoEdgeGlow;
   varying vec2 vWorldXY;
 
   void main() {
@@ -301,6 +306,8 @@ const DOT_FRAG = /* glsl */ `
     float flicker = 1.0 + sin(uTime * 6.8 + vCol * 48.0) * 0.32 * uTipPulse * uWOficio;
     tipAccent *= flicker;
     vec3 col = mix(uWhite, uEmber, tipAccent);
+    // Only the outermost grupo hexagon dots get a brighter white edge.
+    col = mix(col, vec3(1.0), vGrupoEdgeGlow * 0.55);
 
     float hoverDist = length(vWorldXY - uMouse);
     float hoverTint = (1.0 - smoothstep(uHoverRadius * 0.28, uHoverRadius, hoverDist)) * uHoverStrength;
@@ -308,6 +315,7 @@ const DOT_FRAG = /* glsl */ `
 
     float alpha = uAlpha * vVisible * vMorphDip * (0.65 + uTipPulse * 0.12);
     alpha *= 1.0 - vDissolve * 0.55;
+    alpha *= 1.0 + vGrupoEdgeGlow * 0.25;
     if (alpha < 0.03) discard;
 
     gl_FragColor = vec4(col, alpha);
