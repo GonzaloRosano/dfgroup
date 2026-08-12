@@ -26,6 +26,9 @@ const EMBER = new THREE.Color(0xc45a4a);
 const DAMP = 3.1;
 const SECTION_DAMP = 2.4;
 const LINEAS_INDEX_MAX = 3;
+/** Whole-cloud pendulum on Z — subtle, editorial, all sections. */
+const ROCK_AMP = THREE.MathUtils.degToRad(6);
+const ROCK_PERIOD = 8;
 
 function buildPageGeometry(morph: PageMorphData) {
   const geo = new THREE.BufferGeometry();
@@ -143,12 +146,9 @@ const DOT_VERT = /* glsl */ `
 
   uniform float uTime;
   uniform float uMotion;
-  uniform float uShear;
-  uniform float uWave;
   uniform float uReveal;
   uniform float uScatter;
   uniform float uGather;
-  uniform float uStretchX;
   uniform float uDissolve;
   uniform float uPixelRatio;
   uniform float uTipPulse;
@@ -157,7 +157,6 @@ const DOT_VERT = /* glsl */ `
   uniform float uWLineas;
   uniform float uWOficio;
   uniform float uWContacto;
-  uniform float uGrupoPulse;
   uniform float uIconMorphT;
   uniform float uFrom;
   uniform float uTo;
@@ -176,8 +175,7 @@ const DOT_VERT = /* glsl */ `
     vDissolve = uDissolve;
     vFeatherMix = uWInicio + uWOficio;
 
-    float waveFront = uReveal + sin(uTime * 2.0 + aCol * 14.0) * uWave * 0.35;
-    float minTip = 1.0 - waveFront;
+    float minTip = 1.0 - uReveal;
     vVisible = smoothstep(minTip - 0.07, minTip + 0.03, aTip);
     vTip = aTip;
 
@@ -204,44 +202,19 @@ const DOT_VERT = /* glsl */ `
 
     vec3 p = mix(s0, s1, clamp(uShapeT, 0.0, 1.0));
 
-    p.x *= mix(1.0, uStretchX, 0.85 * (1.0 - uWLineas));
-
     float seed = fract(aCol * 12.9898 + aRow * 78.233);
     vec2 radial = normalize(p.xy + vec2(0.0001));
-    float ang = atan(p.y, p.x);
-
-    vec2 inicioOff = vec2(
-      sin(uTime * 0.62 + aCol * 11.0 + aRow * 5.0),
-      cos(uTime * 0.48 + aRow * 13.0 + aCol * 4.0) * 0.35
-    ) * 0.018 * uWInicio * uMotion;
-
-    float orbitPhase = uTime * 0.52 + seed * 6.28318 + ang * 0.4;
-    float orbitAmp = 0.032 * (0.6 + 0.4 * sin(uTime * 1.3 + seed * 5.0));
-    vec2 grupoOff = vec2(cos(orbitPhase), sin(orbitPhase)) * orbitAmp * uWGrupo * uMotion;
-    p.xy *= mix(vec2(1.0), vec2(1.0 + uGrupoPulse * 0.08), uWGrupo);
-
-    vec2 lineasOff = vec2(
-      sin(uTime * 1.6 + aRow * 18.0) * 0.006,
-      cos(uTime * 1.35 + aCol * 14.0) * 0.004
-    ) * uWLineas * uMotion;
 
     float tipMask = smoothstep(0.7, 0.97, aTip);
     vec2 oficioOff = radial * sin(uTime * 6.2 + seed * 20.0) * 0.011 * tipMask * uWOficio * uMotion;
-
     vec2 contactOff = radial * (0.03 + seed * 0.05) * (0.7 + 0.3 * sin(uTime * 0.55 + seed * 10.0))
                     * uWContacto * uMotion;
     p.xy += radial * uDissolve * sin(uTime * 0.7 + seed * 14.0) * 0.06 * uWContacto;
-
-    p.xy += inicioOff + grupoOff + lineasOff + oficioOff + contactOff;
+    p.xy += oficioOff + contactOff;
     p.xy += radial * uScatter * (0.55 + seed * 0.65);
 
     vec2 shaft = vec2(0.0, -0.14);
     p.xy = mix(p.xy, shaft + (p.xy - shaft) * 0.72, uGather);
-
-    float legacyWave = uWave * uMotion * (1.0 - uWGrupo * 0.85) * (1.0 - uWLineas);
-    p.x += sin(uTime * 1.6 + aRow * 20.0) * legacyWave * 0.012;
-    p.y += cos(uTime * 1.3 + aCol * 26.0) * legacyWave * 0.008;
-    p.x += uShear * p.y * uWLineas * 0.15;
 
     vWorldXY = (modelMatrix * vec4(p, 1.0)).xy;
 
@@ -342,12 +315,9 @@ export default function Atmosphere() {
       const uniforms = {
         uTime: { value: 0 },
         uMotion: { value: reduceMotion ? 0 : 1 },
-        uShear: { value: 0 },
-        uWave: { value: 0 },
         uReveal: { value: reduceMotion ? 1 : 0.92 },
         uScatter: { value: 0 },
         uGather: { value: 0 },
-        uStretchX: { value: 1 },
         uDissolve: { value: 0 },
         uEmberMix: { value: 0.15 },
         uAlpha: { value: 0.82 },
@@ -360,7 +330,6 @@ export default function Atmosphere() {
         uWLineas: { value: 0 },
         uWOficio: { value: 0 },
         uWContacto: { value: 0 },
-        uGrupoPulse: { value: 0 },
         uIconMorphT: { value: 1 },
         uFrom: { value: 0 },
         uTo: { value: 0 },
@@ -393,29 +362,24 @@ export default function Atmosphere() {
 
       const poses = {
         inicio: {
-          scale: 1, breathe: 0.058, offsetX: 0, offsetY: 0,
-          scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0.006,
-          ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
+          scale: 1, offsetX: 0, offsetY: 0,
+          scatter: 0, gather: 0, ember: 0.12, alpha: 0.82, reveal: 0.92, dissolve: 0,
         },
         grupo: {
-          scale: 0.98, breathe: 0, offsetX: 0, offsetY: 0,
-          scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0,
-          ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
+          scale: 0.98, offsetX: 0, offsetY: 0,
+          scatter: 0, gather: 0, ember: 0.08, alpha: 0.86, reveal: 1, dissolve: 0,
         },
         lineas: {
-          scale: 0.96, breathe: 0, offsetX: 0, offsetY: 0,
-          scatter: 0, gather: 0, stretchX: 1, shear: 0, wave: 0,
-          ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
+          scale: 0.96, offsetX: 0, offsetY: 0,
+          scatter: 0, gather: 0, ember: 0.1, alpha: 0.84, reveal: 1, dissolve: 0,
         },
         oficio: {
-          scale: 0.97, breathe: 0, offsetX: 0, offsetY: 0,
-          scatter: 0, gather: 0.035, stretchX: 1, shear: 0, wave: 0.004,
-          ember: 0.92, alpha: 0.81, reveal: 1, dissolve: 0,
+          scale: 0.97, offsetX: 0, offsetY: 0,
+          scatter: 0, gather: 0.035, ember: 0.92, alpha: 0.81, reveal: 1, dissolve: 0,
         },
         contacto: {
-          scale: 0.86, breathe: 0, offsetX: 0, offsetY: 0.04,
-          scatter: 0.035, gather: 0, stretchX: 1, shear: 0, wave: 0,
-          ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
+          scale: 0.86, offsetX: 0, offsetY: 0.04,
+          scatter: 0.035, gather: 0, ember: 0.12, alpha: 0.38, reveal: 1, dissolve: 0.78,
         },
       };
 
@@ -593,33 +557,26 @@ export default function Atmosphere() {
         uniforms.uTo.value = pair.to;
         uniforms.uShapeT.value = pair.t;
 
-        const inicioLife = cur.inicio;
-        const breatheScale = reduceMotion
-          ? 1
-          : 1 + Math.sin(elapsed * 0.75) * pose.breathe * inicioLife;
-
-        sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale * breatheScale, k, delta);
+        sm.scale = THREE.MathUtils.damp(sm.scale, pose.scale, k, delta);
         sm.offsetX = THREE.MathUtils.damp(sm.offsetX, pose.offsetX, k, delta);
         const targetOffsetY = isDesktop ? 0 : pose.offsetY;
         sm.offsetY = THREE.MathUtils.damp(sm.offsetY, targetOffsetY, k, delta);
 
         points.scale.setScalar(sm.scale);
         points.position.set(sm.offsetX, sm.offsetY, 0);
-        points.rotation.z = reduceMotion || isDesktop ? 0 : elapsed * 0.024 * cur.inicio;
+        points.rotation.z = reduceMotion
+          ? 0
+          : Math.sin((elapsed * Math.PI * 2) / ROCK_PERIOD) * ROCK_AMP;
 
         uniforms.uReveal.value = reduceMotion ? 1 : pose.reveal;
-        uniforms.uShear.value = pose.shear;
-        uniforms.uWave.value = pose.wave;
         uniforms.uScatter.value = pose.scatter;
         uniforms.uGather.value = pose.gather;
-        uniforms.uStretchX.value = pose.stretchX;
         uniforms.uDissolve.value = pose.dissolve;
         uniforms.uEmberMix.value = pose.ember;
         uniforms.uAlpha.value = pose.alpha;
         uniforms.uTipPulse.value = reduceMotion
           ? 0
           : cur.oficio * (0.72 + Math.sin(elapsed * 3.1) * 0.28);
-        uniforms.uGrupoPulse.value = reduceMotion ? 0 : Math.sin(elapsed * 1.35) * cur.grupo;
 
         if (!reduceMotion) uniforms.uTime.value = elapsed;
 
