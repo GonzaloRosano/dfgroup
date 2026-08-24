@@ -29,7 +29,7 @@ El objetivo es que quien visite el sitio entienda quiénes son, perciba la calid
 
 ---
 
-## Tech Stack
+## Stack
 
 ![Astro](https://img.shields.io/badge/Astro-BC52EE?style=flat-square&logo=astro&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
