@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🖤 Dark Feather Group
+# 🪶 Dark Feather Group
 
 **Sitio web público del colectivo — DF Group**
 
