@@ -6,7 +6,7 @@
 
 </div>
 
-![Screenshot](docs/screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/GonzaloRosano/dfgroup/master/docs/screenshot.png)
 
 ---
 
