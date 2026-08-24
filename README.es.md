@@ -6,7 +6,7 @@
 
 </div>
 
-![Screenshot](https://api.microlink.io/?url=https%3A%2F%2Fdfgroup-one.vercel.app&screenshot=true&meta=false&embed=screenshot.url)
+![Screenshot](https://api.microlink.io/?url=https%3A%2F%2Fdfgroup-one.vercel.app&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=10000)
 
 ---
 
