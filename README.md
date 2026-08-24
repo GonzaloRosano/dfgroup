@@ -2,30 +2,30 @@
 
 # 🖤 Dark Feather Group
 
-**Sitio web público del colectivo — DF Group**
+**Public collective website — DF Group**
 
 </div>
 
 ---
 
-## Sobre el proyecto
+## About the project
 
-Presencia web pública de **Dark Feather Group** (también Dark Feather / DF Group), un colectivo creativo / estudio digital que cubre diseño, desarrollo, arte y producción.
+Public web presence for **Dark Feather Group** (also Dark Feather / DF Group), a creative collective / digital studio covering design, development, art, and production.
 
-El objetivo es que quien visite el sitio entienda quiénes son, perciba la calidad del trabajo y sepa cómo iniciar una conversación o colaboración. No es una landing de una sola vista: es un sitio multi-página con identidad y estética noir-moderna propia.
+The goal is for visitors to understand who they are, sense the quality of the craft, and know how to start a conversation or collaboration. This isn't a single-view landing page, it's a multi-page site with its own noir-modern identity and aesthetic.
 
 ---
 
-## Qué incluye
+## What's included
 
-- **Inicio** (`/`)
+- **Home** (`/`)
 - **Hosting** (`/hosting`)
 - **Series** (`/series`)
 - **Atelier** (`/atelier`)
 - **Voices** (`/voices`)
-- **Grupo** (`/grupo`)
-- **Contacto** (`/contacto`)
-- Sitio bilingüe (`es` / `en`), ruta por defecto en producción: `/en`
+- **Group** (`/grupo`)
+- **Contact** (`/contacto`)
+- Bilingual site (`es` / `en`), default route in production: `/en`
 
 ---
 
@@ -37,20 +37,20 @@ El objetivo es que quien visite el sitio entienda quiénes son, perciba la calid
 ![Three.js](https://img.shields.io/badge/Three.js-000000?style=flat-square&logo=three.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-F69220?style=flat-square&logo=pnpm&logoColor=white)
 
-Astro con islas de React puntuales para Three.js / WebGL. Build intencionalmente sin optimizaciones agresivas (sin minify, sourcemaps activos).
+Astro with specific React islands for Three.js / WebGL. Build intentionally unoptimized (no minification, sourcemaps enabled).
 
 ---
 
-## Puesta en marcha
+## Getting started
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Disponible en `http://localhost:4321`.
+Available at `http://localhost:4321`.
 
-Build de producción:
+Production build:
 
 ```bash
 pnpm build
@@ -59,17 +59,17 @@ pnpm preview
 
 ---
 
-## Estructura
+## Structure
 
 ```
 src/
-├─ components/    # Bloques de UI de las distintas páginas
-├─ data/          # Contenido/datos estáticos
-├─ i18n/          # Traducciones es/en
-├─ layouts/       # Layouts base del sitio
-├─ lib/           # Utilidades
-├─ pages/         # Rutas: /, /hosting, /series, /atelier, /voices, /grupo, /contacto
-└─ styles/        # Estilos globales
+├─ components/    # UI blocks for the different pages
+├─ data/          # Static content/data
+├─ i18n/          # es/en translations
+├─ layouts/       # Base site layouts
+├─ lib/           # Utilities
+├─ pages/         # Routes: /, /hosting, /series, /atelier, /voices, /grupo, /contacto
+└─ styles/        # Global styles
 ```
 
 ---
@@ -78,6 +78,6 @@ src/
 
 [dfgroup-one.vercel.app](https://dfgroup-one.vercel.app)
 
-## Estado
+## Status
 
-Identidad y contenido en desarrollo. Casos reales de trabajo y roster del equipo pendientes de incorporar.
+Identity and content in progress. Real case work and team roster still to be added.
